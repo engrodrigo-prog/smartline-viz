@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import LandingHeader from "@/components/LandingHeader";
+import { cn } from "@/lib/utils";
+import { modulosSmartline } from "@/lib/modulosSmartline";
 import {
   Activity,
   Shield,
@@ -440,6 +442,99 @@ const Landing = () => {
                       <h3 className="text-lg font-semibold mb-2">{solution.title}</h3>
                       <p className="text-sm text-muted-foreground">{solution.description}</p>
                     </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Desafios e Soluções por Módulo */}
+        <section className="py-20 px-4 bg-gradient-to-b from-slate-900 to-slate-800">
+          <div className="container mx-auto max-w-7xl">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-center mb-16"
+            >
+              <h2 className="text-4xl md:text-5xl font-bold mb-4">
+                <span className="text-destructive">Desafios Reais</span> ⚡{" "}
+                <span className="gradient-text">Soluções Concretas</span>
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                Para cada desafio operacional crítico, a Smartline oferece uma solução tecnológica comprovada
+              </p>
+            </motion.div>
+
+            <div className="space-y-8">
+              {modulosSmartline.map((item, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="grid lg:grid-cols-2 gap-6"
+                >
+                  {/* Desafio */}
+                  <div
+                    className={cn(
+                      "tech-card p-6 border-l-4 border-destructive",
+                      index % 2 === 1 && "lg:order-2"
+                    )}
+                  >
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="p-3 bg-destructive/10 rounded-xl">
+                        <item.icon className="w-6 h-6 text-destructive" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-muted-foreground mb-1">
+                          DESAFIO - {item.categoria}
+                        </div>
+                        <h3 className="text-xl font-bold text-destructive">
+                          {item.desafio.titulo}
+                        </h3>
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground mb-3">{item.desafio.descricao}</p>
+                    <div className="p-3 bg-destructive/5 rounded-lg border border-destructive/20">
+                      <div className="text-xs font-semibold text-destructive mb-1">IMPACTO</div>
+                      <div className="text-sm text-foreground">{item.desafio.impacto}</div>
+                    </div>
+                  </div>
+
+                  {/* Solução */}
+                  <div
+                    className={cn(
+                      "tech-card p-6 border-l-4 border-primary",
+                      index % 2 === 1 && "lg:order-1"
+                    )}
+                  >
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="p-3 bg-primary/10 rounded-xl">
+                        <CheckCircle2 className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-muted-foreground mb-1">
+                          SOLUÇÃO - {item.modulo}
+                        </div>
+                        <h3 className="text-xl font-bold text-primary">
+                          {item.solucao.titulo}
+                        </h3>
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground mb-3">{item.solucao.descricao}</p>
+                    <div className="p-3 bg-primary/5 rounded-lg border border-primary/20 mb-4">
+                      <div className="text-xs font-semibold text-primary mb-1">BENEFÍCIO</div>
+                      <div className="text-sm text-foreground">{item.solucao.beneficio}</div>
+                    </div>
+                    <Link
+                      to={item.path}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                    >
+                      Ver módulo completo →
+                    </Link>
                   </div>
                 </motion.div>
               ))}
