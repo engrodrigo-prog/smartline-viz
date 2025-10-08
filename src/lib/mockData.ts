@@ -317,3 +317,209 @@ export const mockChartData = {
     humidity: 50 + Math.cos(i / 4) * 20,
   })),
 };
+
+// ============= NOVOS TIPOS E DADOS EXPANDIDOS =============
+
+// Áreas Alagadas
+export type AreaAlagada = {
+  id: string;
+  nome: string;
+  regiao: 'A' | 'B' | 'C';
+  linha: string;
+  ramal: string;
+  coords: [number, number];
+  areaCritica: number; // em km²
+  nivelRisco: 'Baixo' | 'Médio' | 'Alto';
+  ultimaAtualizacao: string;
+  status: 'Monitorado' | 'Alerta' | 'Crítico';
+  torres_afetadas: string[];
+  protecao_instalada?: boolean;
+};
+
+export const areasAlagadas: AreaAlagada[] = Array.from({ length: 45 }, (_, i) => {
+  const linha = linhas[Math.floor(Math.random() * linhas.length)];
+  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
+  const numTorres = Math.floor(Math.random() * 8) + 2;
+  
+  return {
+    id: `ALG-${String(i + 1).padStart(3, '0')}`,
+    nome: `Área Alagada ${i + 1}`,
+    regiao: regioes[Math.floor(Math.random() * regioes.length)],
+    linha: linha.id,
+    ramal,
+    coords: [
+      -23.55 + (Math.random() - 0.5) * 2,
+      -46.63 + (Math.random() - 0.5) * 2
+    ],
+    areaCritica: parseFloat((Math.random() * 5 + 0.5).toFixed(2)),
+    nivelRisco: ['Baixo', 'Médio', 'Alto'][Math.floor(Math.random() * 3)] as any,
+    ultimaAtualizacao: new Date(2025, 9, Math.floor(Math.random() * 30) + 1).toISOString(),
+    status: ['Monitorado', 'Alerta', 'Crítico'][Math.floor(Math.random() * 3)] as any,
+    torres_afetadas: Array.from({ length: numTorres }, (_, j) => `TRN-${String(i * 10 + j).padStart(3, '0')}`),
+    protecao_instalada: Math.random() > 0.6,
+  };
+});
+
+// Ocupação de Faixa
+export type OcupacaoFaixa = {
+  id: string;
+  nome: string;
+  tipo: 'Residencial' | 'Comercial' | 'Agrícola' | 'Industrial';
+  regiao: 'A' | 'B' | 'C';
+  linha: string;
+  ramal: string;
+  coords: [number, number];
+  situacao: 'Regular' | 'Irregular' | 'Em Regularização';
+  distanciaFaixa: number; // em metros
+  prazoRegularizacao?: string;
+  responsavel?: string;
+};
+
+export const ocupacoesFaixa: OcupacaoFaixa[] = Array.from({ length: 35 }, (_, i) => {
+  const linha = linhas[Math.floor(Math.random() * linhas.length)];
+  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
+  const tipos: OcupacaoFaixa['tipo'][] = ['Residencial', 'Comercial', 'Agrícola', 'Industrial'];
+  const situacoes: OcupacaoFaixa['situacao'][] = ['Regular', 'Irregular', 'Em Regularização'];
+  const situacao = situacoes[Math.floor(Math.random() * situacoes.length)];
+  
+  return {
+    id: `OCP-${String(i + 1).padStart(3, '0')}`,
+    nome: `Ocupação ${i + 1}`,
+    tipo: tipos[Math.floor(Math.random() * tipos.length)],
+    regiao: regioes[Math.floor(Math.random() * regioes.length)],
+    linha: linha.id,
+    ramal,
+    coords: [
+      -23.55 + (Math.random() - 0.5) * 2,
+      -46.63 + (Math.random() - 0.5) * 2
+    ],
+    situacao,
+    distanciaFaixa: Math.floor(Math.random() * 150) + 10,
+    prazoRegularizacao: situacao === 'Em Regularização' ? new Date(2025, 11, Math.floor(Math.random() * 30) + 1).toISOString().split('T')[0] : undefined,
+    responsavel: situacao !== 'Regular' ? `Responsável ${i + 1}` : undefined,
+  };
+});
+
+// Proteção de Pássaros
+export type ProtecaoPássaros = {
+  id: string;
+  torre: string;
+  linha: string;
+  ramal: string;
+  coords: [number, number];
+  tipo: 'Flight Diverter' | 'Bird Guard' | 'Spiral Vibration';
+  dataInstalacao: string;
+  status: 'Instalado' | 'Manutenção' | 'Pendente';
+  efetividade: number; // percentual
+  especies_protegidas: string[];
+};
+
+const especiesProtegidas = ['Gavião', 'Coruja', 'Águia', 'Falcão', 'Urubu', 'Papagaio'];
+
+export const protecoesPássaros: ProtecaoPássaros[] = Array.from({ length: 60 }, (_, i) => {
+  const linha = linhas[Math.floor(Math.random() * linhas.length)];
+  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
+  const tipos: ProtecaoPássaros['tipo'][] = ['Flight Diverter', 'Bird Guard', 'Spiral Vibration'];
+  
+  return {
+    id: `PRT-${String(i + 1).padStart(3, '0')}`,
+    torre: `TRN-${String(Math.floor(Math.random() * 450)).padStart(3, '0')}`,
+    linha: linha.id,
+    ramal,
+    coords: [
+      -23.55 + (Math.random() - 0.5) * 2,
+      -46.63 + (Math.random() - 0.5) * 2
+    ],
+    tipo: tipos[Math.floor(Math.random() * tipos.length)],
+    dataInstalacao: new Date(2024 + Math.floor(Math.random() * 2), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
+    status: ['Instalado', 'Manutenção', 'Pendente'][Math.floor(Math.random() * 3)] as any,
+    efetividade: Math.floor(Math.random() * 30) + 70,
+    especies_protegidas: Array.from(
+      { length: Math.floor(Math.random() * 3) + 1 },
+      () => especiesProtegidas[Math.floor(Math.random() * especiesProtegidas.length)]
+    ),
+  };
+});
+
+// Emendas e Conexões
+export type Emenda = {
+  id: string;
+  nome: string;
+  torre: string;
+  linha: string;
+  ramal: string;
+  coords: [number, number];
+  tipo: 'Compressão' | 'Explosiva' | 'Mecânica';
+  temperatura?: number;
+  aquecimentoDetectado: boolean;
+  ultimaInspecao: string;
+  statusTermico: 'Normal' | 'Atenção' | 'Crítico';
+  manutencaoRequerida: boolean;
+};
+
+export const emendas: Emenda[] = Array.from({ length: 80 }, (_, i) => {
+  const linha = linhas[Math.floor(Math.random() * linhas.length)];
+  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
+  const temperatura = Math.floor(Math.random() * 50) + 20;
+  const statusTermico = temperatura > 60 ? 'Crítico' : temperatura > 45 ? 'Atenção' : 'Normal';
+  
+  const torreId = `TRN-${String(Math.floor(Math.random() * 450)).padStart(3, '0')}`;
+  
+  return {
+    id: `EMD-${String(i + 1).padStart(3, '0')}`,
+    nome: `Emenda ${i + 1} - ${torreId}`,
+    torre: torreId,
+    linha: linha.id,
+    ramal,
+    coords: [
+      -23.55 + (Math.random() - 0.5) * 2,
+      -46.63 + (Math.random() - 0.5) * 2
+    ],
+    tipo: ['Compressão', 'Explosiva', 'Mecânica'][Math.floor(Math.random() * 3)] as any,
+    temperatura,
+    aquecimentoDetectado: temperatura > 45,
+    ultimaInspecao: new Date(2025, Math.floor(Math.random() * 10), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
+    statusTermico: statusTermico as any,
+    manutencaoRequerida: statusTermico !== 'Normal',
+  };
+});
+
+// Câmeras
+export type Camera = {
+  id: string;
+  nome: string;
+  linha: string;
+  ramal: string;
+  torre?: string;
+  coords: [number, number];
+  status: 'Online' | 'Offline' | 'Manutenção';
+  ultimoFrame: string;
+  gravando: boolean;
+  eventosDetectados24h: number;
+  resolucao: string;
+  angulo: number;
+};
+
+export const cameras: Camera[] = Array.from({ length: 25 }, (_, i) => {
+  const linha = linhas[Math.floor(Math.random() * linhas.length)];
+  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
+  const status = ['Online', 'Offline', 'Manutenção'][Math.floor(Math.random() * 3)] as any;
+  
+  return {
+    id: `CAM-${String(i + 1).padStart(3, '0')}`,
+    nome: `Câmera ${i + 1}`,
+    linha: linha.id,
+    ramal,
+    torre: Math.random() > 0.3 ? `TRN-${String(Math.floor(Math.random() * 450)).padStart(3, '0')}` : undefined,
+    coords: [
+      -23.55 + (Math.random() - 0.5) * 2,
+      -46.63 + (Math.random() - 0.5) * 2
+    ],
+    status,
+    ultimoFrame: new Date(Date.now() - Math.random() * 3600000).toISOString(),
+    gravando: status === 'Online' && Math.random() > 0.2,
+    eventosDetectados24h: status === 'Online' ? Math.floor(Math.random() * 15) : 0,
+    resolucao: ['1080p', '4K', '720p'][Math.floor(Math.random() * 3)],
+    angulo: Math.floor(Math.random() * 180) + 90,
+  };
+});

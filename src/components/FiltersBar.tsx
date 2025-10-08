@@ -6,9 +6,10 @@ import { useEffect, useState } from "react";
 
 interface FiltersBarProps {
   onApplyFilters?: (filters: any) => void;
+  children?: React.ReactNode;
 }
 
-const FiltersBar = ({ onApplyFilters }: FiltersBarProps) => {
+const FiltersBar = ({ onApplyFilters, children }: FiltersBarProps) => {
   const { filters, setFilters } = useFilters();
   const [ramais, setRamais] = useState<string[]>([]);
 
@@ -144,6 +145,8 @@ const FiltersBar = ({ onApplyFilters }: FiltersBarProps) => {
             </div>
           </div>
         </div>
+        
+        {children}
       </div>
     </div>
   );
