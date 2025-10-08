@@ -1,10 +1,29 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { 
-  Activity, Shield, Zap, Database, Cloud, TrendingUp,
-  AlertTriangle, TreePine, FileWarning, ClipboardCheck, Users, MapPin,
-  Brain, Map, FileCheck, BarChart3, Home, Plane, Box,
-  Clock, ShieldCheck, DollarSign, CheckCircle2
+import {
+  Activity,
+  Shield,
+  Zap,
+  Database,
+  Cloud,
+  TrendingUp,
+  AlertTriangle,
+  TreePine,
+  FileWarning,
+  ClipboardCheck,
+  Users,
+  MapPin,
+  Brain,
+  Map,
+  FileCheck,
+  BarChart3,
+  Home,
+  Plane,
+  Box,
+  Clock,
+  ShieldCheck,
+  DollarSign,
+  CheckCircle2,
 } from "lucide-react";
 import logoSmartline from "@/assets/logo-smartline.png";
 import bgHero from "@/assets/bg-hero.png";
@@ -38,16 +57,16 @@ const Landing = () => {
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <div 
+        <div
           className="absolute inset-0 opacity-30"
-          style={{ 
+          style={{
             backgroundImage: `url(${bgHero})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
+            backgroundSize: "cover",
+            backgroundPosition: "center",
           }}
         />
         <div className="absolute inset-0 hexagon-pattern opacity-20" />
-        
+
         <div className="container relative z-10 px-4 py-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -55,23 +74,21 @@ const Landing = () => {
             transition={{ duration: 0.8 }}
             className="text-center max-w-5xl mx-auto"
           >
-            <img 
-              src={logoSmartline} 
-              alt="Smartline" 
+            <img
+              src={logoSmartline}
+              alt="Smartline"
               className="w-32 h-32 mx-auto mb-8 drop-shadow-[0_0_30px_rgba(0,166,122,0.3)]"
             />
-            
+
             <h1 className="text-6xl md:text-7xl font-bold mb-6">
               <span className="gradient-text">AssetHealth</span>
             </h1>
-            
-            <p className="text-xl md:text-2xl text-foreground/80 mb-4">
-              Monitoramento Inteligente de Ativos Elétricos
-            </p>
-            
+
+            <p className="text-xl md:text-2xl text-foreground/80 mb-4">Monitoramento Inteligente de Ativos Elétricos</p>
+
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto mb-12">
-              Plataforma corporativa para gestão técnica, ambiental e operacional de infraestrutura elétrica, 
-              integrando IoT, IA e análise de compliance em tempo real.
+              Plataforma corporativa para gestão técnica, ambiental e operacional de infraestrutura elétrica, integrando
+              IoT, IA e análise de compliance em tempo real.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -140,8 +157,8 @@ const Landing = () => {
                 className="tech-card overflow-hidden group"
               >
                 <div className="h-48 overflow-hidden relative">
-                  <img 
-                    src={feature.image} 
+                  <img
+                    src={feature.image}
                     alt={feature.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
@@ -180,33 +197,34 @@ const Landing = () => {
               {
                 icon: AlertTriangle,
                 title: "Interrupções Não Programadas",
-                description: "Falhas inesperadas geram multas regulatórias e perda de receita significativa"
+                description: "Falhas inesperadas geram multas regulatórias e perda de receita significativa",
               },
               {
                 icon: TreePine,
                 title: "Risco de Vegetação",
-                description: "Crescimento vegetal não controlado causa desligamentos e riscos operacionais"
+                description: "Crescimento vegetal não controlado causa desligamentos e riscos operacionais",
               },
               {
                 icon: FileWarning,
                 title: "Não Conformidade Regulatória",
-                description: "Dificuldade em atender normas técnicas como NBR 5422 de forma contínua"
+                description: "Dificuldade em atender normas técnicas como NBR 5422 de forma contínua",
               },
               {
                 icon: ClipboardCheck,
                 title: "Inspeções Ineficientes",
-                description: "Métodos manuais são custosos, demorados e sujeitos a falhas humanas"
+                description: "Métodos manuais são custosos, demorados e sujeitos a falhas humanas",
               },
               {
                 icon: Users,
                 title: "Tempo e Segurança na Escalada de Estruturas",
-                description: "Escaladas manuais expõem equipes a riscos de queda, acidentes e condições climáticas adversas, além de serem demoradas e dispendiosas"
+                description:
+                  "Escaladas manuais expõem equipes a riscos de queda, acidentes e condições climáticas adversas, além de serem demoradas e dispendiosas",
               },
               {
                 icon: MapPin,
                 title: "Ocupação Irregular de Faixa",
-                description: "Invasões e construções não autorizadas na faixa de servidão comprometem a segurança"
-              }
+                description: "Invasões e construções não autorizadas na faixa de servidão comprometem a segurança",
+              },
             ].map((challenge, index) => (
               <motion.div
                 key={index}
@@ -253,38 +271,40 @@ const Landing = () => {
               {
                 icon: Brain,
                 title: "Monitoramento Preditivo",
-                description: "IA identifica padrões de falha antes que ocorram, permitindo manutenção preventiva"
+                description: "IA identifica padrões de falha antes que ocorram, permitindo manutenção preventiva",
               },
               {
                 icon: Map,
                 title: "Mapas de Risco de Vegetação",
-                description: "Análise geoespacial identifica pontos críticos, otimizando cronogramas de poda"
+                description: "Análise geoespacial identifica pontos críticos, otimizando cronogramas de poda",
               },
               {
                 icon: FileCheck,
                 title: "Validação de Conformidade NBR 5422",
-                description: "Verificação automática de distâncias mínimas e parâmetros normativos em tempo real"
+                description: "Verificação automática de distâncias mínimas e parâmetros normativos em tempo real",
               },
               {
                 icon: BarChart3,
                 title: "Analytics de Eventos",
-                description: "Análise avançada de dados históricos para identificar tendências e causas raiz"
+                description: "Análise avançada de dados históricos para identificar tendências e causas raiz",
               },
               {
                 icon: Home,
                 title: "Gestão de Ocupação de Faixa",
-                description: "Controle automatizado de invasões com notificações, processos judiciais e timeline completa"
+                description:
+                  "Controle automatizado de invasões com notificações, processos judiciais e timeline completa",
               },
               {
                 icon: Plane,
                 title: "Missões Autônomas para Drones",
-                description: "Inspeções automatizadas com biblioteca de missões e solicitação para trechos com gêmeo digital"
+                description:
+                  "Inspeções automatizadas com biblioteca de missões e solicitação para trechos com gêmeo digital",
               },
               {
                 icon: Box,
                 title: "Exploração de Gêmeos Digitais",
-                description: "Análise preditiva avançada através de modelos digitais 3D das linhas de transmissão"
-              }
+                description: "Análise preditiva avançada através de modelos digitais 3D das linhas de transmissão",
+              },
             ].map((solution, index) => (
               <motion.div
                 key={index}
@@ -332,26 +352,26 @@ const Landing = () => {
                 icon: Clock,
                 percentage: "85%",
                 title: "Redução de Downtime",
-                description: "Menos interrupções - Causa Árvore - através de manutenção preditiva"
+                description: "Menos interrupções - Causa Árvore - através de manutenção preditiva",
               },
               {
                 icon: ShieldCheck,
                 percentage: "80%",
                 title: "Melhoria na Segurança",
-                description: "Identificação proativa de riscos operacionais sem escalada"
+                description: "Identificação proativa de riscos operacionais sem escalada",
               },
               {
                 icon: DollarSign,
-                percentage: "40% - 60%",
+                percentage: "60%",
                 title: "Economia de Custos",
-                description: "Redução significativa em custos operacionais e de manutenção"
+                description: "Redução significativa em custos operacionais e de manutenção",
               },
               {
                 icon: CheckCircle2,
                 percentage: "100%",
                 title: "Confiança em Conformidade",
-                description: "Atendimento contínuo às normas técnicas e regulatórias"
-              }
+                description: "Atendimento contínuo às normas técnicas e regulatórias",
+              },
             ].map((benefit, index) => (
               <motion.div
                 key={index}
@@ -386,8 +406,8 @@ const Landing = () => {
               Pronto para <span className="gradient-text">Transformar</span> sua Operação?
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Junte-se às empresas que já utilizam o Smartline AssetHealth para maximizar 
-              a eficiência e segurança de seus ativos elétricos.
+              Junte-se às empresas que já utilizam o Smartline AssetHealth para maximizar a eficiência e segurança de
+              seus ativos elétricos.
             </p>
             <Link to="/dashboard" className="btn-primary text-lg inline-block">
               Começar Agora
