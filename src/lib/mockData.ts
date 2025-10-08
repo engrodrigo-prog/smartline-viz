@@ -1,3 +1,80 @@
+export const regioes = ['A', 'B', 'C'] as const;
+
+export const linhas = [
+  { id: 'LT-001', nome: 'Linha 1 - SP Norte', ramais: ['R1', 'R2', 'R3'] },
+  { id: 'LT-002', nome: 'Linha 2 - SP Sul', ramais: ['R1', 'R2'] },
+  { id: 'LT-003', nome: 'Linha 3 - Litoral', ramais: ['R1', 'R2', 'R3', 'R4'] },
+];
+
+export type Criticidade = 'Baixa' | 'Média' | 'Alta';
+export type TipoEvento = 'Vegetação' | 'Travessias' | 'Estruturas' | 'Emendas' | 'Compliance' | 'Sensores' | 'Drones' | 'Eventos';
+
+export type Evento = {
+  id: string;
+  tipo: TipoEvento;
+  regiao: 'A' | 'B' | 'C';
+  linha: string;
+  ramal?: string;
+  data: string;
+  criticidade: Criticidade;
+  status: 'OK' | 'Alerta' | 'Crítico' | 'Pendente';
+  nome: string;
+  descricao?: string;
+  coords?: [number, number];
+  imagens?: string[];
+};
+
+// Generate 100+ varied events
+const tiposEvento: TipoEvento[] = ['Vegetação', 'Travessias', 'Estruturas', 'Emendas', 'Compliance', 'Sensores', 'Drones', 'Eventos'];
+const criticidades: Criticidade[] = ['Baixa', 'Média', 'Alta'];
+const statuses = ['OK', 'Alerta', 'Crítico', 'Pendente'] as const;
+
+export const eventos: Evento[] = Array.from({ length: 120 }, (_, i) => {
+  const tipo = tiposEvento[Math.floor(Math.random() * tiposEvento.length)];
+  const regiao = regioes[Math.floor(Math.random() * regioes.length)];
+  const linha = linhas[Math.floor(Math.random() * linhas.length)];
+  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
+  
+  return {
+    id: `EVT-${String(i + 1).padStart(4, '0')}`,
+    tipo,
+    regiao,
+    linha: linha.id,
+    ramal,
+    data: new Date(2025 - Math.random() * 2, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString(),
+    criticidade: criticidades[Math.floor(Math.random() * criticidades.length)],
+    status: statuses[Math.floor(Math.random() * statuses.length)],
+    nome: `${tipo} - ${linha.nome} ${ramal}`,
+    descricao: `Evento de ${tipo.toLowerCase()} identificado na ${linha.nome}, ${ramal}`,
+    coords: [
+      -23.55 + (Math.random() - 0.5) * 10,
+      -46.63 + (Math.random() - 0.5) * 10
+    ],
+  };
+});
+
+export type UploadItem = {
+  id: string;
+  nome: string;
+  mime: string;
+  regiao: 'A' | 'B' | 'C';
+  linha: string;
+  ramal: string;
+  categoria: string;
+  descricao?: string;
+  ts: string;
+  url?: string;
+};
+
+export const uploads: UploadItem[] = [];
+
+export const kpiData = {
+  totalEventos: eventos.length,
+  criticos: eventos.filter(e => e.criticidade === 'Alta').length,
+  pendentes: eventos.filter(e => e.status === 'Pendente').length,
+  resolvidos: eventos.filter(e => e.status === 'OK').length,
+};
+
 export interface SensorData {
   id: string;
   name: string;

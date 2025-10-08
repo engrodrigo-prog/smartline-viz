@@ -12,6 +12,9 @@ import Login from "./pages/Login";
 import MapView from "./pages/MapView";
 import Unifilar from "./pages/Unifilar";
 import UploadBases from "./pages/UploadBases";
+import Vegetacao from "./pages/modules/Vegetacao";
+import Travessias from "./pages/modules/Travessias";
+import Estruturas from "./pages/modules/Estruturas";
 
 const queryClient = new QueryClient();
 
@@ -37,15 +40,15 @@ const App = () => (
           
           {/* Ambiental */}
           <Route path="/ambiental/alagadas" element={<ModulePlaceholder />} />
-          <Route path="/ambiental/vegetacao" element={<ModulePlaceholder />} />
+          <Route path="/ambiental/vegetacao" element={<Vegetacao />} />
           <Route path="/ambiental/ocupacao" element={<ModulePlaceholder />} />
           <Route path="/ambiental/distancia" element={<ModulePlaceholder />} />
           <Route path="/ambiental/compliance" element={<ModulePlaceholder />} />
           
           {/* Estrutura */}
-          <Route path="/estrutura/estruturas" element={<ModulePlaceholder />} />
+          <Route path="/estrutura/estruturas" element={<Estruturas />} />
           <Route path="/estrutura/emendas" element={<ModulePlaceholder />} />
-          <Route path="/estrutura/travessias" element={<ModulePlaceholder />} />
+          <Route path="/estrutura/travessias" element={<Travessias />} />
           <Route path="/estrutura/compliance" element={<ModulePlaceholder />} />
           <Route path="/estrutura/corrosao" element={<ModulePlaceholder />} />
           

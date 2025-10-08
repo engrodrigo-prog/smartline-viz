@@ -31,6 +31,9 @@ import bgHero from "@/assets/bg-hero.png";
 import bannerIA from "@/assets/banner-ia.png";
 import bannerMissoes from "@/assets/banner-missoes.png";
 import bannerCompliance from "@/assets/banner-compliance.png";
+import dashboardControl from "@/assets/dashboard-control.png";
+import teamAnalysis from "@/assets/team-analysis.png";
+import controlRoom from "@/assets/control-room.png";
 
 const Landing = () => {
   const features = [
@@ -55,21 +58,22 @@ const Landing = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <LandingHeader />
-      
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: `url(${bgHero})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundAttachment: "fixed",
-          }}
-        />
-        <div className="absolute inset-0 hexagon-pattern opacity-20" />
+    <main 
+      className="relative min-h-screen flex flex-col text-white"
+      style={{
+        backgroundImage: `url(${bgHero})`,
+        backgroundAttachment: "fixed",
+        backgroundPosition: "center top",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "cover",
+      }}
+    >
+      <div className="bg-slate-900/40 flex-1">
+        <LandingHeader />
+        
+        {/* Hero Section */}
+        <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-[80px]">
+          <div className="absolute inset-0 hexagon-pattern opacity-20" />
 
         <div className="container relative z-10 px-4 py-20">
           <motion.div
@@ -133,6 +137,85 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Operational Excellence Section with Images */}
+      <section className="min-h-[80vh] grid lg:grid-cols-2 gap-10 items-center px-10 py-20">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          whileInView={{ opacity: 1, y: 0 }} 
+          viewport={{ once: true }} 
+          transition={{ duration: 0.6 }}
+        >
+          <h2 className="text-4xl font-bold mb-4 text-white">Operação descentralizada, controle central</h2>
+          <p className="text-white/80 text-lg">
+            Acompanhe vegetação, travessias, estruturas e sensores em um único painel técnico. 
+            Decisões baseadas em dados reais, processados em tempo real.
+          </p>
+        </motion.div>
+
+        <motion.img 
+          src={controlRoom} 
+          alt="Centro de Controle Smartline"
+          className="rounded-2xl shadow-lg shadow-black/30"
+          initial={{ opacity: 0, scale: 0.98 }} 
+          whileInView={{ opacity: 1, scale: 1 }} 
+          viewport={{ once: true }} 
+          transition={{ duration: 0.6 }} 
+        />
+      </section>
+
+      {/* Team Analysis Section */}
+      <section className="min-h-[80vh] grid lg:grid-cols-2 gap-10 items-center px-10 py-20">
+        <motion.img 
+          src={teamAnalysis} 
+          alt="Equipe Analisando Ativos"
+          className="rounded-2xl shadow-lg shadow-black/30 order-2 lg:order-1"
+          initial={{ opacity: 0, scale: 0.98 }} 
+          whileInView={{ opacity: 1, scale: 1 }} 
+          viewport={{ once: true }} 
+          transition={{ duration: 0.6 }} 
+        />
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          whileInView={{ opacity: 1, y: 0 }} 
+          viewport={{ once: true }} 
+          transition={{ duration: 0.6 }}
+          className="order-1 lg:order-2"
+        >
+          <h2 className="text-4xl font-bold mb-4 text-white">Análise colaborativa e preditiva</h2>
+          <p className="text-white/80 text-lg">
+            Equipes multidisciplinares trabalham com gêmeos digitais 3D, identificando riscos antes que se tornem problemas. 
+            IA e machine learning detectam padrões invisíveis ao olho humano.
+          </p>
+        </motion.div>
+      </section>
+
+      {/* Dashboard Analytics Section */}
+      <section className="min-h-[80vh] grid lg:grid-cols-2 gap-10 items-center px-10 py-20">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          whileInView={{ opacity: 1, y: 0 }} 
+          viewport={{ once: true }} 
+          transition={{ duration: 0.6 }}
+        >
+          <h2 className="text-4xl font-bold mb-4 text-white">Dashboards inteligentes e acionáveis</h2>
+          <p className="text-white/80 text-lg">
+            Visualize KPIs críticos, níveis de risco e anomalias em tempo real. 
+            De mapas térmicos a análise de tendências, tudo numa interface intuitiva.
+          </p>
+        </motion.div>
+
+        <motion.img 
+          src={dashboardControl} 
+          alt="Dashboard de Controle"
+          className="rounded-2xl shadow-lg shadow-black/30"
+          initial={{ opacity: 0, scale: 0.98 }} 
+          whileInView={{ opacity: 1, scale: 1 }} 
+          viewport={{ once: true }} 
+          transition={{ duration: 0.6 }} 
+        />
+      </section>
+
       {/* Features Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-7xl">
@@ -142,10 +225,10 @@ const Landing = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white">
               Tecnologia <span className="gradient-text">de Ponta</span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-white/70 max-w-2xl mx-auto">
               Integração completa de sensores, IA e análise preditiva para máxima eficiência operacional
             </p>
           </motion.div>
@@ -421,12 +504,13 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/50 py-8 px-4">
-        <div className="container mx-auto text-center text-muted-foreground">
+      <footer className="border-t border-white/10 py-8 px-4">
+        <div className="container mx-auto text-center text-white/60">
           <p>© 2025 Smartline AssetHealth. Todos os direitos reservados.</p>
         </div>
       </footer>
-    </div>
+      </div>
+    </main>
   );
 };
 

@@ -22,34 +22,39 @@ const LandingHeader = () => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 w-full bg-card/60 backdrop-blur-xl border-b border-border/50 z-50">
-        <div className="container mx-auto flex justify-between items-center px-6 lg:px-10 py-4">
-          <img src={logoSmartline} alt="Smartline" className="h-10 drop-shadow-lg" />
+      <header className="fixed top-0 left-0 w-full bg-slate-900/70 backdrop-blur-2xl border-b border-white/10 shadow-lg shadow-black/10 z-50">
+        <div className="max-w-7xl mx-auto grid grid-cols-[auto,1fr] items-center gap-10 px-10 min-h-[80px]">
+          <div className="flex items-center gap-3">
+            <img src={logoSmartline} alt="Smartline" className="h-10" />
+            <span className="text-2xl font-semibold tracking-wide text-white/90 select-none">
+              Smartline AssetHealth
+            </span>
+          </div>
 
-          <nav className="hidden md:flex gap-6 lg:gap-8 text-sm font-medium text-foreground/90">
+          <nav className="hidden md:flex justify-end items-center gap-10 text-base font-medium text-white/90">
             <a
               href="https://form.jotform.com/251775321495058"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-primary transition-colors"
+              className="hover:text-green-400 transition-colors"
             >
               Estude seus ativos conosco
             </a>
 
             <button
               onClick={() => setShowContact(true)}
-              className="hover:text-primary transition-colors"
+              className="hover:text-green-400 transition-colors"
             >
               Contatos
             </button>
 
-            <Link to="/resultados" className="hover:text-primary transition-colors">
+            <Link to="/resultados" className="hover:text-green-400 transition-colors">
               Resultados & Casos
             </Link>
 
             <Link
               to="/login"
-              className="bg-primary/20 border border-primary/30 px-4 py-1.5 rounded-xl hover:bg-primary/30 transition-colors"
+              className="px-6 py-2 rounded-xl bg-green-500/30 border border-green-400/40 hover:bg-green-500/40 hover:shadow-[0_0_10px_rgba(0,255,170,0.3)] transition-all"
             >
               Login / Acesso Livre
             </Link>
