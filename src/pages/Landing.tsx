@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import LandingHeader from "@/components/LandingHeader";
 import {
   Activity,
   Shield,
@@ -55,6 +56,8 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <LandingHeader />
+      
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <div
@@ -63,6 +66,7 @@ const Landing = () => {
             backgroundImage: `url(${bgHero})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
+            backgroundAttachment: "fixed",
           }}
         />
         <div className="absolute inset-0 hexagon-pattern opacity-20" />
