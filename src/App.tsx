@@ -18,11 +18,7 @@ import Estruturas from "./pages/modules/Estruturas";
 import AreasAlagadas from "./pages/modules/ambiental/AreasAlagadas";
 import OcupacaoFaixa from "./pages/modules/ambiental/OcupacaoFaixa";
 import Emendas from "./pages/modules/estrutura/Emendas";
-import PainelEquipes from "./pages/equipes/PainelEquipes";
-import GestaoFrota from "./pages/equipes/GestaoFrota";
-import EscalasTurnos from "./pages/equipes/EscalasTurnos";
 import RastreamentoCampo from "./pages/equipes/RastreamentoCampo";
-import ChecklistOperacional from "./pages/equipes/ChecklistOperacional";
 
 const queryClient = new QueryClient();
 
@@ -78,11 +74,7 @@ const App = () => (
           <Route path="/auditorias/qualidade" element={<ModulePlaceholder />} />
           
           {/* Gestão de Equipes */}
-          <Route path="/equipes/painel" element={<PainelEquipes />} />
-          <Route path="/equipes/escalas" element={<EscalasTurnos />} />
           <Route path="/equipes/rastreamento" element={<RastreamentoCampo />} />
-          <Route path="/equipes/frota" element={<GestaoFrota />} />
-          <Route path="/equipes/checklist" element={<ChecklistOperacional />} />
           
           {/* Configurações */}
           <Route path="/config/geral" element={<ModulePlaceholder />} />

@@ -5,7 +5,7 @@ import {
   Droplets, Trees, Mountain, Ruler, ShieldCheck, Building2,
   Link2, GitBranch, Shield, Skull, Camera, Gauge, ChartArea,
   Bell, Plane, Clock, FileCheck, Settings, Users, Lock,
-  Award, HardHat, BrainCircuit, TrendingUp, MapPin, Truck, ClipboardCheck
+  Award, HardHat, BrainCircuit, MapPin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
@@ -79,11 +79,7 @@ const menuGroups: MenuGroup[] = [
   {
     category: "Gestão de Equipes",
     items: [
-      { title: "Painel de Equipes", path: "/equipes/painel", icon: Users },
-      { title: "Escalas e Turnos", path: "/equipes/escalas", icon: Clock },
       { title: "Rastreamento em Campo", path: "/equipes/rastreamento", icon: MapPin },
-      { title: "Gestão de Frota", path: "/equipes/frota", icon: Truck },
-      { title: "Checklist Operacional", path: "/equipes/checklist", icon: ClipboardCheck },
     ],
   },
   {
