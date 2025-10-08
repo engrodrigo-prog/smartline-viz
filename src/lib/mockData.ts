@@ -484,6 +484,143 @@ export const emendas: Emenda[] = Array.from({ length: 80 }, (_, i) => {
   };
 });
 
+// Erosão
+export type Erosao = {
+  id: string;
+  nome: string;
+  regiao: 'A' | 'B' | 'C';
+  linha: string;
+  ramal: string;
+  coords: [number, number];
+  tipoErosao: 'Superficial' | 'Laminar' | 'Voçoroca' | 'Ravina';
+  gravidadeErosao: 'Baixa' | 'Média' | 'Alta' | 'Crítica';
+  areaAfetada: number; // em m²
+  proximidadeEstrutura: number; // em metros
+  torres_proximas: string[];
+  status: 'Monitorado' | 'Em Intervenção' | 'Estabilizado' | 'Crítico';
+  ultimaInspecao: string;
+  acoesPreventivasRealizadas?: string[];
+  riscoDesmoronamento: boolean;
+};
+
+const tiposErosao: Erosao['tipoErosao'][] = ['Superficial', 'Laminar', 'Voçoroca', 'Ravina'];
+const gravidadesErosao: Erosao['gravidadeErosao'][] = ['Baixa', 'Média', 'Alta', 'Crítica'];
+const statusErosao: Erosao['status'][] = ['Monitorado', 'Em Intervenção', 'Estabilizado', 'Crítico'];
+
+export const erosoes: Erosao[] = Array.from({ length: 40 }, (_, i) => {
+  const linha = linhas[Math.floor(Math.random() * linhas.length)];
+  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
+  const numTorres = Math.floor(Math.random() * 5) + 2;
+  const gravidade = gravidadesErosao[Math.floor(Math.random() * gravidadesErosao.length)];
+  const acoesPreventivas = [
+    'Revegetação da área',
+    'Drenagem instalada',
+    'Contenção com geotêxtil',
+    'Terraceamento realizado',
+    'Barreiras físicas instaladas',
+    'Monitoramento semanal'
+  ];
+  
+  return {
+    id: `ERO-${String(i + 1).padStart(3, '0')}`,
+    nome: `Erosão ${i + 1}`,
+    regiao: regioes[Math.floor(Math.random() * regioes.length)],
+    linha: linha.id,
+    ramal,
+    coords: [
+      -23.55 + (Math.random() - 0.5) * 2,
+      -46.63 + (Math.random() - 0.5) * 2
+    ],
+    tipoErosao: tiposErosao[Math.floor(Math.random() * tiposErosao.length)],
+    gravidadeErosao: gravidade,
+    areaAfetada: Math.floor(Math.random() * 4950) + 50,
+    proximidadeEstrutura: Math.floor(Math.random() * 195) + 5,
+    torres_proximas: Array.from({ length: numTorres }, (_, j) => `TRN-${String(i * 10 + j).padStart(3, '0')}`),
+    status: statusErosao[Math.floor(Math.random() * statusErosao.length)],
+    ultimaInspecao: new Date(2025, Math.floor(Math.random() * 10), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
+    acoesPreventivasRealizadas: gravidade !== 'Baixa' 
+      ? Array.from({ length: Math.floor(Math.random() * 3) + 1 }, () => acoesPreventivas[Math.floor(Math.random() * acoesPreventivas.length)])
+      : undefined,
+    riscoDesmoronamento: gravidade === 'Alta' || gravidade === 'Crítica',
+  };
+});
+
+// Queimadas
+export type Queimada = {
+  id: string;
+  nome: string;
+  regiao: 'A' | 'B' | 'C';
+  linha: string;
+  ramal: string;
+  coords: [number, number];
+  dataDeteccao: string;
+  tipoQueimada: 'Controlada' | 'Acidental' | 'Criminosa' | 'Natural';
+  extensaoQueimada: number; // em hectares
+  statusIncendio: 'Ativo' | 'Controlado' | 'Extinto';
+  nivelRisco: 'Baixo' | 'Médio' | 'Alto' | 'Crítico';
+  distanciaLinha: number; // em metros
+  torres_ameacadas: string[];
+  equipesAcionadas?: string[];
+  danosCausados?: string;
+  climaNoMomento: {
+    temperatura: number;
+    umidade: number;
+    ventoKmh: number;
+  };
+};
+
+const tiposQueimada: Queimada['tipoQueimada'][] = ['Controlada', 'Acidental', 'Criminosa', 'Natural'];
+const statusIncendio: Queimada['statusIncendio'][] = ['Ativo', 'Controlado', 'Extinto'];
+const niveisRisco: Queimada['nivelRisco'][] = ['Baixo', 'Médio', 'Alto', 'Crítico'];
+
+export const queimadas: Queimada[] = Array.from({ length: 30 }, (_, i) => {
+  const linha = linhas[Math.floor(Math.random() * linhas.length)];
+  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
+  const numTorres = Math.floor(Math.random() * 8) + 1;
+  const status = statusIncendio[Math.floor(Math.random() * statusIncendio.length)];
+  const nivelRisco = niveisRisco[Math.floor(Math.random() * niveisRisco.length)];
+  const temperatura = Math.floor(Math.random() * 17) + 25;
+  const numEquipes = status === 'Ativo' ? Math.floor(Math.random() * 3) + 2 : status === 'Controlado' ? Math.floor(Math.random() * 2) + 1 : 0;
+  
+  const danosPossiveis = [
+    'Vegetação próxima à linha afetada',
+    'Isoladores danificados pelo calor',
+    'Estruturas metálicas com oxidação acelerada',
+    'Cabos de comunicação comprometidos',
+    'Acesso dificultado à área'
+  ];
+  
+  return {
+    id: `QMD-${String(i + 1).padStart(3, '0')}`,
+    nome: `Queimada ${i + 1}`,
+    regiao: regioes[Math.floor(Math.random() * regioes.length)],
+    linha: linha.id,
+    ramal,
+    coords: [
+      -23.55 + (Math.random() - 0.5) * 2,
+      -46.63 + (Math.random() - 0.5) * 2
+    ],
+    dataDeteccao: new Date(2025, Math.floor(Math.random() * 10), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
+    tipoQueimada: tiposQueimada[Math.floor(Math.random() * tiposQueimada.length)],
+    extensaoQueimada: parseFloat((Math.random() * 49.5 + 0.5).toFixed(1)),
+    statusIncendio: status,
+    nivelRisco,
+    distanciaLinha: Math.floor(Math.random() * 2900) + 100,
+    torres_ameacadas: Array.from({ length: numTorres }, (_, j) => `TRN-${String(i * 10 + j + 100).padStart(3, '0')}`),
+    equipesAcionadas: numEquipes > 0 
+      ? Array.from({ length: numEquipes }, (_, j) => `Equipe ${String.fromCharCode(65 + j)} - Brigada de Incêndio`)
+      : undefined,
+    danosCausados: status !== 'Ativo' && Math.random() > 0.5 
+      ? danosPossiveis[Math.floor(Math.random() * danosPossiveis.length)]
+      : undefined,
+    climaNoMomento: {
+      temperatura,
+      umidade: Math.floor(Math.random() * 55) + 15,
+      ventoKmh: Math.floor(Math.random() * 40) + 5,
+    },
+  };
+});
+
 // Câmeras
 export type Camera = {
   id: string;

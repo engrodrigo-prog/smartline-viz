@@ -16,6 +16,8 @@ import Vegetacao from "./pages/modules/Vegetacao";
 import Travessias from "./pages/modules/Travessias";
 import Estruturas from "./pages/modules/Estruturas";
 import AreasAlagadas from "./pages/modules/ambiental/AreasAlagadas";
+import Erosao from "./pages/modules/ambiental/Erosao";
+import Queimadas from "./pages/modules/ambiental/Queimadas";
 import OcupacaoFaixa from "./pages/modules/ambiental/OcupacaoFaixa";
 import Emendas from "./pages/modules/estrutura/Emendas";
 import RastreamentoCampo from "./pages/equipes/RastreamentoCampo";
@@ -44,6 +46,8 @@ const App = () => (
           
           {/* Ambiental */}
           <Route path="/ambiental/alagadas" element={<AreasAlagadas />} />
+          <Route path="/ambiental/erosao" element={<Erosao />} />
+          <Route path="/ambiental/queimadas" element={<Queimadas />} />
           <Route path="/ambiental/vegetacao" element={<Vegetacao />} />
           <Route path="/ambiental/ocupacao" element={<OcupacaoFaixa />} />
           <Route path="/ambiental/distancia" element={<ModulePlaceholder />} />
