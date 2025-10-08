@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { 
   ChevronDown, ChevronRight, LayoutDashboard, Map, Network, FileText, Upload,
@@ -104,26 +104,35 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-const SidebarGroup = ({ group }: { group: MenuGroup }) => {
-  const [isOpen, setIsOpen] = useState(true);
+const SidebarGroup = ({ 
+  group, 
+  isOpen, 
+  onToggle 
+}: { 
+  group: MenuGroup; 
+  isOpen: boolean; 
+  onToggle: () => void;
+}) => {
   const location = useLocation();
 
   return (
     <div className="mb-4">
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-2 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-2 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-all duration-200"
       >
         <span>{group.category}</span>
         {isOpen ? (
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown className="w-4 h-4 transition-transform duration-200" />
         ) : (
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4 transition-transform duration-200" />
         )}
       </button>
 
-      {isOpen && (
-        <div className="mt-1 space-y-1">
+      <div className={cn(
+        "mt-1 space-y-1 overflow-hidden transition-all duration-200",
+        isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+      )}>
           {group.items.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -132,10 +141,10 @@ const SidebarGroup = ({ group }: { group: MenuGroup }) => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-2 text-sm rounded-lg transition-colors ml-2",
+                  "flex items-center gap-3 px-4 py-2 text-sm rounded-lg transition-all duration-200 ml-2",
                   isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                    ? "bg-primary text-white font-medium shadow-sm"
+                    : "text-slate-300 hover:text-white hover:bg-sidebar-accent/50"
                 )}
               >
                 {Icon && <Icon className="w-4 h-4 flex-shrink-0" />}
@@ -143,13 +152,57 @@ const SidebarGroup = ({ group }: { group: MenuGroup }) => {
               </Link>
             );
           })}
-        </div>
-      )}
+      </div>
     </div>
   );
 };
 
 const Sidebar = () => {
+  const location = useLocation();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  // Initialize: open the group containing the current route
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebar-groups');
+    if (savedState) {
+      setOpenGroups(JSON.parse(savedState));
+    } else {
+      const currentGroup = menuGroups.find(g => 
+        g.items.some(item => location.pathname === item.path)
+      );
+      if (currentGroup) {
+        setOpenGroups({ [currentGroup.category]: true });
+      }
+    }
+  }, []);
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    if (Object.keys(openGroups).length > 0) {
+      localStorage.setItem('sidebar-groups', JSON.stringify(openGroups));
+    }
+  }, [openGroups]);
+
+  // Auto-open group when navigating to a route
+  useEffect(() => {
+    const currentGroup = menuGroups.find(g => 
+      g.items.some(item => location.pathname === item.path)
+    );
+    if (currentGroup && !openGroups[currentGroup.category]) {
+      setOpenGroups(prev => ({
+        ...prev,
+        [currentGroup.category]: true
+      }));
+    }
+  }, [location.pathname]);
+
+  const toggleGroup = (category: string) => {
+    setOpenGroups(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
   return (
     <aside className="w-64 h-screen bg-sidebar border-r border-sidebar-border overflow-y-auto flex flex-col">
       <div className="p-6 border-b border-sidebar-border">
@@ -164,7 +217,12 @@ const Sidebar = () => {
 
       <nav className="flex-1 p-4">
         {menuGroups.map((group) => (
-          <SidebarGroup key={group.category} group={group} />
+          <SidebarGroup 
+            key={group.category} 
+            group={group} 
+            isOpen={!!openGroups[group.category]}
+            onToggle={() => toggleGroup(group.category)}
+          />
         ))}
       </nav>
 
