@@ -69,15 +69,15 @@ const Landing = () => {
               integrando IoT, IA e análise de compliance em tempo real.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/dashboard" className="btn-primary text-lg">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link to="/dashboard" className="btn-primary text-lg inline-block">
                 Acessar Sistema
               </Link>
               <a
                 href="https://form.jotform.com/251775321495058"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-secondary text-lg"
+                className="btn-secondary text-lg inline-block"
               >
                 Pesquisa de Acesso Smartline
               </a>
@@ -169,7 +169,7 @@ const Landing = () => {
               Junte-se às empresas que já utilizam o Smartline AssetHealth para maximizar 
               a eficiência e segurança de seus ativos elétricos.
             </p>
-            <Link to="/dashboard" className="btn-primary text-lg">
+            <Link to="/dashboard" className="btn-primary text-lg inline-block">
               Começar Agora
             </Link>
           </motion.div>
