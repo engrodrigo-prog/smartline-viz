@@ -1,6 +1,11 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Activity, Shield, Zap, Database, Cloud, TrendingUp } from "lucide-react";
+import { 
+  Activity, Shield, Zap, Database, Cloud, TrendingUp,
+  AlertTriangle, TreePine, FileWarning, ClipboardCheck, Users, MapPin,
+  Brain, Map, FileCheck, BarChart3, Home, Plane, Box,
+  Clock, ShieldCheck, DollarSign, CheckCircle2
+} from "lucide-react";
 import logoSmartline from "@/assets/logo-smartline.png";
 import bgHero from "@/assets/bg-hero.png";
 import bannerIA from "@/assets/banner-ia.png";
@@ -147,6 +152,221 @@ const Landing = () => {
                   <h3 className="text-2xl font-semibold mb-3">{feature.title}</h3>
                   <p className="text-muted-foreground">{feature.description}</p>
                 </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Desafios Section */}
+      <section className="py-20 px-4 bg-muted/20">
+        <div className="container mx-auto max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              Desafios em <span className="text-destructive">Linhas de Transmissão</span>
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Desafios críticos que impactam operações de transmissão
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                icon: AlertTriangle,
+                title: "Interrupções Não Programadas",
+                description: "Falhas inesperadas geram multas regulatórias e perda de receita significativa"
+              },
+              {
+                icon: TreePine,
+                title: "Risco de Vegetação",
+                description: "Crescimento vegetal não controlado causa desligamentos e riscos operacionais"
+              },
+              {
+                icon: FileWarning,
+                title: "Não Conformidade Regulatória",
+                description: "Dificuldade em atender normas técnicas como NBR 5422 de forma contínua"
+              },
+              {
+                icon: ClipboardCheck,
+                title: "Inspeções Ineficientes",
+                description: "Métodos manuais são custosos, demorados e sujeitos a falhas humanas"
+              },
+              {
+                icon: Users,
+                title: "Tempo e Segurança na Escalada de Estruturas",
+                description: "Escaladas manuais expõem equipes a riscos de queda, acidentes e condições climáticas adversas, além de serem demoradas e dispendiosas"
+              },
+              {
+                icon: MapPin,
+                title: "Ocupação Irregular de Faixa",
+                description: "Invasões e construções não autorizadas na faixa de servidão comprometem a segurança"
+              }
+            ].map((challenge, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="tech-card p-6"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-destructive/10 rounded-xl">
+                    <challenge.icon className="w-6 h-6 text-destructive" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold mb-2">{challenge.title}</h3>
+                    <p className="text-sm text-muted-foreground">{challenge.description}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Soluções Section */}
+      <section className="py-20 px-4">
+        <div className="container mx-auto max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              <span className="gradient-text">Soluções SmartLine</span>
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Tecnologia preditiva para cada desafio operacional
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Brain,
+                title: "Monitoramento Preditivo",
+                description: "IA identifica padrões de falha antes que ocorram, permitindo manutenção preventiva"
+              },
+              {
+                icon: Map,
+                title: "Mapas de Risco de Vegetação",
+                description: "Análise geoespacial identifica pontos críticos, otimizando cronogramas de poda"
+              },
+              {
+                icon: FileCheck,
+                title: "Validação de Conformidade NBR 5422",
+                description: "Verificação automática de distâncias mínimas e parâmetros normativos em tempo real"
+              },
+              {
+                icon: BarChart3,
+                title: "Analytics de Eventos",
+                description: "Análise avançada de dados históricos para identificar tendências e causas raiz"
+              },
+              {
+                icon: Home,
+                title: "Gestão de Ocupação de Faixa",
+                description: "Controle automatizado de invasões com notificações, processos judiciais e timeline completa"
+              },
+              {
+                icon: Plane,
+                title: "Missões Autônomas para Drones",
+                description: "Inspeções automatizadas com biblioteca de missões e solicitação para trechos com gêmeo digital"
+              },
+              {
+                icon: Box,
+                title: "Exploração de Gêmeos Digitais",
+                description: "Análise preditiva avançada através de modelos digitais 3D das linhas de transmissão"
+              }
+            ].map((solution, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="tech-card p-6 hover:border-primary/50"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-primary/10 rounded-xl">
+                    <solution.icon className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold mb-2">{solution.title}</h3>
+                    <p className="text-sm text-muted-foreground">{solution.description}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Benefícios Section */}
+      <section className="py-20 px-4 bg-muted/20">
+        <div className="container mx-auto max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              Benefícios <span className="gradient-text">Comprovados</span> para Seu Negócio
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              ROI mensurável e impacto direto nos resultados operacionais
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                icon: Clock,
+                percentage: "85%",
+                title: "Redução de Downtime",
+                description: "Menos interrupções - Causa Árvore - através de manutenção preditiva"
+              },
+              {
+                icon: ShieldCheck,
+                percentage: "80%",
+                title: "Melhoria na Segurança",
+                description: "Identificação proativa de riscos operacionais sem escalada"
+              },
+              {
+                icon: DollarSign,
+                percentage: "40% - 60%",
+                title: "Economia de Custos",
+                description: "Redução significativa em custos operacionais e de manutenção"
+              },
+              {
+                icon: CheckCircle2,
+                percentage: "100%",
+                title: "Confiança em Conformidade",
+                description: "Atendimento contínuo às normas técnicas e regulatórias"
+              }
+            ].map((benefit, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="tech-card p-8 text-center"
+              >
+                <div className="inline-block p-4 bg-primary/10 rounded-2xl mb-4">
+                  <benefit.icon className="w-10 h-10 text-primary" />
+                </div>
+                <div className="text-5xl font-bold gradient-text mb-2">{benefit.percentage}</div>
+                <h3 className="text-xl font-semibold mb-3">{benefit.title}</h3>
+                <p className="text-sm text-muted-foreground">{benefit.description}</p>
               </motion.div>
             ))}
           </div>
