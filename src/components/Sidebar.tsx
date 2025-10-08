@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { 
+  ChevronDown, ChevronRight, LayoutDashboard, Map, Network, FileText, Upload,
+  Droplets, Trees, Mountain, Ruler, ShieldCheck, Building2,
+  Link2, GitBranch, Shield, Skull, Camera, Gauge, ChartArea,
+  Bell, Plane, Clock, FileCheck, Settings, Users, Lock,
+  Award, HardHat, BrainCircuit, TrendingUp
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
+import { LucideIcon } from "lucide-react";
 
 interface MenuItem {
   title: string;
   path: string;
-  icon?: React.ReactNode;
+  icon?: LucideIcon;
 }
 
 interface MenuGroup {
@@ -17,69 +24,73 @@ interface MenuGroup {
 
 const menuGroups: MenuGroup[] = [
   {
-    category: "Base",
+    category: "Visão Geral",
     items: [
-      { title: "Dashboard", path: "/dashboard" },
-      { title: "Relatórios", path: "/relatorios" },
-    ],
-  },
-  {
-    category: "Visual",
-    items: [
-      { title: "Mapa de Eventos", path: "/visual/mapa" },
-      { title: "Diagrama Unifilar", path: "/visual/unifilar" },
+      { title: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+      { title: "Mapa de Eventos", path: "/visual/mapa", icon: Map },
+      { title: "Diagrama Unifilar", path: "/visual/unifilar", icon: Network },
+      { title: "Relatórios Gerais", path: "/relatorios", icon: FileText },
+      { title: "Resultados & Cases", path: "/resultados", icon: TrendingUp },
     ],
   },
   {
     category: "Upload",
     items: [
-      { title: "Upload de Bases", path: "/upload/bases" },
+      { title: "Bases de Dados", path: "/upload/bases", icon: Upload },
     ],
   },
   {
     category: "Ambiental",
     items: [
-      { title: "Áreas Alagadas", path: "/ambiental/alagadas" },
-      { title: "Vegetação", path: "/ambiental/vegetacao" },
-      { title: "Ocupação de Faixa", path: "/ambiental/ocupacao" },
-      { title: "Distância Cabo x Solo", path: "/ambiental/distancia" },
-      { title: "Compliance Ambiental", path: "/ambiental/compliance" },
+      { title: "Áreas Alagadas", path: "/ambiental/alagadas", icon: Droplets },
+      { title: "Vegetação", path: "/ambiental/vegetacao", icon: Trees },
+      { title: "Ocupação de Faixa", path: "/ambiental/ocupacao", icon: Mountain },
+      { title: "Distância Cabo x Solo", path: "/ambiental/distancia", icon: Ruler },
+      { title: "Compliance Ambiental", path: "/ambiental/compliance", icon: ShieldCheck },
     ],
   },
   {
-    category: "Estruturas",
+    category: "Estrutura",
     items: [
-      { title: "Estruturas", path: "/estrutura/estruturas" },
-      { title: "Emendas e Conexões", path: "/estrutura/emendas" },
-      { title: "Travessias", path: "/estrutura/travessias" },
-      { title: "Compliance Cruzamentos", path: "/estrutura/compliance" },
-      { title: "Corrosão e Furto", path: "/estrutura/corrosao" },
+      { title: "Estruturas", path: "/estrutura/estruturas", icon: Building2 },
+      { title: "Emendas e Conexões", path: "/estrutura/emendas", icon: Link2 },
+      { title: "Travessias", path: "/estrutura/travessias", icon: GitBranch },
+      { title: "Compliance Cruzamentos", path: "/estrutura/compliance", icon: Shield },
+      { title: "Corrosão e Furto", path: "/estrutura/corrosao", icon: Skull },
     ],
   },
   {
     category: "Sensores e Câmeras",
     items: [
-      { title: "Painel de Sensores", path: "/sensores/painel" },
-      { title: "Câmeras", path: "/sensores/cameras" },
-      { title: "Dashboard de Sensores", path: "/sensores/dashboard" },
-      { title: "Alertas", path: "/sensores/alertas" },
+      { title: "Painel de Sensores", path: "/sensores/painel", icon: Gauge },
+      { title: "Câmeras", path: "/sensores/cameras", icon: Camera },
+      { title: "Dashboard", path: "/sensores/dashboard", icon: ChartArea },
+      { title: "Alertas", path: "/sensores/alertas", icon: Bell },
     ],
   },
   {
     category: "Operações",
     items: [
-      { title: "Missões de Drones", path: "/operacao/missoes" },
-      { title: "Eventos Históricos", path: "/operacao/eventos" },
-      { title: "Compliance Operacional", path: "/operacao/compliance" },
-      { title: "Relatórios Operacionais", path: "/operacao/relatorios" },
+      { title: "Missões de Drones", path: "/operacao/missoes", icon: Plane },
+      { title: "Eventos Históricos", path: "/operacao/eventos", icon: Clock },
+      { title: "Compliance Operacional", path: "/operacao/compliance", icon: FileCheck },
+      { title: "Relatórios", path: "/operacao/relatorios", icon: FileText },
+    ],
+  },
+  {
+    category: "Análises Avançadas",
+    items: [
+      { title: "Gêmeo Digital & IA", path: "/analises/gemeo-digital", icon: BrainCircuit },
+      { title: "Fiscalização & Obras", path: "/fiscalizacao/obras", icon: HardHat },
+      { title: "Auditorias de Qualidade", path: "/auditorias/qualidade", icon: Award },
     ],
   },
   {
     category: "Configurações",
     items: [
-      { title: "Configurações Gerais", path: "/config/geral" },
-      { title: "Usuários", path: "/config/usuarios" },
-      { title: "Permissões", path: "/config/permissoes" },
+      { title: "Configurações Gerais", path: "/config/geral", icon: Settings },
+      { title: "Usuários", path: "/config/usuarios", icon: Users },
+      { title: "Permissões", path: "/config/permissoes", icon: Lock },
     ],
   },
 ];
@@ -106,18 +117,20 @@ const SidebarGroup = ({ group }: { group: MenuGroup }) => {
         <div className="mt-1 space-y-1">
           {group.items.map((item) => {
             const isActive = location.pathname === item.path;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "block px-4 py-2 text-sm rounded-lg transition-colors ml-2",
+                  "flex items-center gap-3 px-4 py-2 text-sm rounded-lg transition-colors ml-2",
                   isActive
                     ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                     : "text-sidebar-foreground hover:bg-sidebar-accent"
                 )}
               >
-                {item.title}
+                {Icon && <Icon className="w-4 h-4 flex-shrink-0" />}
+                <span>{item.title}</span>
               </Link>
             );
           })}

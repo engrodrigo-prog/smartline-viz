@@ -1,5 +1,9 @@
 import { motion } from "framer-motion";
-import { CheckCircle2, TrendingUp, Shield, Zap } from "lucide-react";
+import { 
+  TreeDeciduous, TowerControl, Users, Eye, Bird, Mountain, 
+  Flame, Activity, Package, Construction, ClipboardCheck, 
+  ShieldCheck, BrainCircuit
+} from "lucide-react";
 import bannerIA from "@/assets/banner-ia.png";
 import bannerMissoes from "@/assets/banner-missoes.png";
 import bannerCompliance from "@/assets/banner-compliance.png";
@@ -8,24 +12,94 @@ const Resultados = () => {
   const cases = [
     {
       id: 1,
-      image: bannerIA,
-      title: "Monitoramento com IA",
-      description: "Redução de 85% em interrupções não programadas através de análise preditiva em tempo real.",
-      icon: Zap,
+      image: bannerMissoes,
+      title: "Manejo de vegetação assertivo",
+      description: "Redução de áreas críticas e intervenções mais precisas através de análise geoespacial e IA.",
+      icon: TreeDeciduous,
     },
     {
       id: 2,
-      image: bannerMissoes,
-      title: "Inspeções com Drones",
-      description: "Inspeções 80% mais rápidas e seguras, eliminando riscos de escalada manual.",
-      icon: TrendingUp,
+      image: bannerIA,
+      title: "Redução da escalada de estruturas",
+      description: "Diminuição de invasões e riscos de furto com monitoramento contínuo e alertas inteligentes.",
+      icon: TowerControl,
     },
     {
       id: 3,
+      image: bannerMissoes,
+      title: "Despacho de equipes otimizado",
+      description: "Logística mais eficiente via insights do sistema e roteamento inteligente.",
+      icon: Users,
+    },
+    {
+      id: 4,
+      image: bannerIA,
+      title: "Aumento da frequência de inspeções",
+      description: "Planejamento dinâmico de inspeções aéreas e terrestres com drones autônomos.",
+      icon: Eye,
+    },
+    {
+      id: 5,
+      image: bannerMissoes,
+      title: "Redução de eventos causados por aves",
+      description: "Correlação com sensores e câmeras para prevenir interrupções de serviço.",
+      icon: Bird,
+    },
+    {
+      id: 6,
+      image: bannerIA,
+      title: "Análise de erosão e ocupação de faixa",
+      description: "Modelos de terreno e satélite integrados para monitoramento contínuo.",
+      icon: Mountain,
+    },
+    {
+      id: 7,
+      image: bannerMissoes,
+      title: "Acompanhamento online de queimadas",
+      description: "Alertas automáticos com dados do INPE e detecção em tempo real.",
+      icon: Flame,
+    },
+    {
+      id: 8,
+      image: bannerIA,
+      title: "Estudo preditivo em corrosão",
+      description: "Modelos com IA para prever degradação e planejar manutenções preventivas.",
+      icon: Activity,
+    },
+    {
+      id: 9,
+      image: bannerMissoes,
+      title: "Análise estrutural e furto de peças",
+      description: "Relatórios técnicos e mapas de ocorrência para ação rápida.",
+      icon: Package,
+    },
+    {
+      id: 10,
+      image: bannerIA,
+      title: "Fiscalização de atividades e obras",
+      description: "Monitoramento de campo e conformidade com evidências georreferenciadas.",
+      icon: Construction,
+    },
+    {
+      id: 11,
+      image: bannerMissoes,
+      title: "Auditorias de qualidade",
+      description: "Relatórios e evidências vinculadas a ativos e linhas de transmissão.",
+      icon: ClipboardCheck,
+    },
+    {
+      id: 12,
       image: bannerCompliance,
-      title: "Compliance Automatizado",
+      title: "Compliance normativo e regulatório",
       description: "100% de conformidade com NBR 5422 através de validação automática contínua.",
-      icon: Shield,
+      icon: ShieldCheck,
+    },
+    {
+      id: 13,
+      image: bannerIA,
+      title: "Criação de gêmeo digital e análise com IA",
+      description: "Modelagem inteligente e predição operacional para manutenção preventiva.",
+      icon: BrainCircuit,
     },
   ];
 
@@ -46,34 +120,33 @@ const Resultados = () => {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {cases.map((item, index) => (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="tech-card overflow-hidden group"
+                transition={{ delay: index * 0.05 }}
+                className="tech-card overflow-hidden group cursor-pointer"
               >
-                <div className="h-56 overflow-hidden relative">
+                <div className="h-48 overflow-hidden relative">
                   <img
                     src={item.image}
                     alt={item.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
-                  <div className="absolute bottom-4 right-4">
-                    <div className="p-3 bg-primary/20 backdrop-blur-sm rounded-xl border border-primary/30">
-                      <item.icon className="w-6 h-6 text-primary" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                  <div className="absolute top-4 right-4">
+                    <div className="p-3 bg-[hsl(var(--smartline-orange))]/90 backdrop-blur-sm rounded-xl shadow-lg">
+                      <item.icon className="w-5 h-5 text-white" strokeWidth={2.5} />
                     </div>
                   </div>
                 </div>
-                <div className="p-6">
-                  <div className="flex items-start gap-3 mb-3">
-                    <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                    <h3 className="text-xl font-semibold">{item.title}</h3>
-                  </div>
-                  <p className="text-muted-foreground">{item.description}</p>
+                <div className="p-5">
+                  <h3 className="text-lg font-semibold mb-2 text-foreground group-hover:text-primary transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
                 </div>
               </motion.div>
             ))}

@@ -133,11 +133,33 @@ export const missoesDrones: MissaoDrone[] = [
   },
 ];
 
+// Extensões de linha em km
+export const extensoesLinhas: Record<string, number> = {
+  "LT-001": 245,
+  "LT-002": 312,
+  "LT-003": 198,
+};
+
+// Função para calcular taxa de falha por km
+export const calcularTaxaFalha = (eventosParam: Evento[], linhasFiltradas?: string[]) => {
+  const eventosFiltrados = linhasFiltradas 
+    ? eventosParam.filter(e => linhasFiltradas.includes(e.linha))
+    : eventosParam;
+  
+  const totalEventos = eventosFiltrados.length;
+  const extensaoTotal = linhasFiltradas
+    ? linhasFiltradas.reduce((acc, linha) => acc + (extensoesLinhas[linha] || 0), 0)
+    : Object.values(extensoesLinhas).reduce((acc, ext) => acc + ext, 0);
+  
+  return extensaoTotal > 0 ? (totalEventos / extensaoTotal).toFixed(3) : "0.000";
+};
+
 export const kpiData = {
   totalEventos: eventos.length,
   criticos: eventos.filter(e => e.criticidade === 'Alta').length,
   pendentes: eventos.filter(e => e.status === 'Pendente').length,
   resolvidos: eventos.filter(e => e.status === 'OK').length,
+  taxaFalhaPorKm: calcularTaxaFalha(eventos),
 };
 
 export interface SensorData {

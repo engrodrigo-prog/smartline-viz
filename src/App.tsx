@@ -64,6 +64,11 @@ const App = () => (
           <Route path="/operacao/compliance" element={<ModulePlaceholder />} />
           <Route path="/operacao/relatorios" element={<ModulePlaceholder />} />
           
+          {/* Análises Avançadas */}
+          <Route path="/analises/gemeo-digital" element={<ModulePlaceholder />} />
+          <Route path="/fiscalizacao/obras" element={<ModulePlaceholder />} />
+          <Route path="/auditorias/qualidade" element={<ModulePlaceholder />} />
+          
           {/* Configurações */}
           <Route path="/config/geral" element={<ModulePlaceholder />} />
           <Route path="/config/usuarios" element={<ModulePlaceholder />} />
