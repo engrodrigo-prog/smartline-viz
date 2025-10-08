@@ -54,7 +54,7 @@ const LandingHeader = () => {
 
             <Link
               to="/login"
-              className="px-6 py-2 rounded-xl bg-green-500/30 border border-green-400/40 hover:bg-green-500/40 hover:shadow-[0_0_10px_rgba(0,255,170,0.3)] transition-all"
+              className="px-4 py-1.5 text-sm rounded-xl bg-green-500/30 border border-green-400/40 hover:bg-green-500/40 hover:shadow-[0_0_10px_rgba(0,255,170,0.3)] transition-all"
             >
               Login / Acesso Livre
             </Link>

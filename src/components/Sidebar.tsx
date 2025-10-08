@@ -30,7 +30,6 @@ const menuGroups: MenuGroup[] = [
       { title: "Mapa de Eventos", path: "/visual/mapa", icon: Map },
       { title: "Diagrama Unifilar", path: "/visual/unifilar", icon: Network },
       { title: "Relatórios Gerais", path: "/relatorios", icon: FileText },
-      { title: "Resultados & Cases", path: "/resultados", icon: TrendingUp },
     ],
   },
   {
