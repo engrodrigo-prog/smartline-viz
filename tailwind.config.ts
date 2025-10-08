@@ -57,6 +57,26 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        smartline: {
+          navy: "hsl(var(--smartline-navy))",
+          green: "hsl(var(--smartline-green))",
+          cyan: "hsl(var(--smartline-cyan))",
+          teal: "hsl(var(--smartline-teal))",
+        },
+      },
+      fontFamily: {
+        sans: ['Poppins', 'Inter', 'sans-serif'],
+        display: ['Poppins', 'sans-serif'],
+      },
+      backgroundImage: {
+        'gradient-primary': 'var(--gradient-primary)',
+        'gradient-accent': 'var(--gradient-accent)',
+        'gradient-tech': 'var(--gradient-tech)',
+      },
+      boxShadow: {
+        'soft': 'var(--shadow-soft)',
+        'glow': 'var(--shadow-glow)',
+        'strong': 'var(--shadow-strong)',
       },
       borderRadius: {
         lg: "var(--radius)",
