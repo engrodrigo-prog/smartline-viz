@@ -141,83 +141,109 @@ const Landing = () => {
         </section>
 
         {/* Operational Excellence Section with Images */}
-        <section className="min-h-[80vh] grid lg:grid-cols-2 gap-10 items-center px-10 py-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <h2 className="text-4xl font-bold mb-4 text-white">Operação descentralizada, controle central</h2>
-            <p className="text-white/80 text-lg">
-              Acompanhe vegetação, travessias, estruturas e sensores em um único painel técnico. Decisões baseadas em
-              dados reais, processados em tempo real.
-            </p>
-          </motion.div>
+        <section className="py-20 px-10">
+          <div className="container mx-auto max-w-7xl">
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="backdrop-blur-md bg-slate-900/70 rounded-xl p-8 border border-white/10"
+              >
+                <h2 className="text-3xl font-bold mb-4 text-white">Operação descentralizada, controle central</h2>
+                <p className="text-white/90 text-lg">
+                  Acompanhe vegetação, travessias, estruturas e sensores em um único painel técnico. Decisões baseadas em
+                  dados reais, processados em tempo real.
+                </p>
+              </motion.div>
 
-          <motion.img
-            src={controlRoom}
-            alt="Centro de Controle Smartline"
-            className="rounded-2xl shadow-lg shadow-black/30"
-            initial={{ opacity: 0, scale: 0.98 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="flex items-center justify-center"
+              >
+                <img
+                  src={controlRoom}
+                  alt="Centro de Controle Smartline"
+                  className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
+                />
+              </motion.div>
+            </div>
+          </div>
         </section>
 
         {/* Team Analysis Section */}
-        <section className="min-h-[80vh] grid lg:grid-cols-2 gap-10 items-center px-10 py-20">
-          <motion.img
-            src={teamAnalysis}
-            alt="Equipe Analisando Ativos"
-            className="rounded-2xl shadow-lg shadow-black/30 order-2 lg:order-1"
-            initial={{ opacity: 0, scale: 0.98 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          />
+        <section className="py-20 px-10">
+          <div className="container mx-auto max-w-7xl">
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="flex items-center justify-center order-2 lg:order-1"
+              >
+                <img
+                  src={teamAnalysis}
+                  alt="Equipe Analisando Ativos"
+                  className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
+                />
+              </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="order-1 lg:order-2"
-          >
-            <h2 className="text-4xl font-bold mb-4 text-white">Análise colaborativa e preditiva</h2>
-            <p className="text-white/80 text-lg">
-              Equipes multidisciplinares trabalham com gêmeos digitais 3D, identificando riscos antes que se tornem
-              problemas. IA e machine learning detectam padrões objetivamente, priorizados que estavam invisíveis ao
-              olho humano.
-            </p>
-          </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="backdrop-blur-md bg-slate-900/70 rounded-xl p-8 border border-white/10 order-1 lg:order-2"
+              >
+                <h2 className="text-3xl font-bold mb-4 text-white">Análise colaborativa e preditiva</h2>
+                <p className="text-white/90 text-lg">
+                  Equipes multidisciplinares trabalham com gêmeos digitais 3D, identificando riscos antes que se tornem
+                  problemas. IA e machine learning detectam padrões objetivamente, priorizados que estavam invisíveis ao
+                  olho humano.
+                </p>
+              </motion.div>
+            </div>
+          </div>
         </section>
 
         {/* Dashboard Analytics Section */}
-        <section className="min-h-[80vh] grid lg:grid-cols-2 gap-10 items-center px-10 py-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <h2 className="text-4xl font-bold mb-4 text-white">Dashboards inteligentes e acionáveis</h2>
-            <p className="text-white/80 text-lg">
-              Visualize KPIs críticos, níveis de risco e anomalias. DEsenhe e estude tendências, tudo numa interface
-              intuitiva e acessível.
-            </p>
-          </motion.div>
+        <section className="py-20 px-10">
+          <div className="container mx-auto max-w-7xl">
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="backdrop-blur-md bg-slate-900/70 rounded-xl p-8 border border-white/10"
+              >
+                <h2 className="text-3xl font-bold mb-4 text-white">Dashboards inteligentes e acionáveis</h2>
+                <p className="text-white/90 text-lg">
+                  Visualize KPIs críticos, níveis de risco e anomalias. Desenhe e estude tendências, tudo numa interface
+                  intuitiva e acessível.
+                </p>
+              </motion.div>
 
-          <motion.img
-            src={dashboardControl}
-            alt="Dashboard de Controle"
-            className="rounded-2xl shadow-lg shadow-black/30"
-            initial={{ opacity: 0, scale: 0.98 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="flex items-center justify-center"
+              >
+                <img
+                  src={dashboardControl}
+                  alt="Dashboard de Controle"
+                  className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
+                />
+              </motion.div>
+            </div>
+          </div>
         </section>
 
         {/* Features Section */}
