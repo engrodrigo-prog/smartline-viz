@@ -1,7 +1,8 @@
 import { useFilters } from "@/context/FiltersContext";
 import { eventos } from "@/lib/mockData";
-import { TreePine, AlertTriangle, MapPin } from "lucide-react";
+import { TreePine, MapPin } from "lucide-react";
 import FiltersBar from "@/components/FiltersBar";
+import ModuleLayout from "@/components/ModuleLayout";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 
@@ -26,59 +27,57 @@ const Vegetacao = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <TreePine className="w-8 h-8 text-primary" />
-        <h1 className="text-3xl font-bold">Gestão de Vegetação</h1>
-      </div>
+    <ModuleLayout title="Gestão de Vegetação" icon={TreePine}>
+      <div className="p-6 space-y-6">
 
-      <FiltersBar />
+        <FiltersBar />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="tech-card p-6">
-          <div className="text-sm text-muted-foreground mb-1">Total de Interferências</div>
-          <div className="text-3xl font-bold text-primary">{kpis.total}</div>
+        {/* KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="tech-card p-6">
+            <div className="text-sm text-muted-foreground mb-1">Total de Interferências</div>
+            <div className="text-3xl font-bold text-primary">{kpis.total}</div>
+          </div>
+          <div className="tech-card p-6">
+            <div className="text-sm text-muted-foreground mb-1">Interferências Críticas</div>
+            <div className="text-3xl font-bold text-destructive">{kpis.criticas}</div>
+          </div>
+          <div className="tech-card p-6">
+            <div className="text-sm text-muted-foreground mb-1">Distância Média à Faixa</div>
+            <div className="text-3xl font-bold text-green-500">{kpis.distanciaMedia}</div>
+          </div>
         </div>
-        <div className="tech-card p-6">
-          <div className="text-sm text-muted-foreground mb-1">Interferências Críticas</div>
-          <div className="text-3xl font-bold text-destructive">{kpis.criticas}</div>
-        </div>
-        <div className="tech-card p-6">
-          <div className="text-sm text-muted-foreground mb-1">Distância Média à Faixa</div>
-          <div className="text-3xl font-bold text-green-500">{kpis.distanciaMedia}</div>
-        </div>
-      </div>
 
-      {/* Lista */}
-      <div className="tech-card p-6">
-        <h2 className="text-xl font-semibold mb-4">Interferências de Vegetação</h2>
-        <div className="space-y-3">
-          {filteredData.slice(0, 20).map(item => (
-            <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
-              <div className="flex items-center gap-4">
-                <TreePine className="w-5 h-5 text-primary" />
-                <div>
-                  <div className="font-medium">{item.nome}</div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                    <MapPin className="w-3 h-3" />
-                    {item.linha} - {item.ramal}
+        {/* Lista */}
+        <div className="tech-card p-6">
+          <h2 className="text-xl font-semibold mb-4">Interferências de Vegetação</h2>
+          <div className="space-y-3">
+            {filteredData.slice(0, 20).map(item => (
+              <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-4">
+                  <TreePine className="w-5 h-5 text-primary" />
+                  <div>
+                    <div className="font-medium">{item.nome}</div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                      <MapPin className="w-3 h-3" />
+                      {item.linha} - {item.ramal}
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant={item.criticidade === 'Alta' ? 'destructive' : item.criticidade === 'Média' ? 'default' : 'secondary'}>
+                    {item.criticidade}
+                  </Badge>
+                  <Badge variant={item.status === 'OK' ? 'default' : 'outline'}>
+                    {item.status}
+                  </Badge>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Badge variant={item.criticidade === 'Alta' ? 'destructive' : item.criticidade === 'Média' ? 'default' : 'secondary'}>
-                  {item.criticidade}
-                </Badge>
-                <Badge variant={item.status === 'OK' ? 'default' : 'outline'}>
-                  {item.status}
-                </Badge>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </ModuleLayout>
   );
 };
 

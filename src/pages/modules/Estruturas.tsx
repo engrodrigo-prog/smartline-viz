@@ -2,6 +2,7 @@ import { useFilters } from "@/context/FiltersContext";
 import { eventos } from "@/lib/mockData";
 import { Building2 } from "lucide-react";
 import FiltersBar from "@/components/FiltersBar";
+import ModuleLayout from "@/components/ModuleLayout";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,11 +30,8 @@ const Estruturas = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Building2 className="w-8 h-8 text-primary" />
-        <h1 className="text-3xl font-bold">Gestão de Estruturas</h1>
-      </div>
+    <ModuleLayout title="Gestão de Estruturas" icon={Building2}>
+      <div className="p-6 space-y-6">
 
       <FiltersBar />
 
@@ -57,59 +55,60 @@ const Estruturas = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="tech-card p-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="corrosao">Corrosão</TabsTrigger>
-          <TabsTrigger value="furto">Furto</TabsTrigger>
-          <TabsTrigger value="integridade">Integridade</TabsTrigger>
-        </TabsList>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="tech-card p-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="corrosao">Corrosão</TabsTrigger>
+            <TabsTrigger value="furto">Furto</TabsTrigger>
+            <TabsTrigger value="integridade">Integridade</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="corrosao" className="mt-4">
-          <div className="space-y-3">
-            {filteredData.slice(0, 10).map(item => (
-              <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
-                <div>
-                  <div className="font-medium">{item.nome}</div>
-                  <div className="text-sm text-muted-foreground">Nível de corrosão detectado</div>
+          <TabsContent value="corrosao" className="mt-4">
+            <div className="space-y-3">
+              {filteredData.slice(0, 10).map(item => (
+                <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
+                  <div>
+                    <div className="font-medium">{item.nome}</div>
+                    <div className="text-sm text-muted-foreground">Nível de corrosão detectado</div>
+                  </div>
+                  <Badge variant={item.criticidade === 'Alta' ? 'destructive' : 'default'}>
+                    {item.criticidade}
+                  </Badge>
                 </div>
-                <Badge variant={item.criticidade === 'Alta' ? 'destructive' : 'default'}>
-                  {item.criticidade}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
+              ))}
+            </div>
+          </TabsContent>
 
-        <TabsContent value="furto" className="mt-4">
-          <div className="space-y-3">
-            {filteredData.slice(0, 8).map(item => (
-              <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
-                <div>
-                  <div className="font-medium">{item.nome}</div>
-                  <div className="text-sm text-muted-foreground">Furto de componentes</div>
+          <TabsContent value="furto" className="mt-4">
+            <div className="space-y-3">
+              {filteredData.slice(0, 8).map(item => (
+                <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
+                  <div>
+                    <div className="font-medium">{item.nome}</div>
+                    <div className="text-sm text-muted-foreground">Furto de componentes</div>
+                  </div>
+                  <Badge variant="destructive">{item.status}</Badge>
                 </div>
-                <Badge variant="destructive">{item.status}</Badge>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
+              ))}
+            </div>
+          </TabsContent>
 
-        <TabsContent value="integridade" className="mt-4">
-          <div className="space-y-3">
-            {filteredData.map(item => (
-              <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
-                <div>
-                  <div className="font-medium">{item.nome}</div>
-                  <div className="text-sm text-muted-foreground">Avaliação estrutural</div>
+          <TabsContent value="integridade" className="mt-4">
+            <div className="space-y-3">
+              {filteredData.map(item => (
+                <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
+                  <div>
+                    <div className="font-medium">{item.nome}</div>
+                    <div className="text-sm text-muted-foreground">Avaliação estrutural</div>
+                  </div>
+                  <Badge variant={item.status === 'OK' ? 'default' : 'outline'}>{item.status}</Badge>
                 </div>
-                <Badge variant={item.status === 'OK' ? 'default' : 'outline'}>{item.status}</Badge>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </ModuleLayout>
   );
 };
 

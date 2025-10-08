@@ -2,6 +2,7 @@ import { useFilters } from "@/context/FiltersContext";
 import { eventos } from "@/lib/mockData";
 import { Cable, MapPin } from "lucide-react";
 import FiltersBar from "@/components/FiltersBar";
+import ModuleLayout from "@/components/ModuleLayout";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 
@@ -28,11 +29,8 @@ const Travessias = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Cable className="w-8 h-8 text-primary" />
-        <h1 className="text-3xl font-bold">Gestão de Travessias</h1>
-      </div>
+    <ModuleLayout title="Gestão de Travessias" icon={Cable}>
+      <div className="p-6 space-y-6">
 
       <FiltersBar />
 
@@ -55,35 +53,36 @@ const Travessias = () => {
         </div>
       </div>
 
-      {/* Lista */}
-      <div className="tech-card p-6">
-        <h2 className="text-xl font-semibold mb-4">Travessias Cadastradas</h2>
-        <div className="space-y-3">
-          {filteredData.slice(0, 20).map(item => (
-            <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
-              <div className="flex items-center gap-4">
-                <Cable className="w-5 h-5 text-primary" />
-                <div>
-                  <div className="font-medium">{item.nome}</div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                    <MapPin className="w-3 h-3" />
-                    {item.linha} - {item.ramal}
+        {/* Lista */}
+        <div className="tech-card p-6">
+          <h2 className="text-xl font-semibold mb-4">Travessias Cadastradas</h2>
+          <div className="space-y-3">
+            {filteredData.slice(0, 20).map(item => (
+              <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-4">
+                  <Cable className="w-5 h-5 text-primary" />
+                  <div>
+                    <div className="font-medium">{item.nome}</div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                      <MapPin className="w-3 h-3" />
+                      {item.linha} - {item.ramal}
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant={item.criticidade === 'Alta' ? 'destructive' : item.criticidade === 'Média' ? 'default' : 'secondary'}>
+                    {item.criticidade}
+                  </Badge>
+                  <Badge variant={item.status === 'OK' ? 'default' : 'outline'}>
+                    {item.status}
+                  </Badge>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Badge variant={item.criticidade === 'Alta' ? 'destructive' : item.criticidade === 'Média' ? 'default' : 'secondary'}>
-                  {item.criticidade}
-                </Badge>
-                <Badge variant={item.status === 'OK' ? 'default' : 'outline'}>
-                  {item.status}
-                </Badge>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </ModuleLayout>
   );
 };
 

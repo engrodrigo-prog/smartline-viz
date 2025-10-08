@@ -68,6 +68,71 @@ export type UploadItem = {
 
 export const uploads: UploadItem[] = [];
 
+// Dados de Missões de Drones
+export type MissaoDrone = {
+  id: string;
+  nome: string;
+  linha: string;
+  ramal: string;
+  status: 'Planejada' | 'Em Progresso' | 'Concluída' | 'Cancelada';
+  data: string;
+  piloto: string;
+  kmInspecionados: number;
+  anomaliasDetectadas: number;
+  coords?: [number, number];
+};
+
+export const missoesDrones: MissaoDrone[] = [
+  {
+    id: 'MIS-001',
+    nome: 'Inspeção LT-001 R1',
+    linha: 'LT-001',
+    ramal: 'R1',
+    status: 'Concluída',
+    data: new Date(2025, 9, 5).toISOString(),
+    piloto: 'João Silva',
+    kmInspecionados: 12.5,
+    anomaliasDetectadas: 3,
+    coords: [-23.55, -46.63],
+  },
+  {
+    id: 'MIS-002',
+    nome: 'Inspeção LT-002 R2',
+    linha: 'LT-002',
+    ramal: 'R2',
+    status: 'Em Progresso',
+    data: new Date(2025, 9, 8).toISOString(),
+    piloto: 'Maria Santos',
+    kmInspecionados: 8.2,
+    anomaliasDetectadas: 1,
+    coords: [-23.58, -46.65],
+  },
+  {
+    id: 'MIS-003',
+    nome: 'Inspeção LT-003 R1',
+    linha: 'LT-003',
+    ramal: 'R1',
+    status: 'Planejada',
+    data: new Date(2025, 9, 15).toISOString(),
+    piloto: 'Carlos Oliveira',
+    kmInspecionados: 0,
+    anomaliasDetectadas: 0,
+    coords: [-23.52, -46.60],
+  },
+  {
+    id: 'MIS-004',
+    nome: 'Inspeção LT-001 R3',
+    linha: 'LT-001',
+    ramal: 'R3',
+    status: 'Concluída',
+    data: new Date(2025, 8, 28).toISOString(),
+    piloto: 'Ana Costa',
+    kmInspecionados: 15.3,
+    anomaliasDetectadas: 5,
+    coords: [-23.56, -46.62],
+  },
+];
+
 export const kpiData = {
   totalEventos: eventos.length,
   criticos: eventos.filter(e => e.criticidade === 'Alta').length,
