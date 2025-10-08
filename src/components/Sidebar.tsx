@@ -24,6 +24,19 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    category: "Visual",
+    items: [
+      { title: "Mapa de Eventos", path: "/visual/mapa" },
+      { title: "Diagrama Unifilar", path: "/visual/unifilar" },
+    ],
+  },
+  {
+    category: "Upload",
+    items: [
+      { title: "Upload de Bases", path: "/upload/bases" },
+    ],
+  },
+  {
     category: "Ambiental",
     items: [
       { title: "Áreas Alagadas", path: "/ambiental/alagadas" },

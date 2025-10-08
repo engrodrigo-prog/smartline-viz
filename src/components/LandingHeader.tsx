@@ -4,6 +4,7 @@ import logoSmartline from "@/assets/logo-smartline.png";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 const LandingHeader = () => {
@@ -86,6 +87,29 @@ const LandingHeader = () => {
               required
               className="bg-input border-border"
             />
+            
+            <select 
+              className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+              name="comoConheceu" 
+              required
+            >
+              <option value="">Como conheceu a solução Smartline?</option>
+              <option>LinkedIn</option>
+              <option>Eventos</option>
+              <option>Contato Direto</option>
+              <option>E-mail</option>
+              <option>Google</option>
+              <option>Outro Player do Setor</option>
+              <option>Outros</option>
+            </select>
+
+            <Textarea
+              name="mensagem"
+              className="bg-input border-border min-h-[120px]"
+              maxLength={300}
+              placeholder="Mensagem (opcional, até 300 caracteres)"
+            />
+
             <Button type="submit" className="btn-primary mt-2">
               Enviar Mensagem
             </Button>

@@ -9,6 +9,9 @@ import ModulePlaceholder from "./pages/ModulePlaceholder";
 import NotFound from "./pages/NotFound";
 import Resultados from "./pages/Resultados";
 import Login from "./pages/Login";
+import MapView from "./pages/MapView";
+import Unifilar from "./pages/Unifilar";
+import UploadBases from "./pages/UploadBases";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +27,13 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/relatorios" element={<ModulePlaceholder />} />
+          
+          {/* Visual */}
+          <Route path="/visual/mapa" element={<MapView />} />
+          <Route path="/visual/unifilar" element={<Unifilar />} />
+          
+          {/* Upload */}
+          <Route path="/upload/bases" element={<UploadBases />} />
           
           {/* Ambiental */}
           <Route path="/ambiental/alagadas" element={<ModulePlaceholder />} />
