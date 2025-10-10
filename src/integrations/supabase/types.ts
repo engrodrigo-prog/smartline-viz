@@ -478,6 +478,20 @@ export type Database = {
         Args: { geom1: unknown; geom2: unknown }
         Returns: boolean
       }
+      find_concessao: {
+        Args: { p_lat: number; p_lon: number }
+        Returns: {
+          nome: string
+        }[]
+      }
+      find_nearest_linha: {
+        Args: { p_lat: number; p_lon: number }
+        Returns: {
+          codigo: string
+          distancia_m: number
+          id: number
+        }[]
+      }
       geography: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
