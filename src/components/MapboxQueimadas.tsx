@@ -16,9 +16,9 @@ export const MapboxQueimadas = ({ geojson, onFeatureClick }: MapboxQueimadasProp
 
   useEffect(() => {
     // Check if Mapbox token is configured
-    const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+    const token = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
     if (!token) {
-      setError('Token do Mapbox não configurado. Configure MAPBOX_ACCESS_TOKEN nas secrets do Lovable Cloud.');
+      setError('Token do Mapbox não configurado. Configure VITE_MAPBOX_PUBLIC_TOKEN nas variáveis de ambiente.');
       setIsLoading(false);
       return;
     }

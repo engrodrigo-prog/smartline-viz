@@ -225,10 +225,10 @@ const UploadTracados = () => {
             </CardContent>
             <CardFooter className="flex justify-end">
               <Button
-                onClick={() => setCurrentStep(2)}
-                disabled={!selectedFile}
+                onClick={handleUpload}
+                disabled={!selectedFile || isUploading}
               >
-                Continuar
+                {isUploading ? 'Processando...' : 'Processar Arquivo'}
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </CardFooter>
