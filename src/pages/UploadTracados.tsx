@@ -109,8 +109,8 @@ const UploadTracados = () => {
                   id="file-upload"
                 />
                 <label htmlFor="file-upload" className="cursor-pointer">
-                  <Button variant="outline" as Component="span">
-                    Escolher Arquivo
+                  <Button variant="outline" asChild>
+                    <span>Escolher Arquivo</span>
                   </Button>
                 </label>
                 {file && (

@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const cors Headers = {
+const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
@@ -48,7 +48,13 @@ Deno.serve(async (req) => {
       
       const latIdx = headers.indexOf('latitude');
       const lonIdx = headers.indexOf('longitude');
-      const brightIdx = headers.indexOf('brightness' || headers.indexOf('bright_ti4'));
+      
+      // Tentar 'brightness' primeiro (VIIRS), senão 'bright_ti4' (MODIS)
+      let brightIdx = headers.indexOf('brightness');
+      if (brightIdx === -1) {
+        brightIdx = headers.indexOf('bright_ti4');
+      }
+      
       const confIdx = headers.indexOf('confidence');
       const dateIdx = headers.indexOf('acq_date');
       const timeIdx = headers.indexOf('acq_time');
@@ -78,17 +84,19 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Encontrar concessão
-        const { data: concessao } = await supabase.rpc('find_concessao', {
+        // Encontrar concessão com tipagem explícita
+        const { data: concessaoData } = await supabase.rpc('find_concessao', {
           p_lon: lon,
           p_lat: lat
         }).single();
+        const concessaoNome = (concessaoData as { nome?: string } | null)?.nome || null;
 
-        // Encontrar linha mais próxima
-        const { data: linhaProx } = await supabase.rpc('find_nearest_linha', {
+        // Encontrar linha mais próxima com tipagem explícita
+        const { data: linhaData } = await supabase.rpc('find_nearest_linha', {
           p_lon: lon,
           p_lat: lat
         }).single();
+        const linhaInfo = linhaData as { id?: number; codigo?: string; distancia_m?: number } | null;
 
         const { error: insertError } = await supabase
           .from('queimadas')
@@ -99,10 +107,10 @@ Deno.serve(async (req) => {
             brilho,
             confianca,
             estado: 'SP',
-            concessao: concessao?.nome || null,
-            id_linha: linhaProx?.id || null,
-            ramal: linhaProx?.codigo?.split('-')[1] || null,
-            distancia_m: linhaProx?.distancia_m || null,
+            concessao: concessaoNome,
+            id_linha: linhaInfo?.id || null,
+            ramal: linhaInfo?.codigo?.split('-')[1] || null,
+            distancia_m: linhaInfo?.distancia_m || null,
             geometry: `SRID=4326;POINT(${lon} ${lat})`,
             processado: true
           });
@@ -126,7 +134,9 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
