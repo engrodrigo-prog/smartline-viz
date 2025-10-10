@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import MapView from "./pages/MapView";
 import Unifilar from "./pages/Unifilar";
 import UploadBases from "./pages/UploadBases";
+import UploadTracados from "./pages/UploadTracados";
 import Vegetacao from "./pages/modules/Vegetacao";
 import Travessias from "./pages/modules/Travessias";
 import Estruturas from "./pages/modules/Estruturas";
