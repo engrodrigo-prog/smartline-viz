@@ -34,13 +34,6 @@ const Resultados = () => {
       icon: TowerControl,
     },
     {
-      id: 3,
-      image: despachoOtimizado,
-      title: "Despacho de equipes otimizado",
-      description: "Logística mais eficiente via insights do sistema e roteamento inteligente.",
-      icon: Users,
-    },
-    {
       id: 4,
       image: missoes,
       title: "Aumento da frequência de inspeções",
@@ -136,7 +129,7 @@ const Resultados = () => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="relative overflow-hidden rounded-2xl group cursor-pointer shadow-2xl h-80"
+                className="relative group cursor-pointer h-80"
               >
                 {/* Imagem com zoom no hover */}
                 <div className="absolute inset-0 overflow-hidden">
