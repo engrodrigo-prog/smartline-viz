@@ -30,10 +30,7 @@ Deno.serve(async (req) => {
 
     let query = supabase
       .from('queimadas')
-      .select(`
-        *,
-        linhas_transmissao (codigo, nome, concessao)
-      `)
+      .select('*')
       .gte('data_aquisicao', startDate)
       .lte('data_aquisicao', endDate)
       .gte('confianca', minConf)
@@ -71,9 +68,7 @@ Deno.serve(async (req) => {
             concessao: item.concessao,
             id_linha: item.id_linha,
             ramal: item.ramal,
-            distancia_m: item.distancia_m,
-            linha_codigo: item.linhas_transmissao?.codigo,
-            linha_nome: item.linhas_transmissao?.nome
+            distancia_m: item.distancia_m
           },
           geometry: {
             type: 'Point',

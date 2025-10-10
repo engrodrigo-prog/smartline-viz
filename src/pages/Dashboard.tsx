@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, CheckCircle, Clock, Database, TrendingUp, Map, Network } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle, Clock, Database, TrendingUp, Map, Network, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import CardKPI from "@/components/CardKPI";
@@ -36,27 +36,51 @@ const Dashboard = () => {
         <FiltersBar />
 
         {/* Quick Access Shortcuts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link to="/visual/mapa" className="tech-card p-6 hover:scale-[1.02] transition-transform">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col items-center text-center gap-4">
               <div className="p-4 bg-primary/10 rounded-2xl">
                 <Map className="w-8 h-8 text-primary" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-1">🗺️ Mapa de Eventos</h3>
-                <p className="text-sm text-muted-foreground">Visualização geográfica de ativos e eventos</p>
+                <h3 className="text-lg font-semibold mb-1">Mapa de Eventos</h3>
+                <p className="text-xs text-muted-foreground">Visualização geográfica de ativos</p>
               </div>
             </div>
           </Link>
 
           <Link to="/visual/unifilar" className="tech-card p-6 hover:scale-[1.02] transition-transform">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col items-center text-center gap-4">
               <div className="p-4 bg-secondary/10 rounded-2xl">
                 <Network className="w-8 h-8 text-secondary" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-1">📈 Diagrama Unifilar</h3>
-                <p className="text-sm text-muted-foreground">Topologia interativa da linha de transmissão</p>
+                <h3 className="text-lg font-semibold mb-1">Diagrama Unifilar</h3>
+                <p className="text-xs text-muted-foreground">Topologia da linha</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link to="/upload/tracados" className="tech-card p-6 hover:scale-[1.02] transition-transform">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="p-4 bg-emerald-500/10 rounded-2xl">
+                <Upload className="w-8 h-8 text-emerald-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-1">Upload Geodados</h3>
+                <p className="text-xs text-muted-foreground">KML/KMZ/Shapefile com atributos</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link to="/upload/bases" className="tech-card p-6 hover:scale-[1.02] transition-transform">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="p-4 bg-amber-500/10 rounded-2xl">
+                <Database className="w-8 h-8 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-1">Cadastro de Bases</h3>
+                <p className="text-xs text-muted-foreground">Planilhas e dados auxiliares</p>
               </div>
             </div>
           </Link>
