@@ -35,11 +35,17 @@ export const useQueimadas = (filters: QueimadasFilters) => {
         headers: {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
+        signal: AbortSignal.timeout(30000), // Timeout de 30s
       });
 
-      if (!response.ok) throw new Error('Erro ao buscar queimadas');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erro da API:', errorText);
+        throw new Error(`Erro ao buscar queimadas: ${response.status}`);
+      }
       
-      return await response.json() as GeoJSON.FeatureCollection;
+      const data = await response.json();
+      return data as GeoJSON.FeatureCollection;
     },
     refetchInterval: filters.mode === 'live' ? 30000 : false, // Atualiza a cada 30s em modo live
     staleTime: filters.mode === 'live' ? 30000 : 60000,
