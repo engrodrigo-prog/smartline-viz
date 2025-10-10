@@ -1,233 +1,312 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AppLayout from "@/components/AppLayout";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Upload, Map, FileCheck, ArrowRight, ArrowLeft } from "lucide-react";
+import { Upload, FileCheck, CheckCircle, ArrowRight, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-
-type TipoGeodado = "linhas" | "estruturas" | "concessoes";
+import AppLayout from "@/components/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 const UploadTracados = () => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingResult, setProcessingResult] = useState<any>(null);
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [file, setFile] = useState<File | null>(null);
-  const [tipo, setTipo] = useState<TipoGeodado>("linhas");
-  const [uploading, setUploading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      const validExtensions = ['.kml', '.kmz', '.zip'];
-      const fileExt = selectedFile.name.toLowerCase().slice(selectedFile.name.lastIndexOf('.'));
-      
-      if (!validExtensions.includes(fileExt)) {
-        toast.error("Formato inválido. Use KML, KMZ ou ZIP (Shapefile)");
-        return;
-      }
-      
-      setFile(selectedFile);
-      toast.success("Arquivo selecionado");
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validExtensions = ['.kml', '.kmz', '.zip'];
+    const extension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+    
+    if (!validExtensions.includes(extension)) {
+      toast.error("Formato inválido. Use KML, KMZ ou ZIP");
+      return;
     }
+    
+    setSelectedFile(file);
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      toast.error("Selecione um arquivo");
-      return;
-    }
+    if (!selectedFile) return;
 
-    setUploading(true);
+    setIsUploading(true);
+    setIsProcessing(true);
+    
     try {
-      // Upload para storage
-      const fileName = `${Date.now()}_${file.name}`;
+      // Step 1: Upload file to storage
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const fileExt = selectedFile.name.split('.').pop()?.toLowerCase();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
       const { error: uploadError } = await supabase.storage
         .from('geodata-uploads')
-        .upload(fileName, file);
+        .upload(fileName, selectedFile);
 
       if (uploadError) throw uploadError;
 
-      toast.success("Upload realizado com sucesso!");
-      toast.info("Processamento será implementado em breve");
-      
-      setTimeout(() => {
-        navigate('/ambiental/queimadas');
-      }, 2000);
+      toast.success("Arquivo carregado", {
+        description: "Processando geometrias...",
+      });
+
+      setCurrentStep(3);
+
+      // Step 2: Process file with edge function
+      const { data, error: processError } = await supabase.functions.invoke('process-geodata', {
+        body: { filePath: fileName },
+      });
+
+      if (processError) throw processError;
+
+      setProcessingResult(data);
+      setCurrentStep(4);
+
+      if (data.success) {
+        toast.success("Processamento concluído!", {
+          description: `Importados: ${data.stats.linhas} linhas, ${data.stats.estruturas} estruturas, ${data.stats.concessoes} concessões`,
+        });
+      } else {
+        toast.error("Processamento com erros", {
+          description: "Verifique os detalhes abaixo",
+        });
+      }
     } catch (error: any) {
-      console.error('Upload error:', error);
-      toast.error(`Erro no upload: ${error.message}`);
+      console.error('Error processing file:', error);
+      toast.error("Erro no processamento", {
+        description: error.message,
+      });
+      setCurrentStep(2);
     } finally {
-      setUploading(false);
+      setIsUploading(false);
+      setIsProcessing(false);
     }
   };
 
   return (
     <AppLayout title="Upload de Geodados" subtitle="Importar traçados e estruturas">
       <div className="max-w-4xl mx-auto">
-        {/* Progress Steps */}
-        <div className="flex items-center justify-between mb-8">
-          {[
-            { num: 1, label: "Arquivo" },
-            { num: 2, label: "Tipo" },
-            { num: 3, label: "Revisão" }
-          ].map((s, idx) => (
-            <div key={s.num} className="flex items-center flex-1">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                step >= s.num ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-              }`}>
-                {s.num}
+        <div className="mb-8">
+          <div className="flex items-center justify-between max-w-3xl mx-auto">
+            <div className={`flex items-center ${currentStep >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                1
               </div>
-              <span className="ml-2 text-sm font-medium">{s.label}</span>
-              {idx < 2 && <div className={`flex-1 h-0.5 mx-4 ${step > s.num ? 'bg-primary' : 'bg-muted'}`} />}
+              <span className="ml-2 font-medium">Upload</span>
             </div>
-          ))}
+            
+            <div className="flex-1 h-1 mx-4 bg-muted">
+              <div className={`h-full ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'} transition-all`} />
+            </div>
+            
+            <div className={`flex items-center ${currentStep >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                2
+              </div>
+              <span className="ml-2 font-medium">Revisar</span>
+            </div>
+            
+            <div className="flex-1 h-1 mx-4 bg-muted">
+              <div className={`h-full ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'} transition-all`} />
+            </div>
+            
+            <div className={`flex items-center ${currentStep >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                3
+              </div>
+              <span className="ml-2 font-medium">Processar</span>
+            </div>
+
+            <div className="flex-1 h-1 mx-4 bg-muted">
+              <div className={`h-full ${currentStep >= 4 ? 'bg-primary' : 'bg-muted'} transition-all`} />
+            </div>
+            
+            <div className={`flex items-center ${currentStep >= 4 ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                4
+              </div>
+              <span className="ml-2 font-medium">Resultado</span>
+            </div>
+          </div>
         </div>
 
-        {/* Step 1: Upload */}
-        {step === 1 && (
-          <Card>
+        {currentStep === 1 && (
+          <Card className="max-w-2xl mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="w-5 h-5" />
-                Selecionar Arquivo
+                Upload de Geodados
               </CardTitle>
               <CardDescription>
-                Formatos aceitos: KML, KMZ, ZIP (Shapefile)
+                Faça upload de arquivos KML, KMZ ou Shapefile (ZIP). O sistema detectará automaticamente os tipos de geometria.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="border-2 border-dashed border-border rounded-lg p-12 text-center">
+              <div
+                className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                onClick={() => document.getElementById('file-upload')?.click()}
+              >
                 <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-lg font-medium mb-2">
+                  {selectedFile ? selectedFile.name : 'Clique para selecionar ou arraste o arquivo aqui'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Formatos suportados: KML, KMZ, ZIP (Shapefile)
+                </p>
                 <input
+                  id="file-upload"
                   type="file"
                   accept=".kml,.kmz,.zip"
-                  onChange={handleFileChange}
                   className="hidden"
-                  id="file-upload"
+                  onChange={handleFileChange}
                 />
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  <Button variant="outline" asChild>
-                    <span>Escolher Arquivo</span>
-                  </Button>
-                </label>
-                {file && (
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Arquivo selecionado: <span className="font-medium">{file.name}</span>
-                  </p>
-                )}
-              </div>
-              
-              <div className="flex justify-end mt-6">
-                <Button onClick={() => setStep(2)} disabled={!file}>
-                  Próximo <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
               </div>
             </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button
+                onClick={() => setCurrentStep(2)}
+                disabled={!selectedFile}
+              >
+                Continuar
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </CardFooter>
           </Card>
         )}
 
-        {/* Step 2: Tipo */}
-        {step === 2 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Map className="w-5 h-5" />
-                Tipo de Geodado
-              </CardTitle>
-              <CardDescription>
-                Selecione o tipo de feature geográfica
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RadioGroup value={tipo} onValueChange={(v) => setTipo(v as TipoGeodado)}>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent cursor-pointer">
-                    <RadioGroupItem value="linhas" id="linhas" />
-                    <Label htmlFor="linhas" className="flex-1 cursor-pointer">
-                      <div className="font-semibold">Linhas de Transmissão</div>
-                      <div className="text-sm text-muted-foreground">Geometria: LineString</div>
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent cursor-pointer">
-                    <RadioGroupItem value="estruturas" id="estruturas" />
-                    <Label htmlFor="estruturas" className="flex-1 cursor-pointer">
-                      <div className="font-semibold">Estruturas (Torres)</div>
-                      <div className="text-sm text-muted-foreground">Geometria: Point</div>
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent cursor-pointer">
-                    <RadioGroupItem value="concessoes" id="concessoes" />
-                    <Label htmlFor="concessoes" className="flex-1 cursor-pointer">
-                      <div className="font-semibold">Concessões</div>
-                      <div className="text-sm text-muted-foreground">Geometria: Polygon/MultiPolygon</div>
-                    </Label>
-                  </div>
-                </div>
-              </RadioGroup>
-              
-              <div className="flex justify-between mt-6">
-                <Button variant="outline" onClick={() => setStep(1)}>
-                  <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
-                </Button>
-                <Button onClick={() => setStep(3)}>
-                  Próximo <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 3: Revisão */}
-        {step === 3 && (
-          <Card>
+        {currentStep === 2 && (
+          <Card className="max-w-2xl mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileCheck className="w-5 h-5" />
-                Revisão Final
+                Revisar Arquivo
               </CardTitle>
               <CardDescription>
-                Confirme as informações antes de importar
+                Confirme os detalhes antes do processamento
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between p-4 bg-muted rounded-lg">
-                  <span className="font-medium">Arquivo:</span>
-                  <span className="text-muted-foreground">{file?.name}</span>
-                </div>
-                <div className="flex justify-between p-4 bg-muted rounded-lg">
-                  <span className="font-medium">Tipo:</span>
-                  <span className="text-muted-foreground capitalize">{tipo}</span>
-                </div>
-                <div className="flex justify-between p-4 bg-muted rounded-lg">
-                  <span className="font-medium">Tamanho:</span>
-                  <span className="text-muted-foreground">
-                    {file ? (file.size / 1024 / 1024).toFixed(2) : 0} MB
-                  </span>
+            <CardContent className="space-y-4">
+              <div className="bg-muted rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="font-medium">Arquivo Selecionado</p>
+                    <p className="text-sm text-muted-foreground">{selectedFile?.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Tamanho: {selectedFile ? (selectedFile.size / 1024).toFixed(2) : 0} KB
+                    </p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-primary" />
                 </div>
               </div>
 
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-600 dark:text-blue-400">
-                  <strong>Nota:</strong> O arquivo será reprojetado para EPSG:4326 automaticamente.
-                  Duplicados serão ignorados com base no código.
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                  🤖 Detecção Automática
                 </p>
-              </div>
-              
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setStep(2)} disabled={uploading}>
-                  <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
-                </Button>
-                <Button onClick={handleUpload} disabled={uploading}>
-                  {uploading ? "Importando..." : "Confirmar Importação"}
-                </Button>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  O sistema analisará o arquivo e importará automaticamente:
+                </p>
+                <ul className="text-sm text-blue-800 dark:text-blue-200 mt-2 space-y-1 ml-4">
+                  <li>• Pontos → Tabela de Estruturas</li>
+                  <li>• Linhas → Tabela de Linhas de Transmissão</li>
+                  <li>• Polígonos → Tabela de Concessões</li>
+                </ul>
               </div>
             </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                Voltar
+              </Button>
+              <Button onClick={handleUpload} disabled={isUploading}>
+                {isUploading ? 'Processando...' : 'Confirmar e Processar'}
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
+
+        {currentStep === 3 && (
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="w-5 h-5 animate-pulse" />
+                Processando Geodados
+              </CardTitle>
+              <CardDescription>
+                Aguarde enquanto analisamos o arquivo e importamos as geometrias...
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-sm text-muted-foreground">Detectando e importando geometrias</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {currentStep === 4 && processingResult && (
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {processingResult.success ? (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-destructive" />
+                )}
+                Resultado do Processamento
+              </CardTitle>
+              <CardDescription>
+                {processingResult.success 
+                  ? 'Importação concluída com sucesso'
+                  : 'Processamento concluído com alguns erros'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-muted rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-primary">{processingResult.stats.linhas}</p>
+                  <p className="text-sm text-muted-foreground">Linhas</p>
+                </div>
+                <div className="bg-muted rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-primary">{processingResult.stats.estruturas}</p>
+                  <p className="text-sm text-muted-foreground">Estruturas</p>
+                </div>
+                <div className="bg-muted rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-primary">{processingResult.stats.concessoes}</p>
+                  <p className="text-sm text-muted-foreground">Concessões</p>
+                </div>
+              </div>
+
+              {processingResult.errors && processingResult.errors.length > 0 && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                  <p className="font-medium text-destructive mb-2">Erros:</p>
+                  <ul className="text-sm text-destructive/80 space-y-1">
+                    {processingResult.errors.slice(0, 5).map((error: string, i: number) => (
+                      <li key={i}>• {error}</li>
+                    ))}
+                    {processingResult.errors.length > 5 && (
+                      <li>... e mais {processingResult.errors.length - 5} erros</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={() => {
+                setCurrentStep(1);
+                setSelectedFile(null);
+                setProcessingResult(null);
+              }}>
+                Novo Upload
+              </Button>
+              <Button onClick={() => navigate('/dashboard')}>
+                Ir para Dashboard
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </CardFooter>
           </Card>
         )}
       </div>
