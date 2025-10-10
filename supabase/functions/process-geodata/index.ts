@@ -77,11 +77,7 @@ serve(async (req) => {
       throw new Error('Failed to parse XML document');
     }
     
-    const stats = {
-      linhas: 0,
-      estruturas: 0,
-      concessoes: 0,
-    };
+    const features: any[] = [];
     const errors: string[] = [];
 
     // Extract placemarks
@@ -90,7 +86,7 @@ serve(async (req) => {
 
     for (const placemark of placemarks) {
       try {
-        const placemarkEl = placemark as any; // Cast for DOM methods
+        const placemarkEl = placemark as any;
         const nameEl = placemarkEl.querySelector('name');
         const name = nameEl?.textContent || 'Sem nome';
         
@@ -102,19 +98,12 @@ serve(async (req) => {
             const lon = parseFloat(coords[0]);
             const lat = parseFloat(coords[1]);
             
-            const { error } = await supabase.from('estruturas').insert({
-              codigo: name,
+            features.push({
+              type: 'Point',
+              name,
               geometry: `SRID=4326;POINT(${lon} ${lat})`,
-              tipo: 'Importado',
-              estado_conservacao: 'A definir',
+              coords: { lon, lat },
             });
-            
-            if (error) {
-              console.error('Error inserting estrutura:', error);
-              errors.push(`Estrutura "${name}": ${error.message}`);
-            } else {
-              stats.estruturas++;
-            }
           }
           continue;
         }
@@ -129,19 +118,12 @@ serve(async (req) => {
               return `${lon} ${lat}`;
             }).join(',');
             
-            const { error } = await supabase.from('linhas_transmissao').insert({
-              codigo: name,
-              nome: name,
+            features.push({
+              type: 'LineString',
+              name,
               geometry: `SRID=4326;LINESTRING(${points})`,
-              status: 'Ativa',
+              coordsCount: coordsText.split(/\s+/).length,
             });
-            
-            if (error) {
-              console.error('Error inserting linha:', error);
-              errors.push(`Linha "${name}": ${error.message}`);
-            } else {
-              stats.linhas++;
-            }
           }
           continue;
         }
@@ -156,17 +138,12 @@ serve(async (req) => {
               return `${lon} ${lat}`;
             }).join(',');
             
-            const { error } = await supabase.from('concessoes_geo').insert({
-              nome: name,
+            features.push({
+              type: 'Polygon',
+              name,
               geometry: `SRID=4326;POLYGON((${points}))`,
+              coordsCount: coordsText.split(/\s+/).length,
             });
-            
-            if (error) {
-              console.error('Error inserting concessao:', error);
-              errors.push(`Concessão "${name}": ${error.message}`);
-            } else {
-              stats.concessoes++;
-            }
           }
           continue;
         }
@@ -177,14 +154,43 @@ serve(async (req) => {
       }
     }
 
-    // Clean up uploaded file
-    await supabase.storage.from('geodata-uploads').remove([filePath]);
+    // Insert features into staging table
+    for (const feature of features) {
+      try {
+        const { error: insertError } = await supabase.from('geodata_staging').insert({
+          file_name: filePath,
+          geometry_type: feature.type,
+          geometry: feature.geometry,
+          feature_name: feature.name,
+          metadata: { 
+            coordsCount: feature.coordsCount,
+            coords: feature.coords,
+          },
+        });
 
-    console.log('Processing complete:', stats);
+        if (insertError) {
+          console.error('Error inserting to staging:', insertError);
+          errors.push(`Erro ao salvar feature "${feature.name}": ${insertError.message}`);
+        }
+      } catch (error) {
+        console.error('Error inserting feature:', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        errors.push(`Erro ao salvar feature: ${errorMsg}`);
+      }
+    }
 
-    const result: ProcessResult = {
+    console.log('Processing complete. Features found:', features.length);
+
+    const result = {
       success: true,
-      stats,
+      features,
+      fileName: filePath,
+      stats: {
+        points: features.filter(f => f.type === 'Point').length,
+        lines: features.filter(f => f.type === 'LineString').length,
+        polygons: features.filter(f => f.type === 'Polygon').length,
+        total: features.length,
+      },
       errors,
     };
 

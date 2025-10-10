@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import GeodataClassificationTable from "@/components/GeodataClassificationTable";
 
 const UploadTracados = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -13,6 +14,8 @@ const UploadTracados = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingResult, setProcessingResult] = useState<any>(null);
+  const [features, setFeatures] = useState<any[]>([]);
+  const [classifications, setClassifications] = useState<Record<string, { classification: string; customClassification?: string }>>({});
   const navigate = useNavigate();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,7 +37,6 @@ const UploadTracados = () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
-    setIsProcessing(true);
     
     try {
       // Step 1: Upload file to storage
@@ -54,8 +56,6 @@ const UploadTracados = () => {
         description: "Processando geometrias...",
       });
 
-      setCurrentStep(3);
-
       // Step 2: Process file with edge function
       const { data, error: processError } = await supabase.functions.invoke('process-geodata', {
         body: { filePath: fileName },
@@ -63,26 +63,83 @@ const UploadTracados = () => {
 
       if (processError) throw processError;
 
-      setProcessingResult(data);
-      setCurrentStep(4);
-
-      if (data.success) {
-        toast.success("Processamento concluído!", {
-          description: `Importados: ${data.stats.linhas} linhas, ${data.stats.estruturas} estruturas, ${data.stats.concessoes} concessões`,
+      if (data.success && data.features) {
+        setFeatures(data.features);
+        // Initialize classifications
+        const initialClassifications: Record<string, any> = {};
+        data.features.forEach((f: any, idx: number) => {
+          initialClassifications[`${idx}`] = {
+            classification: f.type === 'Point' ? 'estrutura' : f.type === 'LineString' ? 'linha' : 'outros',
+            customClassification: '',
+          };
+        });
+        setClassifications(initialClassifications);
+        setCurrentStep(2);
+        
+        toast.success("Arquivo processado!", {
+          description: `${data.features.length} features detectadas`,
         });
       } else {
-        toast.error("Processamento com erros", {
-          description: "Verifique os detalhes abaixo",
-        });
+        toast.error("Erro no processamento");
       }
     } catch (error: any) {
       console.error('Error processing file:', error);
       toast.error("Erro no processamento", {
         description: error.message,
       });
-      setCurrentStep(2);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleFinalize = async () => {
+    setIsProcessing(true);
+    setCurrentStep(3);
+
+    try {
+      // Get staging features and prepare classifications
+      const { data: stagingData, error: stagingError } = await supabase
+        .from('geodata_staging')
+        .select('id')
+        .eq('file_name', selectedFile?.name || '');
+
+      if (stagingError) throw stagingError;
+
+      const classificationsArray = stagingData?.map((item: any, idx: number) => ({
+        id: item.id,
+        classification: classifications[`${idx}`]?.classification || 'outros',
+        customClassification: classifications[`${idx}`]?.customClassification,
+      })) || [];
+
+      // Call finalize edge function
+      const { data, error: finalizeError } = await supabase.functions.invoke('finalize-geodata', {
+        body: { 
+          classifications: classificationsArray,
+          fileName: selectedFile?.name,
+        },
+      });
+
+      if (finalizeError) throw finalizeError;
+
+      setProcessingResult(data);
+      setCurrentStep(4);
+
+      if (data.success) {
+        toast.success("Importação concluída!", {
+          description: `Importados: ${data.stats.linhas} linhas, ${data.stats.estruturas} estruturas, ${data.stats.eventos} eventos, ${data.stats.outros} outros`,
+        });
+      } else {
+        toast.error("Importação com erros", {
+          description: "Verifique os detalhes abaixo",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error finalizing:', error);
+      toast.error("Erro na importação", {
+        description: error.message,
+      });
+      setCurrentStep(2);
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -179,50 +236,40 @@ const UploadTracados = () => {
         )}
 
         {currentStep === 2 && (
-          <Card className="max-w-2xl mx-auto">
+          <Card className="max-w-4xl mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileCheck className="w-5 h-5" />
-                Revisar Arquivo
+                Classificar Features
               </CardTitle>
               <CardDescription>
-                Confirme os detalhes antes do processamento
+                Classifique as geometrias detectadas no arquivo
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-muted rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <p className="font-medium">Arquivo Selecionado</p>
-                    <p className="text-sm text-muted-foreground">{selectedFile?.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Tamanho: {selectedFile ? (selectedFile.size / 1024).toFixed(2) : 0} KB
-                    </p>
-                  </div>
-                  <CheckCircle className="w-8 h-8 text-primary" />
-                </div>
-              </div>
-
-              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                  🤖 Detecção Automática
-                </p>
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  O sistema analisará o arquivo e importará automaticamente:
-                </p>
-                <ul className="text-sm text-blue-800 dark:text-blue-200 mt-2 space-y-1 ml-4">
-                  <li>• Pontos → Tabela de Estruturas</li>
-                  <li>• Linhas → Tabela de Linhas de Transmissão</li>
-                  <li>• Polígonos → Tabela de Concessões</li>
-                </ul>
-              </div>
+              <GeodataClassificationTable
+                features={features}
+                classifications={classifications}
+                onClassificationChange={(index, classification) => {
+                  setClassifications(prev => ({
+                    ...prev,
+                    [index]: { ...prev[index], classification },
+                  }));
+                }}
+                onCustomClassificationChange={(index, customClassification) => {
+                  setClassifications(prev => ({
+                    ...prev,
+                    [index]: { ...prev[index], customClassification },
+                  }));
+                }}
+              />
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button variant="outline" onClick={() => setCurrentStep(1)}>
                 Voltar
               </Button>
-              <Button onClick={handleUpload} disabled={isUploading}>
-                {isUploading ? 'Processando...' : 'Confirmar e Processar'}
+              <Button onClick={handleFinalize} disabled={isProcessing}>
+                {isProcessing ? 'Processando...' : 'Confirmar e Importar'}
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </CardFooter>
@@ -256,16 +303,16 @@ const UploadTracados = () => {
                 ) : (
                   <AlertCircle className="w-5 h-5 text-destructive" />
                 )}
-                Resultado do Processamento
+                Resultado da Importação
               </CardTitle>
               <CardDescription>
                 {processingResult.success 
                   ? 'Importação concluída com sucesso'
-                  : 'Processamento concluído com alguns erros'}
+                  : 'Importação concluída com alguns erros'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div className="bg-muted rounded-lg p-4 text-center">
                   <p className="text-2xl font-bold text-primary">{processingResult.stats.linhas}</p>
                   <p className="text-sm text-muted-foreground">Linhas</p>
@@ -275,8 +322,12 @@ const UploadTracados = () => {
                   <p className="text-sm text-muted-foreground">Estruturas</p>
                 </div>
                 <div className="bg-muted rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-primary">{processingResult.stats.concessoes}</p>
-                  <p className="text-sm text-muted-foreground">Concessões</p>
+                  <p className="text-2xl font-bold text-primary">{processingResult.stats.eventos}</p>
+                  <p className="text-sm text-muted-foreground">Eventos</p>
+                </div>
+                <div className="bg-muted rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-primary">{processingResult.stats.outros}</p>
+                  <p className="text-sm text-muted-foreground">Outros</p>
                 </div>
               </div>
 
@@ -299,6 +350,8 @@ const UploadTracados = () => {
                 setCurrentStep(1);
                 setSelectedFile(null);
                 setProcessingResult(null);
+                setFeatures([]);
+                setClassifications({});
               }}>
                 Novo Upload
               </Button>
