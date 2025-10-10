@@ -4,7 +4,6 @@ import {
   Flame, Activity, Package, Construction, ClipboardCheck, 
   ShieldCheck, BrainCircuit
 } from "lucide-react";
-import despachoOtimizado from "@/assets/Despacho Otimizado.png";
 import escalada from "@/assets/Escalada.png";
 import fiscalizacao from "@/assets/Fiscalização Atividades e Obras.png";
 import gemeoDigital from "@/assets/Gemeo Digital AI.png";
@@ -15,13 +14,14 @@ import furto from "@/assets/furto de peças.png";
 import missoes from "@/assets/missoes autonomas.png";
 import corrosao from "@/assets/preditivo corrosao.png";
 import aves from "@/assets/reducao eventos aves.png";
-import bannerTech from "@/assets/banner-tech.png";
+import erosao from "@/assets/erosao.png";
+import geodados from "@/assets/cadastro_geodados.png";
 
 const Resultados = () => {
   const cases = [
     {
       id: 1,
-      image: missoes,
+      image: geodados,
       title: "Manejo de vegetação assertivo",
       description: "Redução de áreas críticas e intervenções mais precisas através de análise geoespacial e IA.",
       icon: TreeDeciduous,
@@ -49,7 +49,7 @@ const Resultados = () => {
     },
     {
       id: 6,
-      image: bannerTech,
+      image: erosao,
       title: "Análise de erosão e ocupação de faixa",
       description: "Modelos de terreno e satélite integrados para monitoramento contínuo.",
       icon: Mountain,
@@ -129,35 +129,34 @@ const Resultados = () => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="relative group cursor-pointer h-80"
+                className="relative group cursor-pointer overflow-hidden rounded-2xl"
               >
-                {/* Imagem com zoom no hover */}
-                <div className="absolute inset-0 overflow-hidden">
+                <div className="relative">
                   <img
                     src={item.image}
                     alt={item.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
                   />
-                </div>
-                
-                {/* Gradient overlay para legibilidade */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-                
-                {/* Ícone flutuante */}
-                <div className="absolute top-4 right-4 z-10">
-                  <div className="p-3 bg-[hsl(var(--smartline-orange))]/90 backdrop-blur-sm rounded-xl shadow-lg">
-                    <item.icon className="w-6 h-6 text-white" strokeWidth={2.5} />
+                  
+                  {/* Gradient overlay para legibilidade */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+                  
+                  {/* Ícone flutuante */}
+                  <div className="absolute top-4 right-4 z-10">
+                    <div className="p-3 bg-[hsl(var(--smartline-orange))]/90 backdrop-blur-sm rounded-xl shadow-lg">
+                      <item.icon className="w-6 h-6 text-white" strokeWidth={2.5} />
+                    </div>
                   </div>
-                </div>
-                
-                {/* Texto sobreposto */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-                  <h3 className="text-xl font-bold mb-2 text-white group-hover:text-[hsl(var(--smartline-orange))] transition-colors">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-white/90 leading-relaxed">
-                    {item.description}
-                  </p>
+                  
+                  {/* Texto sobreposto */}
+                  <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
+                    <h3 className="text-xl font-bold mb-2 text-white group-hover:text-[hsl(var(--smartline-orange))] transition-colors">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-white/90 leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
                 </div>
               </motion.div>
             ))}
