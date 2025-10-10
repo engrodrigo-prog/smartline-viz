@@ -1,16 +1,17 @@
 import { useState, useMemo } from "react";
 import { useFilters } from "@/context/FiltersContext";
-import { queimadas } from "@/lib/mockData";
-import { Flame } from "lucide-react";
+import { useQueimadas } from "@/hooks/useQueimadas";
+import { Flame, Activity, Clock } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import FiltersBar from "@/components/FiltersBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import MapViewGeneric from "@/components/MapViewGeneric";
+import { MapboxQueimadas } from "@/components/MapboxQueimadas";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import DetailDrawer from "@/components/DetailDrawer";
 import CardKPI from "@/components/CardKPI";
 import StatusBadge from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const Queimadas = () => {
   const { filters } = useFilters();
@@ -19,20 +20,54 @@ const Queimadas = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [nivelRiscoFilter, setNivelRiscoFilter] = useState<string>('');
   
+  const [mode, setMode] = useState<'live' | 'archive'>('live');
+  const [dateRange, setDateRange] = useState({
+    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  });
+
+  const { data: geojsonData, isLoading, error } = useQueimadas({
+    mode,
+    concessao: filters.regiao || 'TODAS',
+    minConf: 50,
+    satelite: 'ALL',
+    maxKm: 1,
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate
+  });
+  
   const filteredData = useMemo(() => {
-    let data = queimadas;
+    if (!geojsonData?.features) return [];
     
-    if (filters.regiao) data = data.filter(q => q.regiao === filters.regiao);
-    if (filters.linha) data = data.filter(q => q.linha === filters.linha);
-    if (filters.ramal) data = data.filter(q => q.ramal === filters.ramal);
-    if (filters.search) data = data.filter(q => q.nome.toLowerCase().includes(filters.search!.toLowerCase()));
+    let features = geojsonData.features.map((f: any) => ({
+      id: f.properties.id,
+      nome: `Queimada ${f.properties.fonte}-${f.properties.id}`,
+      coords: { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] },
+      dataDeteccao: f.properties.data_aquisicao,
+      brilho: f.properties.brilho,
+      confianca: f.properties.confianca,
+      concessao: f.properties.concessao,
+      linha: f.properties.linha_nome || 'N/A',
+      ramal: f.properties.ramal || 'N/A',
+      distanciaLinha: f.properties.distancia_m || 0,
+      satelite: f.properties.satelite,
+      fonte: f.properties.fonte,
+      tipoQueimada: 'Natural',
+      statusIncendio: 'Ativo',
+      nivelRisco: f.properties.confianca >= 80 ? 'Crítico' : 
+                   f.properties.confianca >= 65 ? 'Alto' :
+                   f.properties.confianca >= 50 ? 'Médio' : 'Baixo',
+      extensaoQueimada: 0,
+      torres_ameacadas: [],
+      climaNoMomento: { temperatura: 0, umidade: 0, ventoKmh: 0 }
+    }));
     
-    if (tipoFilter) data = data.filter(q => q.tipoQueimada === tipoFilter);
-    if (statusFilter) data = data.filter(q => q.statusIncendio === statusFilter);
-    if (nivelRiscoFilter) data = data.filter(q => q.nivelRisco === nivelRiscoFilter);
+    if (tipoFilter) features = features.filter((q: any) => q.tipoQueimada === tipoFilter);
+    if (statusFilter) features = features.filter((q: any) => q.statusIncendio === statusFilter);
+    if (nivelRiscoFilter) features = features.filter((q: any) => q.nivelRisco === nivelRiscoFilter);
     
-    return data;
-  }, [filters, tipoFilter, statusFilter, nivelRiscoFilter]);
+    return features;
+  }, [geojsonData, tipoFilter, statusFilter, nivelRiscoFilter]);
   
   const kpis = useMemo(() => ({
     total: filteredData.length,
@@ -91,6 +126,47 @@ const Queimadas = () => {
   return (
     <ModuleLayout title="Queimadas" icon={Flame}>
       <div className="p-6 space-y-6">
+        
+        <div className="flex items-center gap-4 mb-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={mode === 'live' ? 'default' : 'outline'}
+              onClick={() => setMode('live')}
+              className="gap-2"
+              size="sm"
+            >
+              <Activity className="w-4 h-4" />
+              Últimas 24h (Ao vivo)
+            </Button>
+            <Button
+              variant={mode === 'archive' ? 'default' : 'outline'}
+              onClick={() => setMode('archive')}
+              className="gap-2"
+              size="sm"
+            >
+              <Clock className="w-4 h-4" />
+              Histórico
+            </Button>
+          </div>
+
+          {mode === 'archive' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dateRange.startDate}
+                onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                className="border border-border rounded px-3 py-1.5 text-sm bg-background"
+              />
+              <span className="text-sm text-muted-foreground">até</span>
+              <input
+                type="date"
+                value={dateRange.endDate}
+                onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                className="border border-border rounded px-3 py-1.5 text-sm bg-background"
+              />
+            </div>
+          )}
+        </div>
         
         <FiltersBar>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -164,12 +240,33 @@ const Queimadas = () => {
           </TabsContent>
           
           <TabsContent value="mapa" className="mt-4">
-            <MapViewGeneric
-              items={filteredData}
-              markerIcon={Flame}
-              colorBy="nivelRisco"
-              onMarkerClick={(queimada) => setSelectedQueimada(queimada)}
-            />
+            {isLoading ? (
+              <div className="flex items-center justify-center h-[600px] border border-border rounded-lg bg-background">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                  <p className="text-sm text-muted-foreground">Carregando dados de queimadas...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-[600px] border border-border rounded-lg bg-background">
+                <div className="text-center p-6">
+                  <p className="text-destructive mb-2">Erro ao carregar dados</p>
+                  <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
+                </div>
+              </div>
+            ) : geojsonData && geojsonData.features.length > 0 ? (
+              <MapboxQueimadas
+                geojson={geojsonData}
+                onFeatureClick={(props) => {
+                  const queimada = filteredData.find(q => q.id === props.id);
+                  if (queimada) setSelectedQueimada(queimada);
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-[600px] border border-border rounded-lg bg-background">
+                <p className="text-muted-foreground">Nenhuma queimada detectada no período selecionado</p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
         

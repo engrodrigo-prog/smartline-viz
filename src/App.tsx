@@ -44,6 +44,7 @@ const App = () => (
           
           {/* Upload */}
           <Route path="/upload/bases" element={<UploadBases />} />
+          <Route path="/upload/tracados" element={<UploadTracados />} />
           
           {/* Ambiental */}
           <Route path="/ambiental/alagadas" element={<AreasAlagadas />} />
