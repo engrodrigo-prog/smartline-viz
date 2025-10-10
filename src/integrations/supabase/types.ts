@@ -91,6 +91,129 @@ export type Database = {
           },
         ]
       }
+      eventos_geo: {
+        Row: {
+          concessao: string | null
+          created_at: string | null
+          data_ocorrencia: string | null
+          descricao: string | null
+          geometry: unknown
+          id: string
+          metadata: Json | null
+          nome: string
+          regiao: string | null
+          status: string | null
+          tipo_evento: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          concessao?: string | null
+          created_at?: string | null
+          data_ocorrencia?: string | null
+          descricao?: string | null
+          geometry: unknown
+          id?: string
+          metadata?: Json | null
+          nome: string
+          regiao?: string | null
+          status?: string | null
+          tipo_evento?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          concessao?: string | null
+          created_at?: string | null
+          data_ocorrencia?: string | null
+          descricao?: string | null
+          geometry?: unknown
+          id?: string
+          metadata?: Json | null
+          nome?: string
+          regiao?: string | null
+          status?: string | null
+          tipo_evento?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      geodata_outros: {
+        Row: {
+          categoria: string
+          concessao: string | null
+          created_at: string | null
+          descricao: string | null
+          geometry: unknown
+          id: string
+          metadata: Json | null
+          nome: string
+          regiao: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          categoria: string
+          concessao?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          geometry: unknown
+          id?: string
+          metadata?: Json | null
+          nome: string
+          regiao?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          categoria?: string
+          concessao?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          geometry?: unknown
+          id?: string
+          metadata?: Json | null
+          nome?: string
+          regiao?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      geodata_staging: {
+        Row: {
+          classification: string | null
+          created_at: string | null
+          custom_classification: string | null
+          feature_name: string | null
+          file_name: string
+          geometry: unknown
+          geometry_type: string
+          id: string
+          metadata: Json | null
+          processed: boolean | null
+        }
+        Insert: {
+          classification?: string | null
+          created_at?: string | null
+          custom_classification?: string | null
+          feature_name?: string | null
+          file_name: string
+          geometry: unknown
+          geometry_type: string
+          id?: string
+          metadata?: Json | null
+          processed?: boolean | null
+        }
+        Update: {
+          classification?: string | null
+          created_at?: string | null
+          custom_classification?: string | null
+          feature_name?: string | null
+          file_name?: string
+          geometry?: unknown
+          geometry_type?: string
+          id?: string
+          metadata?: Json | null
+          processed?: boolean | null
+        }
+        Relationships: []
+      }
       linhas_transmissao: {
         Row: {
           codigo: string | null
