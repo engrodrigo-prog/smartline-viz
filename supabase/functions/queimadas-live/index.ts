@@ -25,10 +25,7 @@ Deno.serve(async (req) => {
     // Buscar queimadas das últimas 24h
     let query = supabase
       .from('queimadas')
-      .select(`
-        *,
-        linhas_transmissao (codigo, nome, concessao)
-      `)
+      .select('*')
       .gte('data_aquisicao', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .gte('confianca', minConf)
       .lte('distancia_m', maxKm * 1000)
@@ -66,9 +63,7 @@ Deno.serve(async (req) => {
             concessao: item.concessao,
             id_linha: item.id_linha,
             ramal: item.ramal,
-            distancia_m: item.distancia_m,
-            linha_codigo: item.linhas_transmissao?.codigo,
-            linha_nome: item.linhas_transmissao?.nome
+            distancia_m: item.distancia_m
           },
           geometry: {
             type: 'Point',

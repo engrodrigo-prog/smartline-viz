@@ -29,17 +29,11 @@ export const useQueimadas = (filters: QueimadasFilters) => {
 
       const functionName = filters.mode === 'live' ? 'queimadas-live' : 'queimadas-archive';
       
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        method: 'GET',
-      });
-
-      if (error) throw error;
-      
       // Construir URL com query params
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
       const response = await fetch(`${baseUrl}?${params.toString()}`, {
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
       });
 
