@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import ModulePlaceholder from "./pages/ModulePlaceholder";
@@ -35,57 +36,57 @@ const App = () => (
           <Route path="/" element={<Landing />} />
           <Route path="/resultados" element={<Resultados />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/relatorios" element={<ModulePlaceholder />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/relatorios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
           {/* Visual */}
-          <Route path="/visual/mapa" element={<MapView />} />
-          <Route path="/visual/unifilar" element={<Unifilar />} />
+          <Route path="/visual/mapa" element={<ProtectedRoute><MapView /></ProtectedRoute>} />
+          <Route path="/visual/unifilar" element={<ProtectedRoute><Unifilar /></ProtectedRoute>} />
           
           {/* Upload */}
-          <Route path="/upload/bases" element={<UploadBases />} />
-          <Route path="/upload/tracados" element={<UploadTracados />} />
+          <Route path="/upload/bases" element={<ProtectedRoute><UploadBases /></ProtectedRoute>} />
+          <Route path="/upload/tracados" element={<ProtectedRoute><UploadTracados /></ProtectedRoute>} />
           
           {/* Ambiental */}
-          <Route path="/ambiental/alagadas" element={<AreasAlagadas />} />
-          <Route path="/ambiental/erosao" element={<Erosao />} />
-          <Route path="/ambiental/queimadas" element={<Queimadas />} />
-          <Route path="/ambiental/vegetacao" element={<Vegetacao />} />
-          <Route path="/ambiental/ocupacao" element={<OcupacaoFaixa />} />
-          <Route path="/ambiental/distancia" element={<ModulePlaceholder />} />
-          <Route path="/ambiental/compliance" element={<ModulePlaceholder />} />
+          <Route path="/ambiental/alagadas" element={<ProtectedRoute><AreasAlagadas /></ProtectedRoute>} />
+          <Route path="/ambiental/erosao" element={<ProtectedRoute><Erosao /></ProtectedRoute>} />
+          <Route path="/ambiental/queimadas" element={<ProtectedRoute><Queimadas /></ProtectedRoute>} />
+          <Route path="/ambiental/vegetacao" element={<ProtectedRoute><Vegetacao /></ProtectedRoute>} />
+          <Route path="/ambiental/ocupacao" element={<ProtectedRoute><OcupacaoFaixa /></ProtectedRoute>} />
+          <Route path="/ambiental/distancia" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/ambiental/compliance" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
           {/* Estrutura */}
-          <Route path="/estrutura/estruturas" element={<Estruturas />} />
-          <Route path="/estrutura/emendas" element={<Emendas />} />
-          <Route path="/estrutura/travessias" element={<Travessias />} />
-          <Route path="/estrutura/compliance" element={<ModulePlaceholder />} />
-          <Route path="/estrutura/corrosao" element={<ModulePlaceholder />} />
+          <Route path="/estrutura/estruturas" element={<ProtectedRoute><Estruturas /></ProtectedRoute>} />
+          <Route path="/estrutura/emendas" element={<ProtectedRoute><Emendas /></ProtectedRoute>} />
+          <Route path="/estrutura/travessias" element={<ProtectedRoute><Travessias /></ProtectedRoute>} />
+          <Route path="/estrutura/compliance" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/estrutura/corrosao" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
           {/* Sensores */}
-          <Route path="/sensores/painel" element={<ModulePlaceholder />} />
-          <Route path="/sensores/cameras" element={<ModulePlaceholder />} />
-          <Route path="/sensores/dashboard" element={<ModulePlaceholder />} />
-          <Route path="/sensores/alertas" element={<ModulePlaceholder />} />
+          <Route path="/sensores/painel" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/sensores/cameras" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/sensores/dashboard" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/sensores/alertas" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
           {/* Operação */}
-          <Route path="/operacao/missoes" element={<ModulePlaceholder />} />
-          <Route path="/operacao/eventos" element={<ModulePlaceholder />} />
-          <Route path="/operacao/compliance" element={<ModulePlaceholder />} />
-          <Route path="/operacao/relatorios" element={<ModulePlaceholder />} />
+          <Route path="/operacao/missoes" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/operacao/eventos" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/operacao/compliance" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/operacao/relatorios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
           {/* Análises Avançadas */}
-          <Route path="/analises/gemeo-digital" element={<ModulePlaceholder />} />
-          <Route path="/fiscalizacao/obras" element={<ModulePlaceholder />} />
-          <Route path="/auditorias/qualidade" element={<ModulePlaceholder />} />
+          <Route path="/analises/gemeo-digital" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/fiscalizacao/obras" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/auditorias/qualidade" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
           {/* Gestão de Equipes */}
-          <Route path="/equipes/rastreamento" element={<RastreamentoCampo />} />
+          <Route path="/equipes/rastreamento" element={<ProtectedRoute><RastreamentoCampo /></ProtectedRoute>} />
           
           {/* Configurações */}
-          <Route path="/config/geral" element={<ModulePlaceholder />} />
-          <Route path="/config/usuarios" element={<ModulePlaceholder />} />
-          <Route path="/config/permissoes" element={<ModulePlaceholder />} />
+          <Route path="/config/geral" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/config/usuarios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/config/permissoes" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>

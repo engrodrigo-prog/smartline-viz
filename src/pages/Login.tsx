@@ -1,28 +1,79 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import logoSmartline from "@/assets/logo-smartline.png";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, Mail } from "lucide-react";
+import { Lock, Mail, UserPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate("/dashboard");
+      }
+    });
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Simulação de login
-    if (email && password) {
+    setLoading(true);
+
+    try {
+      if (isSignUp) {
+        // Sign up new user
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+            },
+            emailRedirectTo: `${window.location.origin}/dashboard`,
+          },
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Conta criada!",
+          description: "Você foi autenticado e pode acessar o sistema.",
+        });
+        navigate("/dashboard");
+      } else {
+        // Sign in existing user
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Login realizado!",
+          description: "Redirecionando para o dashboard...",
+        });
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
       toast({
-        title: "Login realizado!",
-        description: "Redirecionando para o dashboard...",
+        title: "Erro",
+        description: error.message || "Ocorreu um erro. Tente novamente.",
+        variant: "destructive",
       });
-      setTimeout(() => navigate("/dashboard"), 1000);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -50,6 +101,20 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {isSignUp && (
+              <div className="relative">
+                <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Nome completo"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  className="pl-10 bg-input border-border"
+                />
+              </div>
+            )}
+
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
@@ -70,25 +135,23 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
                 className="pl-10 bg-input border-border"
               />
             </div>
 
-            <Button type="submit" className="btn-primary mt-2">
-              Entrar
+            <Button type="submit" className="btn-primary mt-2" disabled={loading}>
+              {loading ? "Processando..." : isSignUp ? "Criar Conta" : "Entrar"}
             </Button>
           </form>
 
           <div className="mt-6 pt-6 border-t border-border/50 text-center">
-            <p className="text-sm text-muted-foreground mb-3">
-              Ou continue com acesso livre
-            </p>
-            <Link
-              to="/dashboard"
-              className="text-primary hover:text-primary/80 font-medium transition-colors inline-flex items-center gap-2"
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
             >
-              Acesso Livre ao Dashboard →
-            </Link>
+              {isSignUp ? "Já tem uma conta? Entre aqui" : "Não tem conta? Cadastre-se"}
+            </button>
           </div>
 
           <div className="mt-6 text-center">
