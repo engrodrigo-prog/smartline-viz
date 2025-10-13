@@ -23,11 +23,45 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, errors: ['Missing authorization header'] }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create client with user auth to verify
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, errors: ['Unauthorized'] }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { filePath } = await req.json();
     
     if (!filePath) {
       throw new Error('File path is required');
     }
+
+    // Verify file belongs to user
+    if (!filePath.startsWith(`${user.id}/`)) {
+      return new Response(
+        JSON.stringify({ success: false, errors: ['Unauthorized file access'] }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Processing geodata file:', filePath, 'for user:', user.id);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -162,6 +196,7 @@ serve(async (req) => {
           geometry_type: feature.type,
           geometry: feature.geometry,
           feature_name: feature.name,
+          user_id: user.id,
           metadata: { 
             coordsCount: feature.coordsCount,
             coords: feature.coords,
