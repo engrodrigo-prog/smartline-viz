@@ -77,6 +77,14 @@ const Login = () => {
     }
   };
 
+  const handleVisitorAccess = () => {
+    toast({
+      title: "Acesso como visitante",
+      description: "Você terá acesso somente leitura ao sistema.",
+    });
+    navigate("/dashboard");
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
       <div className="absolute inset-0 hexagon-pattern opacity-10" />
@@ -95,9 +103,9 @@ const Login = () => {
               className="w-24 h-24 mx-auto mb-6 drop-shadow-[0_0_30px_rgba(0,166,122,0.3)]"
             />
             <h1 className="text-3xl font-bold mb-2">
-              <span className="gradient-text">AssetHealth</span>
+              <span className="gradient-text">SmartLine Viz</span>
             </h1>
-            <p className="text-muted-foreground">Acesse o sistema Smartline</p>
+            <p className="text-muted-foreground">Dashboard Geodata + Ambiental Queimadas</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -145,13 +153,22 @@ const Login = () => {
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-border/50 text-center">
+          <div className="mt-6 pt-6 border-t border-border/50 text-center space-y-4">
             <button
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+              className="text-sm text-primary hover:text-primary/80 font-medium transition-colors block w-full"
             >
               {isSignUp ? "Já tem uma conta? Entre aqui" : "Não tem conta? Cadastre-se"}
             </button>
+            
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={handleVisitorAccess}
+              className="w-full"
+            >
+              Entrar como visitante
+            </Button>
           </div>
 
           <div className="mt-6 text-center">
