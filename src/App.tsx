@@ -16,7 +16,6 @@ import UploadBases from "./pages/UploadBases";
 import UploadTracados from "./pages/UploadTracados";
 import UploadKml from "./pages/UploadKml";
 import Queimadas from "./pages/Queimadas";
-import QueimadasModule from "./pages/modules/ambiental/Queimadas";
 import Vegetacao from "./pages/modules/Vegetacao";
 import Travessias from "./pages/modules/Travessias";
 import Estruturas from "./pages/modules/Estruturas";
@@ -50,13 +49,10 @@ const App = () => (
           <Route path="/upload/tracados" element={<ProtectedRoute><UploadTracados /></ProtectedRoute>} />
           <Route path="/upload/kml" element={<ProtectedRoute><UploadKml /></ProtectedRoute>} />
           
-          {/* Queimadas (novo módulo principal) */}
-          <Route path="/queimadas" element={<ProtectedRoute><Queimadas /></ProtectedRoute>} />
-          
           {/* Ambiental */}
           <Route path="/ambiental/alagadas" element={<ProtectedRoute><AreasAlagadas /></ProtectedRoute>} />
           <Route path="/ambiental/erosao" element={<ProtectedRoute><Erosao /></ProtectedRoute>} />
-          <Route path="/ambiental/queimadas" element={<ProtectedRoute><QueimadasModule /></ProtectedRoute>} />
+          <Route path="/ambiental/queimadas" element={<ProtectedRoute><Queimadas /></ProtectedRoute>} />
           <Route path="/ambiental/vegetacao" element={<ProtectedRoute><Vegetacao /></ProtectedRoute>} />
           <Route path="/ambiental/ocupacao" element={<ProtectedRoute><OcupacaoFaixa /></ProtectedRoute>} />
           <Route path="/ambiental/distancia" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
