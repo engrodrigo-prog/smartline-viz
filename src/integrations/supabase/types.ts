@@ -136,6 +136,48 @@ export type Database = {
         }
         Relationships: []
       }
+      fires: {
+        Row: {
+          acq_date: string | null
+          acq_time: string | null
+          brightness: number | null
+          confidence: number | null
+          created_at: string | null
+          geometry: Json | null
+          id: string
+          latitude: number
+          longitude: number
+          satellite: string | null
+          source: string | null
+        }
+        Insert: {
+          acq_date?: string | null
+          acq_time?: string | null
+          brightness?: number | null
+          confidence?: number | null
+          created_at?: string | null
+          geometry?: Json | null
+          id?: string
+          latitude: number
+          longitude: number
+          satellite?: string | null
+          source?: string | null
+        }
+        Update: {
+          acq_date?: string | null
+          acq_time?: string | null
+          brightness?: number | null
+          confidence?: number | null
+          created_at?: string | null
+          geometry?: Json | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          satellite?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
       geodata_outros: {
         Row: {
           categoria: string
@@ -213,6 +255,66 @@ export type Database = {
           id?: string
           metadata?: Json | null
           processed?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      infrastructure: {
+        Row: {
+          alt: number | null
+          asset_type: string
+          bbox: Json | null
+          created_at: string | null
+          empresa: string
+          estrutura: string | null
+          geometry: Json
+          id: string
+          lat: number | null
+          linha_codigo: string
+          linha_nome: string
+          linha_prefixo: string
+          lon: number | null
+          nome_material: string | null
+          ramal: string | null
+          regiao: string
+          user_id: string | null
+        }
+        Insert: {
+          alt?: number | null
+          asset_type: string
+          bbox?: Json | null
+          created_at?: string | null
+          empresa: string
+          estrutura?: string | null
+          geometry: Json
+          id?: string
+          lat?: number | null
+          linha_codigo: string
+          linha_nome: string
+          linha_prefixo: string
+          lon?: number | null
+          nome_material?: string | null
+          ramal?: string | null
+          regiao: string
+          user_id?: string | null
+        }
+        Update: {
+          alt?: number | null
+          asset_type?: string
+          bbox?: Json | null
+          created_at?: string | null
+          empresa?: string
+          estrutura?: string | null
+          geometry?: Json
+          id?: string
+          lat?: number | null
+          linha_codigo?: string
+          linha_nome?: string
+          linha_prefixo?: string
+          lon?: number | null
+          nome_material?: string | null
+          ramal?: string | null
+          regiao?: string
           user_id?: string | null
         }
         Relationships: []
@@ -2201,7 +2303,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "analyst" | "operator"
+      app_role: "admin" | "analyst" | "operator" | "visitor" | "cpfl_user"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -2337,7 +2439,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "analyst", "operator"],
+      app_role: ["admin", "analyst", "operator", "visitor", "cpfl_user"],
     },
   },
 } as const

@@ -27,6 +27,8 @@ const menuGroups: MenuGroup[] = [
     category: "Visão Geral",
     items: [
       { title: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+      { title: "Upload KML", path: "/upload/kml", icon: Upload },
+      { title: "Queimadas FIRMS", path: "/queimadas", icon: Flame },
       { title: "Mapa de Eventos", path: "/visual/mapa", icon: Map },
       { title: "Diagrama Unifilar", path: "/visual/unifilar", icon: Network },
       { title: "Relatórios Gerais", path: "/relatorios", icon: FileText },
