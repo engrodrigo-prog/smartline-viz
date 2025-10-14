@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      alarm_zones_config: {
+        Row: {
+          concessao: string | null
+          created_at: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+          zona_acomp_max_m: number | null
+          zona_critica_max_m: number | null
+          zona_obs_max_m: number | null
+        }
+        Insert: {
+          concessao?: string | null
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+          zona_acomp_max_m?: number | null
+          zona_critica_max_m?: number | null
+          zona_obs_max_m?: number | null
+        }
+        Update: {
+          concessao?: string | null
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+          zona_acomp_max_m?: number | null
+          zona_critica_max_m?: number | null
+          zona_obs_max_m?: number | null
+        }
+        Relationships: []
+      }
       concessoes_geo: {
         Row: {
           created_at: string | null
