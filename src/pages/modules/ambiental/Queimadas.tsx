@@ -8,6 +8,7 @@ import FiltersBar from "@/components/FiltersBar";
 import AlarmZoneConfig from "@/components/AlarmZoneConfig";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapboxQueimadas } from "@/components/MapboxQueimadas";
+import { MapboxUnified } from "@/components/MapboxUnified";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import DetailDrawer from "@/components/DetailDrawer";
 import CardKPI from "@/components/CardKPI";
@@ -310,15 +311,23 @@ const Queimadas = () => {
                   <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
                 </div>
               </div>
-            ) : geojsonData && geojsonData.features.length > 0 ? (
-              <MapboxQueimadas
-                geojson={geojsonData}
+            ) : (
+              <MapboxUnified
+                filterRegiao={filters.regiao}
+                showQueimadas={true}
+                showInfrastructure={true}
+                zoneConfig={{
+                  critica: config.zonaCritica,
+                  acomp: config.zonaAcomp,
+                  obs: config.zonaObs
+                }}
                 onFeatureClick={(props) => {
                   const queimada = filteredData.find(q => q.id === props.id);
                   if (queimada) setSelectedQueimada(queimada);
                 }}
               />
-            ) : (
+            )}
+            {geojsonData && geojsonData.features.length === 0 && (
               <div className="flex items-center justify-center h-[600px] border border-border rounded-lg bg-background">
                 <p className="text-muted-foreground">Nenhuma queimada detectada no período selecionado</p>
               </div>
