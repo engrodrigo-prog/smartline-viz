@@ -13,6 +13,8 @@ interface MapboxUnifiedProps {
   showQueimadas?: boolean;
   showInfrastructure?: boolean;
   showVegetacao?: boolean;
+  showEstruturas?: boolean;
+  showTravessias?: boolean;
   initialCenter?: [number, number];
   initialZoom?: number;
   zoneConfig?: {
@@ -30,6 +32,8 @@ export const MapboxUnified = ({
   showQueimadas = false,
   showInfrastructure = true,
   showVegetacao = false,
+  showEstruturas = false,
+  showTravessias = false,
   initialCenter = [-46.63, -23.55],
   initialZoom = 7,
   zoneConfig
@@ -72,6 +76,12 @@ export const MapboxUnified = ({
         }
         if (showVegetacao) {
           await loadVegetacao();
+        }
+        if (showEstruturas) {
+          await loadEstruturas();
+        }
+        if (showTravessias) {
+          await loadTravessias();
         }
       });
 
@@ -279,7 +289,6 @@ export const MapboxUnified = ({
 
       if (!data || data.length === 0) return;
 
-      // Criar GeoJSON para vegetação
       const features = data.map((item: any) => ({
         type: 'Feature',
         properties: {
@@ -325,7 +334,6 @@ export const MapboxUnified = ({
         });
       }
 
-      // Add to layers state
       setLayers(prev => [...prev, {
         id: layerId,
         name: 'Vegetação',
@@ -337,6 +345,169 @@ export const MapboxUnified = ({
 
     } catch (error) {
       console.error('Erro ao carregar vegetação:', error);
+    }
+  };
+
+  const loadEstruturas = async () => {
+    if (!map.current) return;
+
+    try {
+      let query = supabase
+        .from('estruturas')
+        .select('*');
+
+      if (filterRegiao) query = query.eq('regiao', filterRegiao);
+      if (filterEmpresa) query = query.eq('empresa', filterEmpresa);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) return;
+
+      const features = data.map((item: any) => ({
+        type: 'Feature',
+        properties: {
+          id: item.id,
+          nome: item.codigo,
+          integridade: item.estado_conservacao,
+          risco: item.risco_corrosao,
+        },
+        geometry: item.geometry,
+      }));
+
+      const geojson: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: features as any[],
+      };
+
+      const sourceId = 'estruturas-source';
+      const layerId = 'estruturas-layer';
+
+      if (map.current.getSource(sourceId)) {
+        (map.current.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+      } else {
+        map.current.addSource(sourceId, {
+          type: 'geojson',
+          data: geojson,
+        });
+
+        map.current.addLayer({
+          id: layerId,
+          type: 'circle',
+          source: sourceId,
+          paint: {
+            'circle-radius': 8,
+            'circle-color': [
+              'case',
+              ['==', ['get', 'integridade'], 'Crítico'], '#ef4444',
+              ['>=', ['to-number', ['get', 'risco'], 0], 0.7], '#f97316',
+              ['>=', ['to-number', ['get', 'risco'], 0], 0.4], '#eab308',
+              '#22c55e'
+            ],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff',
+          },
+        });
+
+        map.current.on('click', layerId, (e) => {
+          if (e.features && e.features[0]) {
+            onFeatureClick?.(e.features[0]);
+          }
+        });
+      }
+
+      setLayers(prev => [...prev, {
+        id: layerId,
+        name: 'Estruturas',
+        type: 'estruturas',
+        visible: true,
+        color: '#22c55e',
+        count: data.length,
+      }]);
+
+    } catch (error) {
+      console.error('Erro ao carregar estruturas:', error);
+    }
+  };
+
+  const loadTravessias = async () => {
+    if (!map.current) return;
+
+    try {
+      let query = supabase
+        .from('eventos_geo')
+        .select('*')
+        .eq('tipo_evento', 'Travessia');
+
+      if (filterRegiao) query = query.eq('regiao', filterRegiao);
+      if (filterEmpresa) query = query.eq('empresa', filterEmpresa);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) return;
+
+      const features = data.map((item: any) => ({
+        type: 'Feature',
+        properties: {
+          id: item.id,
+          nome: item.nome,
+          tipo: item.metadata?.tipo || 'Rodoviária',
+        },
+        geometry: item.geometry,
+      }));
+
+      const geojson: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: features as any[],
+      };
+
+      const sourceId = 'travessias-source';
+      const layerId = 'travessias-layer';
+
+      if (map.current.getSource(sourceId)) {
+        (map.current.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+      } else {
+        map.current.addSource(sourceId, {
+          type: 'geojson',
+          data: geojson,
+        });
+
+        map.current.addLayer({
+          id: layerId,
+          type: 'circle',
+          source: sourceId,
+          paint: {
+            'circle-radius': 7,
+            'circle-color': [
+              'match',
+              ['get', 'tipo'],
+              'Fluvial', '#3b82f6',
+              'Ferroviária', '#8b5cf6',
+              'Rodoviária', '#64748b',
+              '#94a3b8'
+            ],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff',
+          },
+        });
+
+        map.current.on('click', layerId, (e) => {
+          if (e.features && e.features[0]) {
+            onFeatureClick?.(e.features[0]);
+          }
+        });
+      }
+
+      setLayers(prev => [...prev, {
+        id: layerId,
+        name: 'Travessias',
+        type: 'travessias',
+        visible: true,
+        color: '#3b82f6',
+        count: data.length,
+      }]);
+
+    } catch (error) {
+      console.error('Erro ao carregar travessias:', error);
     }
   };
 
