@@ -2,7 +2,9 @@ import { useState, useMemo } from "react";
 import { useFilters } from "@/context/FiltersContext";
 import { useQueimadas } from "@/hooks/useQueimadas";
 import { useAlarmZones } from "@/hooks/useAlarmZones";
-import { Flame, Activity, Clock, AlertTriangle, Eye, Shield } from "lucide-react";
+import { Flame, Activity, Clock, AlertTriangle, Eye, Shield, Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import ModuleLayout from "@/components/ModuleLayout";
 import FiltersBar from "@/components/FiltersBar";
 import AlarmZoneConfig from "@/components/AlarmZoneConfig";
@@ -96,13 +98,18 @@ const Queimadas = () => {
   const columns = [
     { 
       key: 'dataDeteccao', 
-      label: 'Data Detecção',
-      render: (value: string) => new Date(value).toLocaleDateString('pt-BR', { 
-        day: '2-digit', 
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      label: 'Data/Hora',
+      render: (value: string) => {
+        const date = new Date(value);
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-xs">{date.toLocaleDateString('pt-BR')}</span>
+            <span className="text-[10px] text-muted-foreground">
+              {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        );
+      }
     },
     { 
       key: 'zona', 
@@ -246,6 +253,54 @@ const Queimadas = () => {
                 className="flex h-8 w-full rounded-md border border-border bg-input px-2 py-1 text-xs"
               />
             </div>
+            
+            <div>
+              <label className="text-xs font-medium mb-1 block">Ir Para Linha</label>
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  placeholder="Ex: LT-407"
+                  className="flex h-8 w-full rounded-md border border-border bg-input px-2 py-1 text-xs"
+                  id="searchLine"
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 px-2"
+                  onClick={async () => {
+                    const input = document.getElementById('searchLine') as HTMLInputElement;
+                    const searchTerm = input?.value?.trim();
+                    if (!searchTerm) return;
+                    
+                    // Buscar infraestrutura correspondente
+                    const { data, error } = await supabase
+                      .from('infrastructure')
+                      .select('lat, lon')
+                      .or(`linha_codigo.ilike.%${searchTerm}%,linha_nome.ilike.%${searchTerm}%`)
+                      .limit(1)
+                      .single();
+                    
+                    if (data) {
+                      setFocusCoord([data.lon, data.lat]);
+                      setTimeout(() => setActiveTab('mapa'), 50);
+                      toast({
+                        title: 'Linha encontrada',
+                        description: `Focando em "${searchTerm}"`,
+                      });
+                    } else {
+                      toast({
+                        title: 'Linha não encontrada',
+                        description: `Nenhuma linha encontrada com "${searchTerm}"`,
+                        variant: 'destructive'
+                      });
+                    }
+                  }}
+                  title="Buscar e focar no mapa"
+                >
+                  <Search className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
           </div>
         </FiltersBar>
         
@@ -292,8 +347,10 @@ const Queimadas = () => {
               columns={columns}
               onRowClick={(queimada) => {
                 setSelectedQueimada(queimada);
+                // Focar no mapa ANTES de trocar aba
                 setFocusCoord([queimada.coords.lon, queimada.coords.lat]);
-                setActiveTab('mapa');
+                // Esperar um tick para garantir sincronização
+                setTimeout(() => setActiveTab('mapa'), 50);
               }}
               exportable
             />

@@ -33,15 +33,15 @@ export const useQueimadas = (filters: QueimadasFilters) => {
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
       const response = await fetch(`${baseUrl}?${params.toString()}`, {
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         signal: AbortSignal.timeout(30000), // Timeout de 30s
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Erro da API:', errorText);
-        throw new Error(`Erro ao buscar queimadas: ${response.status}`);
+        const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+        console.error('Erro da API:', errorData);
+        throw new Error(errorData.message || `HTTP ${response.status}: Falha ao buscar queimadas`);
       }
       
       const data = await response.json();
@@ -49,5 +49,7 @@ export const useQueimadas = (filters: QueimadasFilters) => {
     },
     refetchInterval: filters.mode === 'live' ? 30000 : false, // Atualiza a cada 30s em modo live
     staleTime: filters.mode === 'live' ? 30000 : 60000,
+    retry: 2, // Retry até 2 vezes em caso de falha
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Backoff exponencial
   });
 };
