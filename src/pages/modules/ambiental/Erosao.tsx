@@ -5,7 +5,7 @@ import { Mountain } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import FiltersBar from "@/components/FiltersBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import MapViewGeneric from "@/components/MapViewGeneric";
+import { MapboxUnified } from "@/components/MapboxUnified";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import DetailDrawer from "@/components/DetailDrawer";
 import CardKPI from "@/components/CardKPI";
@@ -163,12 +163,18 @@ const Erosao = () => {
           </TabsContent>
           
           <TabsContent value="mapa" className="mt-4">
-            <MapViewGeneric
-              items={filteredData}
-              markerIcon={Mountain}
-              colorBy="gravidadeErosao"
-              onMarkerClick={(erosao) => setSelectedErosao(erosao)}
-            />
+            <div className="tech-card p-0 overflow-hidden">
+              {/* @ts-ignore */}
+              <MapboxUnified
+                filterRegiao={filters.regiao}
+                filterEmpresa={filters.empresa}
+                filterLinha={filters.linha}
+                showErosao={true}
+                showInfrastructure={true}
+                initialCenter={[-46.63, -23.55]}
+                initialZoom={filters.linha ? 13 : 7}
+              />
+            </div>
           </TabsContent>
         </Tabs>
         

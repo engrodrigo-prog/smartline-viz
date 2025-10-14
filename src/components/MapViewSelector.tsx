@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 export interface MapLayer {
   id: string;
   name: string;
-  type: 'infrastructure' | 'fires' | 'vegetation' | 'events' | 'zones' | 'estruturas' | 'travessias';
+  type: 'infrastructure' | 'fires' | 'vegetation' | 'events' | 'zones' | 'estruturas' | 'travessias' | 'erosao' | 'alagadas' | 'emendas';
   visible: boolean;
   color: string;
   source?: string; // Nome do arquivo KML/KMZ de origem
@@ -34,6 +34,9 @@ const MapViewSelector = ({ layers, onLayerToggle, onLayerVisibilityChange }: Map
     zones: layers.filter(l => l.type === 'zones'),
     estruturas: layers.filter(l => l.type === 'estruturas'),
     travessias: layers.filter(l => l.type === 'travessias'),
+    erosao: layers.filter(l => l.type === 'erosao'),
+    alagadas: layers.filter(l => l.type === 'alagadas'),
+    emendas: layers.filter(l => l.type === 'emendas'),
   };
 
   const typeLabels = {
@@ -44,6 +47,9 @@ const MapViewSelector = ({ layers, onLayerToggle, onLayerVisibilityChange }: Map
     zones: '🎯 Zonas de Alarme',
     estruturas: '🏗️ Torres',
     travessias: '🌉 Travessias',
+    erosao: '⛰️ Erosão',
+    alagadas: '💧 Áreas Alagadas',
+    emendas: '⚡ Emendas',
   };
 
   const visibleCount = layers.filter(l => l.visible).length;

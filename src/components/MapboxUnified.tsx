@@ -17,6 +17,9 @@ interface MapboxUnifiedProps {
   showVegetacao?: boolean;
   showEstruturas?: boolean;
   showTravessias?: boolean;
+  showErosao?: boolean;
+  showAreasAlagadas?: boolean;
+  showEmendas?: boolean;
   initialCenter?: [number, number];
   initialZoom?: number;
   zoneConfig?: {
@@ -39,12 +42,15 @@ export const MapboxUnified = ({
   showVegetacao = false,
   showEstruturas = false,
   showTravessias = false,
+  showErosao = false,
+  showAreasAlagadas = false,
+  showEmendas = false,
   initialCenter = [-46.63, -23.55],
   initialZoom = 7,
-  zoneConfig,
+  zoneConfig = { critica: 500, acomp: 1500, obs: 3000 },
   mode = 'live',
   confiancaMin = 50,
-  sateliteFilter = ''
+  sateliteFilter = 'ALL'
 }: MapboxUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -122,6 +128,15 @@ export const MapboxUnified = ({
         }
         if (showTravessias) {
           await loadTravessias();
+        }
+        if (showErosao) {
+          await loadErosao();
+        }
+        if (showAreasAlagadas) {
+          await loadAreasAlagadas();
+        }
+        if (showEmendas) {
+          await loadEmendas();
         }
       });
 
@@ -230,6 +245,9 @@ export const MapboxUnified = ({
       if (showVegetacao) await loadVegetacao();
       if (showEstruturas) await loadEstruturas();
       if (showTravessias) await loadTravessias();
+      if (showErosao) await loadErosao();
+      if (showAreasAlagadas) await loadAreasAlagadas();
+      if (showEmendas) await loadEmendas();
     });
   };
 
@@ -872,6 +890,254 @@ export const MapboxUnified = ({
 
     } catch (error) {
       console.error('Erro ao carregar travessias:', error);
+    }
+  };
+
+  const loadErosao = async () => {
+    if (!map.current || !showErosao) return;
+    console.log('⛰️ Carregando erosões...');
+
+    try {
+      let query = supabase
+        .from('eventos_geo')
+        .select('*')
+        .eq('tipo_evento', 'Erosão');
+
+      if (filterRegiao) query = query.eq('regiao', filterRegiao);
+      if (filterEmpresa) query = query.eq('empresa', filterEmpresa);
+      if (filterLinha) query = query.ilike('nome', `%${filterLinha}%`);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) return;
+
+      const features = data.map((item: any) => ({
+        type: 'Feature',
+        properties: {
+          id: item.id,
+          nome: item.nome,
+          gravidade: item.metadata?.gravidade || 'Baixa',
+        },
+        geometry: item.geometry,
+      }));
+
+      const geojson: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: features as any[],
+      };
+
+      const sourceId = 'erosao-source';
+      const layerId = 'erosao-layer';
+
+      if (map.current.getSource(sourceId)) {
+        (map.current.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+      } else {
+        map.current.addSource(sourceId, {
+          type: 'geojson',
+          data: geojson,
+        });
+
+        map.current.addLayer({
+          id: layerId,
+          type: 'circle',
+          source: sourceId,
+          paint: {
+            'circle-radius': 8,
+            'circle-color': [
+              'match',
+              ['get', 'gravidade'],
+              'Crítica', '#ef4444',
+              'Alta', '#f97316',
+              'Média', '#eab308',
+              '#22c55e'
+            ],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff',
+          },
+        });
+
+        map.current.on('click', layerId, (e) => {
+          if (e.features && e.features[0]) {
+            onFeatureClick?.(e.features[0]);
+          }
+        });
+      }
+
+      setLayers(prev => [...prev, {
+        id: layerId,
+        name: 'Erosão',
+        type: 'erosao',
+        visible: true,
+        color: '#f97316',
+        count: data.length,
+      }]);
+    } catch (error) {
+      console.error('Erro ao carregar erosões:', error);
+    }
+  };
+
+  const loadAreasAlagadas = async () => {
+    if (!map.current || !showAreasAlagadas) return;
+    console.log('💧 Carregando áreas alagadas...');
+
+    try {
+      let query = supabase
+        .from('eventos_geo')
+        .select('*')
+        .eq('tipo_evento', 'Área Alagada');
+
+      if (filterRegiao) query = query.eq('regiao', filterRegiao);
+      if (filterEmpresa) query = query.eq('empresa', filterEmpresa);
+      if (filterLinha) query = query.ilike('nome', `%${filterLinha}%`);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) return;
+
+      const features = data.map((item: any) => ({
+        type: 'Feature',
+        properties: {
+          id: item.id,
+          nome: item.nome,
+          nivelRisco: item.metadata?.nivelRisco || 'Baixo',
+        },
+        geometry: item.geometry,
+      }));
+
+      const geojson: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: features as any[],
+      };
+
+      const sourceId = 'alagadas-source';
+      const layerId = 'alagadas-layer';
+
+      if (map.current.getSource(sourceId)) {
+        (map.current.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+      } else {
+        map.current.addSource(sourceId, {
+          type: 'geojson',
+          data: geojson,
+        });
+
+        map.current.addLayer({
+          id: layerId,
+          type: 'circle',
+          source: sourceId,
+          paint: {
+            'circle-radius': 10,
+            'circle-color': [
+              'match',
+              ['get', 'nivelRisco'],
+              'Alto', '#ef4444',
+              'Médio', '#f59e0b',
+              '#3b82f6'
+            ],
+            'circle-opacity': 0.6,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff',
+          },
+        });
+
+        map.current.on('click', layerId, (e) => {
+          if (e.features && e.features[0]) {
+            onFeatureClick?.(e.features[0]);
+          }
+        });
+      }
+
+      setLayers(prev => [...prev, {
+        id: layerId,
+        name: 'Áreas Alagadas',
+        type: 'alagadas',
+        visible: true,
+        color: '#3b82f6',
+        count: data.length,
+      }]);
+    } catch (error) {
+      console.error('Erro ao carregar áreas alagadas:', error);
+    }
+  };
+
+  const loadEmendas = async () => {
+    if (!map.current || !showEmendas) return;
+    console.log('⚡ Carregando emendas...');
+
+    try {
+      let query = supabase
+        .from('eventos_geo')
+        .select('*')
+        .eq('tipo_evento', 'Emenda');
+
+      if (filterRegiao) query = query.eq('regiao', filterRegiao);
+      if (filterEmpresa) query = query.eq('empresa', filterEmpresa);
+      if (filterLinha) query = query.ilike('nome', `%${filterLinha}%`);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) return;
+
+      const features = data.map((item: any) => ({
+        type: 'Feature',
+        properties: {
+          id: item.id,
+          nome: item.nome,
+          statusTermico: item.metadata?.statusTermico || 'Normal',
+        },
+        geometry: item.geometry,
+      }));
+
+      const geojson: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: features as any[],
+      };
+
+      const sourceId = 'emendas-source';
+      const layerId = 'emendas-layer';
+
+      if (map.current.getSource(sourceId)) {
+        (map.current.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+      } else {
+        map.current.addSource(sourceId, {
+          type: 'geojson',
+          data: geojson,
+        });
+
+        map.current.addLayer({
+          id: layerId,
+          type: 'circle',
+          source: sourceId,
+          paint: {
+            'circle-radius': 6,
+            'circle-color': [
+              'match',
+              ['get', 'statusTermico'],
+              'Crítico', '#ef4444',
+              'Atenção', '#f59e0b',
+              '#22c55e'
+            ],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff',
+          },
+        });
+
+        map.current.on('click', layerId, (e) => {
+          if (e.features && e.features[0]) {
+            onFeatureClick?.(e.features[0]);
+          }
+        });
+      }
+
+      setLayers(prev => [...prev, {
+        id: layerId,
+        name: 'Emendas',
+        type: 'emendas',
+        visible: true,
+        color: '#eab308',
+        count: data.length,
+      }]);
+    } catch (error) {
+      console.error('Erro ao carregar emendas:', error);
     }
   };
 
