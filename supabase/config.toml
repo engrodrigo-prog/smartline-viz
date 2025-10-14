@@ -1,1 +1,7 @@
 project_id = "ndmelhwkpthvgjiqarrs"
+
+[functions.queimadas-live]
+verify_jwt = false
+
+[functions.queimadas-archive]
+verify_jwt = false
