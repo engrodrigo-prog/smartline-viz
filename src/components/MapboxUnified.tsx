@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Layers, Map as MapIcon, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import MapViewSelector, { MapLayer } from './MapViewSelector';
 import { BasemapSelector } from './BasemapSelector';
@@ -165,13 +165,26 @@ export const MapboxUnified = ({
   useEffect(() => {
     if (!map.current || !focusCoord) return;
     
-    map.current.flyTo({
-      center: focusCoord,
-      zoom: 14,
-      pitch: is3D ? 50 : 0,
-      duration: 2000,
-      essential: true
-    });
+    // Garantir que o mapa está carregado antes de fazer flyTo
+    if (!map.current.loaded()) {
+      map.current.once('load', () => {
+        map.current!.flyTo({
+          center: focusCoord,
+          zoom: 15,
+          pitch: is3D ? 50 : 0,
+          duration: 2000,
+          essential: true
+        });
+      });
+    } else {
+      map.current.flyTo({
+        center: focusCoord,
+        zoom: 15,
+        pitch: is3D ? 50 : 0,
+        duration: 2000,
+        essential: true
+      });
+    }
   }, [focusCoord, is3D]);
 
   const addStateBorders = () => {
@@ -1243,41 +1256,72 @@ export const MapboxUnified = ({
       
       <BasemapSelector value={mapStyle} onChange={changeMapStyle} />
       
-      <Button
-        onClick={toggleStateBorders}
-        size="sm"
-        variant="secondary"
-        className="absolute top-20 left-4 z-10 shadow-lg"
-      >
-        {showStateBorders ? '🗺️ Ocultar Estados' : '📍 Mostrar Estados'}
-      </Button>
-      
-      <Button
-        onClick={toggle3D}
-        size="sm"
-        variant="secondary"
-        className="absolute top-32 left-4 z-10 shadow-lg"
-      >
-        {is3D ? '📐 Modo 2D' : '🏔️ Modo 3D'}
-      </Button>
-      
-      <Button
-        onClick={() => {
-          if (!map.current) return;
-          map.current.flyTo({
-            center: initialCenter,
-            zoom: initialZoom,
-            pitch: is3D ? 50 : 0,
-            bearing: -17.6,
-            duration: 1500
-          });
-        }}
-        size="sm"
-        variant="secondary"
-        className="absolute top-44 left-4 z-10 shadow-lg"
-      >
-        🎯 Resetar Vista
-      </Button>
+      {/* Controles de visualização melhorados */}
+      <div className="absolute top-20 right-4 flex flex-col gap-2 z-10">
+        
+        {/* Botão 2D/3D com ícone visual */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={toggle3D}
+          className="shadow-lg min-w-[90px]"
+          title={is3D ? "Alternar para 2D" : "Alternar para 3D"}
+        >
+          {is3D ? (
+            <>
+              <MapIcon className="w-4 h-4 mr-1" />
+              2D
+            </>
+          ) : (
+            <>
+              <Layers className="w-4 h-4 mr-1" />
+              3D
+            </>
+          )}
+        </Button>
+
+        {/* Toggle Estados com melhor visual */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={toggleStateBorders}
+          className="shadow-lg min-w-[90px]"
+          title={showStateBorders ? "Ocultar Estados" : "Mostrar Estados"}
+        >
+          {showStateBorders ? (
+            <>
+              <EyeOff className="w-4 h-4 mr-1" />
+              Estados
+            </>
+          ) : (
+            <>
+              <Eye className="w-4 h-4 mr-1" />
+              Estados
+            </>
+          )}
+        </Button>
+
+        {/* Resetar Vista com ícone */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            if (!map.current) return;
+            map.current.flyTo({
+              center: initialCenter,
+              zoom: initialZoom,
+              pitch: is3D ? 50 : 0,
+              bearing: -17.6,
+              duration: 2000
+            });
+          }}
+          className="shadow-lg min-w-[90px]"
+          title="Resetar Vista"
+        >
+          <RefreshCw className="w-4 h-4 mr-1" />
+          Reset
+        </Button>
+      </div>
       
       <div className="absolute top-4 right-4 z-10">
         <MapViewSelector

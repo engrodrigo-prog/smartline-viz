@@ -10,33 +10,39 @@ export const BasemapSelector = ({ value, onChange }: BasemapSelectorProps) => {
   const styles = [
     { 
       id: 'satellite-streets-v12', 
-      name: 'Satélite + Rodovias + Cidades', 
-      icon: '🛰️',
+      name: 'Satélite + Rodovias', 
+      icon: '🛰️🛣️',
       description: 'Completo' 
     },
     { 
       id: 'satellite-v9', 
       name: 'Satélite Puro', 
-      icon: '🌍',
-      description: 'Sem rodovias nem nomes' 
+      icon: '🛰️',
+      description: 'Sem rodovias' 
     },
     { 
       id: 'streets-v12', 
-      name: 'Mapa de Ruas', 
+      name: 'Ruas', 
       icon: '🗺️',
-      description: 'Apenas vetorial com nomes' 
+      description: 'Vetorial' 
     },
     { 
       id: 'outdoors-v12', 
       name: 'Topográfico', 
-      icon: '🏔️',
-      description: 'Trilhas + relevo + nomes' 
+      icon: '⛰️',
+      description: 'Relevo' 
     },
     { 
       id: 'dark-v11', 
-      name: 'Dark Mode', 
+      name: 'Escuro', 
       icon: '🌙',
-      description: 'Visual noturno' 
+      description: 'Modo noturno' 
+    },
+    { 
+      id: 'light-v11', 
+      name: 'Claro', 
+      icon: '☀️',
+      description: 'Modo diurno' 
     }
   ];
   
