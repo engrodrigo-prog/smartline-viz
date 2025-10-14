@@ -25,6 +25,8 @@ const Queimadas = () => {
   const [confiancaMin, setConfiancaMin] = useState<number>(50);
   const [sateliteFilter, setSateliteFilter] = useState<string>('');
   const [linhaRamalFilter, setLinhaRamalFilter] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<string>('lista');
+  const [focusCoord, setFocusCoord] = useState<[number, number] | null>(null);
   
   const [mode, setMode] = useState<'live' | 'archive'>('live');
   const [dateRange, setDateRange] = useState({
@@ -278,7 +280,7 @@ const Queimadas = () => {
           />
         </div>
         
-        <Tabs defaultValue="lista">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="lista">Lista</TabsTrigger>
             <TabsTrigger value="mapa">Mapa</TabsTrigger>
@@ -288,7 +290,11 @@ const Queimadas = () => {
             <DataTableAdvanced
               data={filteredData}
               columns={columns}
-              onRowClick={(queimada) => setSelectedQueimada(queimada)}
+              onRowClick={(queimada) => {
+                setSelectedQueimada(queimada);
+                setFocusCoord([queimada.coords.lon, queimada.coords.lat]);
+                setActiveTab('mapa');
+              }}
               exportable
             />
           </TabsContent>
@@ -316,6 +322,7 @@ const Queimadas = () => {
                 mode={mode}
                 confiancaMin={confiancaMin}
                 sateliteFilter={sateliteFilter}
+                focusCoord={focusCoord}
                 zoneConfig={{
                   critica: config.zonaCritica,
                   acomp: config.zonaAcomp,

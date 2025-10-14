@@ -30,6 +30,7 @@ interface MapboxUnifiedProps {
   mode?: 'live' | 'archive';
   confiancaMin?: number;
   sateliteFilter?: string;
+  focusCoord?: [number, number] | null;
 }
 
 export const MapboxUnified = ({ 
@@ -50,7 +51,8 @@ export const MapboxUnified = ({
   zoneConfig = { critica: 500, acomp: 1500, obs: 3000 },
   mode = 'live',
   confiancaMin = 50,
-  sateliteFilter = 'ALL'
+  sateliteFilter = 'ALL',
+  focusCoord = null
 }: MapboxUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -59,6 +61,7 @@ export const MapboxUnified = ({
   const [layers, setLayers] = useState<MapLayer[]>([]);
   const [mapStyle, setMapStyle] = useState('satellite-streets-v12');
   const [showStateBorders, setShowStateBorders] = useState(true);
+  const [is3D, setIs3D] = useState(true);
 
   useEffect(() => {
     const token = import.meta.env.VITE_MAPBOX_TOKEN || import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
@@ -157,6 +160,19 @@ export const MapboxUnified = ({
       map.current = null;
     };
   }, []);
+
+  // Efeito para focar em coordenada quando clicado na tabela
+  useEffect(() => {
+    if (!map.current || !focusCoord) return;
+    
+    map.current.flyTo({
+      center: focusCoord,
+      zoom: 14,
+      pitch: is3D ? 50 : 0,
+      duration: 2000,
+      essential: true
+    });
+  }, [focusCoord, is3D]);
 
   const addStateBorders = () => {
     if (!map.current) return;
@@ -260,6 +276,32 @@ export const MapboxUnified = ({
     if (map.current.getLayer('state-borders')) {
       map.current.setLayoutProperty('state-borders', 'visibility', newVisibility);
       map.current.setLayoutProperty('state-labels', 'visibility', newVisibility);
+    }
+  };
+
+  const toggle3D = () => {
+    if (!map.current) return;
+    
+    const new3D = !is3D;
+    setIs3D(new3D);
+    
+    if (new3D) {
+      // Ativar 3D
+      map.current.setTerrain({ 
+        source: 'mapbox-dem', 
+        exaggeration: 2
+      });
+      map.current.easeTo({
+        pitch: 50,
+        duration: 1000
+      });
+    } else {
+      // Desativar 3D
+      map.current.setTerrain(null);
+      map.current.easeTo({
+        pitch: 0,
+        duration: 1000
+      });
     }
   };
 
@@ -1211,19 +1253,28 @@ export const MapboxUnified = ({
       </Button>
       
       <Button
+        onClick={toggle3D}
+        size="sm"
+        variant="secondary"
+        className="absolute top-32 left-4 z-10 shadow-lg"
+      >
+        {is3D ? '📐 Modo 2D' : '🏔️ Modo 3D'}
+      </Button>
+      
+      <Button
         onClick={() => {
           if (!map.current) return;
           map.current.flyTo({
             center: initialCenter,
             zoom: initialZoom,
-            pitch: 50,
+            pitch: is3D ? 50 : 0,
             bearing: -17.6,
             duration: 1500
           });
         }}
         size="sm"
         variant="secondary"
-        className="absolute top-36 left-4 z-10 shadow-lg"
+        className="absolute top-44 left-4 z-10 shadow-lg"
       >
         🎯 Resetar Vista
       </Button>
