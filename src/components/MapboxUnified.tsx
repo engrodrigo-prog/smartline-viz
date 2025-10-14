@@ -72,6 +72,8 @@ export const MapboxUnified = ({
         style: 'mapbox://styles/mapbox/satellite-streets-v12',
         center: initialCenter,
         zoom: initialZoom,
+        pitch: 50,
+        bearing: -17.6,
       });
 
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -101,9 +103,6 @@ export const MapboxUnified = ({
           }
         });
 
-        // Ajustar perspectiva 3D
-        map.current!.setPitch(50);
-        map.current!.setBearing(-17.6);
 
         // Adicionar limites estaduais
         addStateBorders();
@@ -403,56 +402,57 @@ export const MapboxUnified = ({
     }
   };
 
-  const fetchNASAFiresDirectly = async () => {
-    const MAP_KEY = import.meta.env.VITE_NASA_FIRMS_KEY;
-    if (!MAP_KEY) {
-      console.warn('NASA FIRMS API Key não configurada');
-      return { type: 'FeatureCollection', features: [] };
-    }
-
+  const fetchNASAFiresFromKML = async () => {
     try {
-      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${MAP_KEY}/VIIRS_SNPP_NRT/country/BRA/1`;
-      const response = await fetch(url);
+      const kmlUrl = mode === 'live' 
+        ? 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/kml/MODIS_C6_1_South_America_24h.kml'
+        : 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/kml/MODIS_C6_1_South_America_48h.kml';
       
-      if (!response.ok) {
-        throw new Error(`Erro ao buscar dados da NASA: ${response.status}`);
-      }
-
-      const csvText = await response.text();
-      const lines = csvText.split('\n').slice(1);
+      const response = await fetch(kmlUrl);
+      const kmlText = await response.text();
       
-      const features = lines
-        .filter(line => line.trim())
-        .map((line, index) => {
-          const parts = line.split(',');
-          const [latitude, longitude, brightness, scan, track, acq_date, acq_time, satellite, confidence, version, bright_t31, frp, daynight] = parts;
-          
-          return {
-            type: 'Feature' as const,
-            properties: {
-              id: `nasa-${index}`,
-              brilho: parseFloat(brightness) || 0,
-              confianca: parseFloat(confidence) || 0,
-              satelite: satellite?.trim() || 'VIIRS',
-              data_aquisicao: `${acq_date} ${acq_time}`,
-              fonte: 'NASA FIRMS',
-              frp: parseFloat(frp) || 0,
-              daynight: daynight?.trim() || 'D'
-            },
-            geometry: {
-              type: 'Point' as const,
-              coordinates: [parseFloat(longitude), parseFloat(latitude)]
-            }
-          };
-        })
-        .filter(f => !isNaN(f.geometry.coordinates[0]) && !isNaN(f.geometry.coordinates[1]));
+      // Parsear XML
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(kmlText, 'text/xml');
+      
+      // Extrair todos os <Placemark>
+      const placemarks = xmlDoc.getElementsByTagName('Placemark');
+      
+      const features = Array.from(placemarks).map(placemark => {
+        // Extrair coordenadas
+        const coordsText = placemark.getElementsByTagName('coordinates')[0]?.textContent?.trim();
+        const [lon, lat] = coordsText?.split(',').map(parseFloat) || [0, 0];
+        
+        // Extrair descrição (contém confiança, satélite, data)
+        const descText = placemark.getElementsByTagName('description')[0]?.textContent || '';
+        
+        // Regex para extrair dados
+        const confidenceMatch = descText.match(/Confidence.*?(\d+)/);
+        const satelliteMatch = descText.match(/Satellite.*?(\w+)/);
+        const dateMatch = descText.match(/Date.*?([\d-]+)/);
+        const timeMatch = descText.match(/Time.*?([\d:]+)/);
+        
+        return {
+          type: 'Feature' as const,
+          properties: {
+            confianca: parseInt(confidenceMatch?.[1] || '0'),
+            satelite: satelliteMatch?.[1] === 'T' ? 'Terra' : 'Aqua',
+            data_aquisicao: `${dateMatch?.[1]} ${timeMatch?.[1]}`,
+            fonte: 'NASA FIRMS KML'
+          },
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [lon, lat]
+          }
+        };
+      });
       
       return {
         type: 'FeatureCollection' as const,
         features
       };
     } catch (error) {
-      console.error('Erro ao buscar dados NASA FIRMS:', error);
+      console.error('Erro ao buscar KML da NASA:', error);
       return { type: 'FeatureCollection' as const, features: [] };
     }
   };
@@ -475,32 +475,15 @@ export const MapboxUnified = ({
     if (!map.current) return;
 
     try {
-      let geojson: any;
+      // Buscar KML direto da NASA (modo Live ou Archive)
+      let geojson: any = await fetchNASAFiresFromKML();
       
-      // Modo Live: buscar direto da NASA
-      if (mode === 'live') {
-        geojson = await fetchNASAFiresDirectly();
-      } else {
-        // Modo Archive: buscar do banco via edge function
-        const params = new URLSearchParams({
-          concessao: filterRegiao || 'TODAS',
-          min_conf: confiancaMin.toString(),
-          sat: sateliteFilter || 'ALL',
-          max_km: ((zoneConfig?.obs || 10000) / 1000).toString(),
-        });
-
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/queimadas-archive?${params}`,
-          {
-            headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            },
-          }
-        );
-
-        if (!response.ok) throw new Error('Erro ao buscar queimadas do arquivo');
-        geojson = await response.json();
-      }
+      // Aplicar filtros de confiança e satélite
+      geojson.features = geojson.features.filter((f: any) => {
+        const passaConfianca = f.properties.confianca >= (confiancaMin || 0);
+        const passaSatelite = !sateliteFilter || f.properties.satelite.includes(sateliteFilter);
+        return passaConfianca && passaSatelite;
+      });
 
       // Calcular distâncias e zonas
       geojson.features = geojson.features.map((f: any) => {
@@ -959,6 +942,24 @@ export const MapboxUnified = ({
         className="absolute top-20 left-4 z-10 shadow-lg"
       >
         {showStateBorders ? '🗺️ Ocultar Estados' : '📍 Mostrar Estados'}
+      </Button>
+      
+      <Button
+        onClick={() => {
+          if (!map.current) return;
+          map.current.flyTo({
+            center: initialCenter,
+            zoom: initialZoom,
+            pitch: 50,
+            bearing: -17.6,
+            duration: 1500
+          });
+        }}
+        size="sm"
+        variant="secondary"
+        className="absolute top-36 left-4 z-10 shadow-lg"
+      >
+        🎯 Resetar Vista
       </Button>
       
       <div className="absolute top-4 right-4 z-10">

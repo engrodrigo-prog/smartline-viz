@@ -8,11 +8,36 @@ interface BasemapSelectorProps {
 
 export const BasemapSelector = ({ value, onChange }: BasemapSelectorProps) => {
   const styles = [
-    { id: 'satellite-streets-v12', name: 'Satélite + Rodovias', icon: '🛰️' },
-    { id: 'satellite-v9', name: 'Satélite Puro', icon: '🌍' },
-    { id: 'streets-v12', name: 'Ruas', icon: '🗺️' },
-    { id: 'dark-v11', name: 'Dark', icon: '🌙' },
-    { id: 'outdoors-v12', name: 'Outdoor', icon: '🏔️' }
+    { 
+      id: 'satellite-streets-v12', 
+      name: 'Satélite + Rodovias + Cidades', 
+      icon: '🛰️',
+      description: 'Completo' 
+    },
+    { 
+      id: 'satellite-v9', 
+      name: 'Satélite Puro', 
+      icon: '🌍',
+      description: 'Sem rodovias nem nomes' 
+    },
+    { 
+      id: 'streets-v12', 
+      name: 'Mapa de Ruas', 
+      icon: '🗺️',
+      description: 'Apenas vetorial com nomes' 
+    },
+    { 
+      id: 'outdoors-v12', 
+      name: 'Topográfico', 
+      icon: '🏔️',
+      description: 'Trilhas + relevo + nomes' 
+    },
+    { 
+      id: 'dark-v11', 
+      name: 'Dark Mode', 
+      icon: '🌙',
+      description: 'Visual noturno' 
+    }
   ];
   
   return (
@@ -28,10 +53,13 @@ export const BasemapSelector = ({ value, onChange }: BasemapSelectorProps) => {
         <SelectContent>
           {styles.map(style => (
             <SelectItem key={style.id} value={style.id} className="text-xs">
-              <span className="flex items-center gap-2">
-                <span>{style.icon}</span>
-                <span>{style.name}</span>
-              </span>
+              <div className="flex flex-col">
+                <span className="flex items-center gap-2">
+                  <span>{style.icon}</span>
+                  <span className="font-medium">{style.name}</span>
+                </span>
+                <span className="text-[10px] text-muted-foreground">{style.description}</span>
+              </div>
             </SelectItem>
           ))}
         </SelectContent>
