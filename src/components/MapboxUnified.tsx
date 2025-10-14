@@ -9,8 +9,12 @@ interface MapboxUnifiedProps {
   onFeatureClick?: (feature: any) => void;
   filterRegiao?: string;
   filterEmpresa?: string;
+  filterLinha?: string;
   showQueimadas?: boolean;
   showInfrastructure?: boolean;
+  showVegetacao?: boolean;
+  initialCenter?: [number, number];
+  initialZoom?: number;
   zoneConfig?: {
     critica: number;
     acomp: number;
@@ -22,8 +26,12 @@ export const MapboxUnified = ({
   onFeatureClick,
   filterRegiao,
   filterEmpresa,
+  filterLinha,
   showQueimadas = false,
   showInfrastructure = true,
+  showVegetacao = false,
+  initialCenter = [-46.63, -23.55],
+  initialZoom = 7,
   zoneConfig
 }: MapboxUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -48,17 +56,22 @@ export const MapboxUnified = ({
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/satellite-streets-v12',
-        center: [-47.0, -15.8],
-        zoom: 5,
+        center: initialCenter,
+        zoom: initialZoom,
       });
 
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
       map.current.on('load', async () => {
         setIsLoading(false);
-        await loadInfrastructure();
+        if (showInfrastructure) {
+          await loadInfrastructure();
+        }
         if (showQueimadas) {
           await loadQueimadas();
+        }
+        if (showVegetacao) {
+          await loadVegetacao();
         }
       });
 
@@ -240,6 +253,91 @@ export const MapboxUnified = ({
   const loadQueimadas = async () => {
     // Implementar carregamento de queimadas se necessário
     // Similar à estrutura acima
+  };
+
+  const loadVegetacao = async () => {
+    if (!map.current) return;
+
+    try {
+      let query = supabase
+        .from('eventos_geo')
+        .select('*')
+        .eq('tipo_evento', 'Vegetação');
+
+      if (filterRegiao) {
+        query = query.eq('regiao', filterRegiao);
+      }
+      if (filterEmpresa) {
+        query = query.eq('empresa', filterEmpresa);
+      }
+      if (filterLinha) {
+        query = query.ilike('nome', `%${filterLinha}%`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      if (!data || data.length === 0) return;
+
+      // Criar GeoJSON para vegetação
+      const features = data.map((item: any) => ({
+        type: 'Feature',
+        properties: {
+          id: item.id,
+          nome: item.nome,
+          status: item.status,
+        },
+        geometry: item.geometry,
+      }));
+
+      const geojson: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: features as any[],
+      };
+
+      const sourceId = 'vegetacao-source';
+      const layerId = 'vegetacao-layer';
+
+      if (map.current.getSource(sourceId)) {
+        (map.current.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+      } else {
+        map.current.addSource(sourceId, {
+          type: 'geojson',
+          data: geojson,
+        });
+
+        map.current.addLayer({
+          id: layerId,
+          type: 'circle',
+          source: sourceId,
+          paint: {
+            'circle-radius': 6,
+            'circle-color': '#22c55e',
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff',
+          },
+        });
+
+        map.current.on('click', layerId, (e) => {
+          if (e.features && e.features[0]) {
+            onFeatureClick?.(e.features[0]);
+          }
+        });
+      }
+
+      // Add to layers state
+      setLayers(prev => [...prev, {
+        id: layerId,
+        name: 'Vegetação',
+        type: 'vegetation',
+        visible: true,
+        color: '#22c55e',
+        count: data.length,
+      }]);
+
+    } catch (error) {
+      console.error('Erro ao carregar vegetação:', error);
+    }
   };
 
   const handleLayerVisibilityChange = (layerId: string, visible: boolean) => {

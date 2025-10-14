@@ -77,13 +77,16 @@ export type Database = {
           codigo: string | null
           concessao: string | null
           created_at: string | null
+          empresa: string | null
           estado_conservacao: string | null
           geometry: unknown | null
           id: number
           id_linha: number | null
           regiao: string | null
           risco_corrosao: number | null
+          tensao_kv: string | null
           tipo: string | null
+          tipo_material: string | null
           updated_at: string | null
         }
         Insert: {
@@ -91,13 +94,16 @@ export type Database = {
           codigo?: string | null
           concessao?: string | null
           created_at?: string | null
+          empresa?: string | null
           estado_conservacao?: string | null
           geometry?: unknown | null
           id?: number
           id_linha?: number | null
           regiao?: string | null
           risco_corrosao?: number | null
+          tensao_kv?: string | null
           tipo?: string | null
+          tipo_material?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -105,13 +111,16 @@ export type Database = {
           codigo?: string | null
           concessao?: string | null
           created_at?: string | null
+          empresa?: string | null
           estado_conservacao?: string | null
           geometry?: unknown | null
           id?: number
           id_linha?: number | null
           regiao?: string | null
           risco_corrosao?: number | null
+          tensao_kv?: string | null
           tipo?: string | null
+          tipo_material?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -130,6 +139,7 @@ export type Database = {
           created_at: string | null
           data_ocorrencia: string | null
           descricao: string | null
+          empresa: string | null
           geometry: unknown
           id: string
           metadata: Json | null
@@ -144,6 +154,7 @@ export type Database = {
           created_at?: string | null
           data_ocorrencia?: string | null
           descricao?: string | null
+          empresa?: string | null
           geometry: unknown
           id?: string
           metadata?: Json | null
@@ -158,6 +169,7 @@ export type Database = {
           created_at?: string | null
           data_ocorrencia?: string | null
           descricao?: string | null
+          empresa?: string | null
           geometry?: unknown
           id?: string
           metadata?: Json | null
@@ -217,11 +229,14 @@ export type Database = {
           concessao: string | null
           created_at: string | null
           descricao: string | null
+          empresa: string | null
           geometry: unknown
           id: string
           metadata: Json | null
           nome: string
           regiao: string | null
+          tensao_kv: string | null
+          tipo_material: string | null
           updated_at: string | null
         }
         Insert: {
@@ -229,11 +244,14 @@ export type Database = {
           concessao?: string | null
           created_at?: string | null
           descricao?: string | null
+          empresa?: string | null
           geometry: unknown
           id?: string
           metadata?: Json | null
           nome: string
           regiao?: string | null
+          tensao_kv?: string | null
+          tipo_material?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -241,11 +259,14 @@ export type Database = {
           concessao?: string | null
           created_at?: string | null
           descricao?: string | null
+          empresa?: string | null
           geometry?: unknown
           id?: string
           metadata?: Json | null
           nome?: string
           regiao?: string | null
+          tensao_kv?: string | null
+          tipo_material?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -308,8 +329,12 @@ export type Database = {
           linha_prefixo: string
           lon: number | null
           nome_material: string | null
+          organization: string | null
           ramal: string | null
           regiao: string
+          tensao_kv: string | null
+          tipo_material: string | null
+          uploaded_by: string | null
           user_id: string | null
         }
         Insert: {
@@ -327,8 +352,12 @@ export type Database = {
           linha_prefixo: string
           lon?: number | null
           nome_material?: string | null
+          organization?: string | null
           ramal?: string | null
           regiao: string
+          tensao_kv?: string | null
+          tipo_material?: string | null
+          uploaded_by?: string | null
           user_id?: string | null
         }
         Update: {
@@ -346,8 +375,12 @@ export type Database = {
           linha_prefixo?: string
           lon?: number | null
           nome_material?: string | null
+          organization?: string | null
           ramal?: string | null
           regiao?: string
+          tensao_kv?: string | null
+          tipo_material?: string | null
+          uploaded_by?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -357,36 +390,42 @@ export type Database = {
           codigo: string | null
           concessao: string | null
           created_at: string | null
+          empresa: string | null
           geometry: unknown | null
           id: number
           nome: string | null
           regiao: string | null
           status: string | null
           tensao_kv: number | null
+          tipo_material: string | null
           updated_at: string | null
         }
         Insert: {
           codigo?: string | null
           concessao?: string | null
           created_at?: string | null
+          empresa?: string | null
           geometry?: unknown | null
           id?: number
           nome?: string | null
           regiao?: string | null
           status?: string | null
           tensao_kv?: number | null
+          tipo_material?: string | null
           updated_at?: string | null
         }
         Update: {
           codigo?: string | null
           concessao?: string | null
           created_at?: string | null
+          empresa?: string | null
           geometry?: unknown | null
           id?: number
           nome?: string | null
           regiao?: string | null
           status?: string | null
           tensao_kv?: number | null
+          tipo_material?: string | null
           updated_at?: string | null
         }
         Relationships: []

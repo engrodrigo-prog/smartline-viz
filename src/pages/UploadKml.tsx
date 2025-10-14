@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import AppLayout from "@/components/AppLayout";
+import { EMPRESAS, REGIOES_POR_EMPRESA, TIPOS_MATERIAL, NIVEIS_TENSAO } from "@/lib/empresasRegioes";
 
 const UploadKml = () => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ const UploadKml = () => {
   const [linhaPrefixo, setLinhaPrefixo] = useState("");
   const [linhaCodigo, setLinhaCodigo] = useState("");
   const [nomeMaterial, setNomeMaterial] = useState("");
+  const [tensaoKv, setTensaoKv] = useState("");
 
   // Manual entry form
   const [manualEmpresa, setManualEmpresa] = useState("");
@@ -85,6 +87,7 @@ const UploadKml = () => {
         linha_prefixo: linhaPrefixo,
         linha_codigo: linhaCodigo,
         nome_material: nomeMaterial,
+        tensao_kv: tensaoKv,
       };
 
       // Call edge function to parse KML
@@ -110,6 +113,7 @@ const UploadKml = () => {
       setLinhaPrefixo("");
       setLinhaCodigo("");
       setNomeMaterial("");
+      setTensaoKv("");
       
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -351,29 +355,28 @@ const UploadKml = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="empresa">Empresa *</Label>
-                  <Select value={empresa} onValueChange={setEmpresa} required>
+                  <Select value={empresa} onValueChange={(val) => { setEmpresa(val); setRegiao(""); }} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a empresa" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CPFL Piratininga">CPFL Piratininga</SelectItem>
-                      <SelectItem value="CPFL Santa Cruz">CPFL Santa Cruz</SelectItem>
+                      {EMPRESAS.map(emp => (
+                        <SelectItem key={emp} value={emp}>{emp}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
                   <Label htmlFor="regiao">Região *</Label>
-                  <Select value={regiao} onValueChange={setRegiao} required>
+                  <Select value={regiao} onValueChange={setRegiao} required disabled={!empresa}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a região" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DJTB-Baixada">DJTB-Baixada</SelectItem>
-                      <SelectItem value="DJTV-Itapetininga">DJTV-Itapetininga</SelectItem>
-                      <SelectItem value="DJTV-Piraju">DJTV-Piraju</SelectItem>
-                      <SelectItem value="DJTV-Sul">DJTV-Sul</SelectItem>
-                      <SelectItem value="DJTV-Sudeste">DJTV-Sudeste</SelectItem>
+                      {(REGIOES_POR_EMPRESA[empresa] || []).map(reg => (
+                        <SelectItem key={reg} value={reg}>{reg}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -403,14 +406,32 @@ const UploadKml = () => {
                   />
                 </div>
 
-                <div className="md:col-span-2">
-                  <Label htmlFor="material">Nome do Material</Label>
-                  <Input
-                    id="material"
-                    value={nomeMaterial}
-                    onChange={(e) => setNomeMaterial(e.target.value)}
-                    placeholder="Ex: Concreto, Metálica"
-                  />
+                <div>
+                  <Label htmlFor="material">Tipo de Material</Label>
+                  <Select value={nomeMaterial} onValueChange={setNomeMaterial}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o material" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIPOS_MATERIAL.map(tipo => (
+                        <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="tensao">Nível de Tensão</Label>
+                  <Select value={tensaoKv} onValueChange={setTensaoKv}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a tensão" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NIVEIS_TENSAO.map(tensao => (
+                        <SelectItem key={tensao} value={tensao}>{tensao}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="md:col-span-2">

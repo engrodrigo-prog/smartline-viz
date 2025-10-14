@@ -78,10 +78,7 @@ const Login = () => {
   };
 
   const handleVisitorAccess = () => {
-    toast({
-      title: "Acesso como visitante",
-      description: "Você terá acesso somente leitura ao sistema.",
-    });
+    localStorage.setItem('visitor_mode', 'true');
     navigate("/dashboard");
   };
 
