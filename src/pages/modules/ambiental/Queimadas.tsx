@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
 import { useFilters } from "@/context/FiltersContext";
 import { useQueimadas } from "@/hooks/useQueimadas";
-import { Flame, Activity, Clock } from "lucide-react";
+import { useAlarmZones } from "@/hooks/useAlarmZones";
+import { Flame, Activity, Clock, AlertTriangle, Eye, Shield } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import FiltersBar from "@/components/FiltersBar";
+import AlarmZoneConfig from "@/components/AlarmZoneConfig";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapboxQueimadas } from "@/components/MapboxQueimadas";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
@@ -12,13 +14,16 @@ import CardKPI from "@/components/CardKPI";
 import StatusBadge from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 
 const Queimadas = () => {
   const { filters } = useFilters();
+  const { getZone, getZoneLabel, getAcionamento, config } = useAlarmZones(filters.regiao || '');
   const [selectedQueimada, setSelectedQueimada] = useState<any>(null);
-  const [tipoFilter, setTipoFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [nivelRiscoFilter, setNivelRiscoFilter] = useState<string>('');
+  const [zonaFilter, setZonaFilter] = useState<string>('');
+  const [confiancaMin, setConfiancaMin] = useState<number>(50);
+  const [sateliteFilter, setSateliteFilter] = useState<string>('');
+  const [linhaRamalFilter, setLinhaRamalFilter] = useState<string>('');
   
   const [mode, setMode] = useState<'live' | 'archive'>('live');
   const [dateRange, setDateRange] = useState({
@@ -29,9 +34,9 @@ const Queimadas = () => {
   const { data: geojsonData, isLoading, error } = useQueimadas({
     mode,
     concessao: filters.regiao || 'TODAS',
-    minConf: 50,
-    satelite: 'ALL',
-    maxKm: 1,
+    minConf: confiancaMin,
+    satelite: sateliteFilter || 'ALL',
+    maxKm: config.zonaObs / 1000, // Converter para km
     startDate: dateRange.startDate,
     endDate: dateRange.endDate
   });
@@ -39,72 +44,89 @@ const Queimadas = () => {
   const filteredData = useMemo(() => {
     if (!geojsonData?.features) return [];
     
-    let features = geojsonData.features.map((f: any) => ({
-      id: f.properties.id,
-      nome: `Queimada ${f.properties.fonte}-${f.properties.id}`,
-      coords: { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] },
-      dataDeteccao: f.properties.data_aquisicao,
-      brilho: f.properties.brilho,
-      confianca: f.properties.confianca,
-      concessao: f.properties.concessao,
-      linha: f.properties.linha_nome || 'N/A',
-      ramal: f.properties.ramal || 'N/A',
-      distanciaLinha: f.properties.distancia_m || 0,
-      satelite: f.properties.satelite,
-      fonte: f.properties.fonte,
-      tipoQueimada: 'Natural',
-      statusIncendio: 'Ativo',
-      nivelRisco: f.properties.confianca >= 80 ? 'Crítico' : 
-                   f.properties.confianca >= 65 ? 'Alto' :
-                   f.properties.confianca >= 50 ? 'Médio' : 'Baixo',
-      extensaoQueimada: 0,
-      torres_ameacadas: [],
-      climaNoMomento: { temperatura: 0, umidade: 0, ventoKmh: 0 }
-    }));
+    let features = geojsonData.features.map((f: any) => {
+      const distancia = f.properties.distancia_m || 0;
+      const zona = getZone(distancia);
+      
+      return {
+        id: f.properties.id,
+        nome: `Queimada ${f.properties.fonte}-${f.properties.id}`,
+        coords: { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] },
+        dataDeteccao: f.properties.data_aquisicao,
+        brilho: f.properties.brilho,
+        confianca: f.properties.confianca,
+        concessao: f.properties.concessao,
+        linha: f.properties.linha_nome || 'N/A',
+        ramal: f.properties.ramal || 'N/A',
+        distanciaLinha: distancia,
+        satelite: f.properties.satelite,
+        fonte: f.properties.fonte,
+        zona,
+        zonaLabel: getZoneLabel(zona),
+        acionamento: getAcionamento(zona),
+        estruturaProxima: f.properties.estrutura_codigo || 'N/A',
+        nivelRisco: f.properties.confianca >= 80 ? 'Crítico' : 
+                     f.properties.confianca >= 65 ? 'Alto' :
+                     f.properties.confianca >= 50 ? 'Médio' : 'Baixo',
+      };
+    });
     
-    if (tipoFilter) features = features.filter((q: any) => q.tipoQueimada === tipoFilter);
-    if (statusFilter) features = features.filter((q: any) => q.statusIncendio === statusFilter);
-    if (nivelRiscoFilter) features = features.filter((q: any) => q.nivelRisco === nivelRiscoFilter);
+    // Aplicar filtros
+    if (zonaFilter) features = features.filter((q: any) => q.zona === zonaFilter);
+    if (linhaRamalFilter) {
+      features = features.filter((q: any) => 
+        q.linha.includes(linhaRamalFilter) || q.ramal.includes(linhaRamalFilter)
+      );
+    }
     
     return features;
-  }, [geojsonData, tipoFilter, statusFilter, nivelRiscoFilter]);
+  }, [geojsonData, zonaFilter, linhaRamalFilter, getZone, getZoneLabel, getAcionamento]);
   
   const kpis = useMemo(() => ({
     total: filteredData.length,
-    ativos: filteredData.filter(q => q.statusIncendio === 'Ativo').length,
-    areaTotal: filteredData.reduce((acc, q) => acc + q.extensaoQueimada, 0).toFixed(1),
-    torresAmeacadas: new Set(filteredData.flatMap(q => q.torres_ameacadas)).size,
-    controladosExtintos: filteredData.filter(q => q.statusIncendio === 'Controlado' || q.statusIncendio === 'Extinto').length,
+    zonaCritica: filteredData.filter(q => q.zona === 'critica').length,
+    zonaAcomp: filteredData.filter(q => q.zona === 'acompanhamento').length,
+    zonaObs: filteredData.filter(q => q.zona === 'observacao').length,
+    estruturasAmeacadas: new Set(filteredData.filter(q => q.zona === 'critica').map(q => q.estruturaProxima)).size,
   }), [filteredData]);
 
   const columns = [
-    { key: 'nome', label: 'Nome' },
     { 
       key: 'dataDeteccao', 
-      label: 'Data de Detecção',
-      render: (value: string) => new Date(value).toLocaleDateString('pt-BR')
+      label: 'Data Detecção',
+      render: (value: string) => new Date(value).toLocaleDateString('pt-BR', { 
+        day: '2-digit', 
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
     },
     { 
-      key: 'tipoQueimada', 
-      label: 'Tipo',
-      render: (value: string) => (
-        <Badge variant={value === 'Criminosa' ? 'destructive' : 'outline'}>
-          {value}
-        </Badge>
-      )
+      key: 'zona', 
+      label: 'Zona de Alarme',
+      render: (_: any, row: any) => {
+        const variant = row.zona === 'critica' ? 'destructive' : 
+                       row.zona === 'acompanhamento' ? 'default' : 
+                       'secondary';
+        return <Badge variant={variant}>{row.zonaLabel}</Badge>;
+      }
     },
     { 
-      key: 'extensaoQueimada', 
-      label: 'Extensão (ha)',
-      render: (value: number) => `${value.toFixed(1)} ha`
+      key: 'distanciaLinha', 
+      label: 'Distância',
+      render: (value: number) => `${value.toLocaleString('pt-BR')}m`
     },
     { 
-      key: 'statusIncendio', 
-      label: 'Status',
+      key: 'estruturaProxima', 
+      label: 'Estrutura Próxima',
+    },
+    { 
+      key: 'acionamento', 
+      label: 'Acionamento',
       render: (value: string) => (
         <Badge variant={
-          value === 'Ativo' ? 'destructive' : 
-          value === 'Controlado' ? 'secondary' : 
+          value === 'Ação Imediata' ? 'destructive' : 
+          value === 'Agendar Inspeção' ? 'default' : 
           'outline'
         }>
           {value}
@@ -112,14 +134,14 @@ const Queimadas = () => {
       )
     },
     { 
-      key: 'nivelRisco', 
-      label: 'Nível de Risco',
-      render: (value: string) => <StatusBadge level={value as any} />
+      key: 'confianca', 
+      label: 'Confiança',
+      render: (value: number) => `${value}%`
     },
     { 
-      key: 'distanciaLinha', 
-      label: 'Distância (m)',
-      render: (value: number) => `${value.toLocaleString('pt-BR')}m`
+      key: 'satelite', 
+      label: 'Satélite',
+      render: (value: string) => <Badge variant="outline">{value}</Badge>
     },
   ];
   
@@ -169,59 +191,93 @@ const Queimadas = () => {
         </div>
         
         <FiltersBar>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold">Filtros de Queimadas</h3>
+            <AlarmZoneConfig concessao={filters.regiao || ''} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Tipo de Queimada</label>
+              <label className="text-sm font-medium mb-2 block">Zona de Alarme</label>
               <select 
-                value={tipoFilter}
-                onChange={(e) => setTipoFilter(e.target.value)}
+                value={zonaFilter}
+                onChange={(e) => setZonaFilter(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="">Todos</option>
-                <option value="Controlada">Controlada</option>
-                <option value="Acidental">Acidental</option>
-                <option value="Criminosa">Criminosa</option>
-                <option value="Natural">Natural</option>
+                <option value="">Todas as Zonas</option>
+                <option value="critica">🔴 Crítica</option>
+                <option value="acompanhamento">🟡 Acompanhamento</option>
+                <option value="observacao">🟢 Observação</option>
+                <option value="fora">⚪ Fora de Zona</option>
               </select>
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-2 block">Status do Incêndio</label>
+              <label className="text-sm font-medium mb-2 block">Confiança Mínima: {confiancaMin}%</label>
+              <Slider
+                value={[confiancaMin]}
+                onValueChange={(values) => setConfiancaMin(values[0])}
+                min={0}
+                max={100}
+                step={5}
+                className="mt-2"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-2 block">Satélite</label>
               <select 
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                value={sateliteFilter}
+                onChange={(e) => setSateliteFilter(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">Todos</option>
-                <option value="Ativo">Ativo</option>
-                <option value="Controlado">Controlado</option>
-                <option value="Extinto">Extinto</option>
+                <option value="VIIRS">VIIRS</option>
+                <option value="MODIS">MODIS</option>
               </select>
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-2 block">Nível de Risco</label>
-              <select 
-                value={nivelRiscoFilter}
-                onChange={(e) => setNivelRiscoFilter(e.target.value)}
+              <label className="text-sm font-medium mb-2 block">Linha/Ramal</label>
+              <input
+                type="text"
+                value={linhaRamalFilter}
+                onChange={(e) => setLinhaRamalFilter(e.target.value)}
+                placeholder="Filtrar por linha..."
                 className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">Todos</option>
-                <option value="Baixo">Baixo</option>
-                <option value="Médio">Médio</option>
-                <option value="Alto">Alto</option>
-                <option value="Crítico">Crítico</option>
-              </select>
+              />
             </div>
           </div>
         </FiltersBar>
         
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <CardKPI title="Total de Queimadas" value={kpis.total} icon={Flame} />
-          <CardKPI title="Incêndios Ativos" value={kpis.ativos} icon={Flame} trend={{ value: 15, isPositive: false }} />
-          <CardKPI title="Área Queimada (ha)" value={kpis.areaTotal} icon={Flame} />
-          <CardKPI title="Torres Ameaçadas" value={kpis.torresAmeacadas} icon={Flame} />
-          <CardKPI title="Controlados/Extintos" value={kpis.controladosExtintos} icon={Flame} />
+          <CardKPI 
+            title="Total de Focos" 
+            value={kpis.total} 
+            icon={Flame} 
+          />
+          <CardKPI 
+            title="🔴 Zona Crítica" 
+            value={kpis.zonaCritica} 
+            icon={AlertTriangle}
+            className="border-destructive/20"
+          />
+          <CardKPI 
+            title="🟡 Acompanhamento" 
+            value={kpis.zonaAcomp} 
+            icon={Eye}
+            className="border-warning/20"
+          />
+          <CardKPI 
+            title="🟢 Observação" 
+            value={kpis.zonaObs} 
+            icon={Shield}
+            className="border-primary/20"
+          />
+          <CardKPI 
+            title="Estruturas Ameaçadas" 
+            value={kpis.estruturasAmeacadas} 
+            icon={Flame}
+          />
         </div>
         
         <Tabs defaultValue="lista">
