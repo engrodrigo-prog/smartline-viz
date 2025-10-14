@@ -150,86 +150,83 @@ const Queimadas = () => {
     <ModuleLayout title="Queimadas" icon={Flame}>
       <div className="p-6 space-y-6">
         
-        <div className="flex items-center gap-4 mb-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Button
-              variant={mode === 'live' ? 'default' : 'outline'}
-              onClick={() => setMode('live')}
-              className="gap-2"
-              size="sm"
-            >
-              <Activity className="w-4 h-4" />
-              Últimas 24h (Ao vivo)
-            </Button>
-            <Button
-              variant={mode === 'archive' ? 'default' : 'outline'}
-              onClick={() => setMode('archive')}
-              className="gap-2"
-              size="sm"
-            >
-              <Clock className="w-4 h-4" />
-              Histórico
-            </Button>
-          </div>
-
-          {mode === 'archive' && (
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={dateRange.startDate}
-                onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                className="border border-border rounded px-3 py-1.5 text-sm bg-background"
-              />
-              <span className="text-sm text-muted-foreground">até</span>
-              <input
-                type="date"
-                value={dateRange.endDate}
-                onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                className="border border-border rounded px-3 py-1.5 text-sm bg-background"
-              />
-            </div>
-          )}
-        </div>
-        
         <FiltersBar>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold">Filtros de Queimadas</h3>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant={mode === 'live' ? 'default' : 'outline'}
+                onClick={() => setMode('live')}
+                size="sm"
+                className="h-8"
+              >
+                <Activity className="w-3 h-3 mr-1" />
+                24h
+              </Button>
+              <Button
+                variant={mode === 'archive' ? 'default' : 'outline'}
+                onClick={() => setMode('archive')}
+                size="sm"
+                className="h-8"
+              >
+                <Clock className="w-3 h-3 mr-1" />
+                Histórico
+              </Button>
+              
+              {mode === 'archive' && (
+                <>
+                  <input
+                    type="date"
+                    value={dateRange.startDate}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="border border-border rounded px-2 py-1 text-xs bg-background h-8"
+                  />
+                  <span className="text-xs text-muted-foreground">→</span>
+                  <input
+                    type="date"
+                    value={dateRange.endDate}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="border border-border rounded px-2 py-1 text-xs bg-background h-8"
+                  />
+                </>
+              )}
+            </div>
+            
             <AlarmZoneConfig concessao={filters.regiao || ''} />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <label className="text-sm font-medium mb-2 block">Zona de Alarme</label>
+              <label className="text-xs font-medium mb-1 block">Zona</label>
               <select 
                 value={zonaFilter}
                 onChange={(e) => setZonaFilter(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-8 w-full rounded-md border border-border bg-input px-2 py-1 text-xs"
               >
-                <option value="">Todas as Zonas</option>
+                <option value="">Todas</option>
                 <option value="critica">🔴 Crítica</option>
-                <option value="acompanhamento">🟡 Acompanhamento</option>
-                <option value="observacao">🟢 Observação</option>
-                <option value="fora">⚪ Fora de Zona</option>
+                <option value="acompanhamento">🟡 Acomp.</option>
+                <option value="observacao">🟢 Obs.</option>
               </select>
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-2 block">Confiança Mínima: {confiancaMin}%</label>
+              <label className="text-xs font-medium mb-1 block">Confiança: {confiancaMin}%</label>
               <Slider
                 value={[confiancaMin]}
                 onValueChange={(values) => setConfiancaMin(values[0])}
                 min={0}
                 max={100}
                 step={5}
-                className="mt-2"
+                className="mt-1"
               />
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-2 block">Satélite</label>
+              <label className="text-xs font-medium mb-1 block">Satélite</label>
               <select 
                 value={sateliteFilter}
                 onChange={(e) => setSateliteFilter(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-8 w-full rounded-md border border-border bg-input px-2 py-1 text-xs"
               >
                 <option value="">Todos</option>
                 <option value="VIIRS">VIIRS</option>
@@ -238,13 +235,13 @@ const Queimadas = () => {
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-2 block">Linha/Ramal</label>
+              <label className="text-xs font-medium mb-1 block">Linha/Ramal</label>
               <input
                 type="text"
                 value={linhaRamalFilter}
                 onChange={(e) => setLinhaRamalFilter(e.target.value)}
-                placeholder="Filtrar por linha..."
-                className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Filtrar..."
+                className="flex h-8 w-full rounded-md border border-border bg-input px-2 py-1 text-xs"
               />
             </div>
           </div>
@@ -316,6 +313,9 @@ const Queimadas = () => {
                 filterRegiao={filters.regiao}
                 showQueimadas={true}
                 showInfrastructure={true}
+                mode={mode}
+                confiancaMin={confiancaMin}
+                sateliteFilter={sateliteFilter}
                 zoneConfig={{
                   critica: config.zonaCritica,
                   acomp: config.zonaAcomp,
