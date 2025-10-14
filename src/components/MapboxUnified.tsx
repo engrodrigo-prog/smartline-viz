@@ -4,6 +4,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import MapViewSelector, { MapLayer } from './MapViewSelector';
+import { BasemapSelector } from './BasemapSelector';
+import { Button } from './ui/button';
 
 interface MapboxUnifiedProps {
   onFeatureClick?: (feature: any) => void;
@@ -22,6 +24,9 @@ interface MapboxUnifiedProps {
     acomp: number;
     obs: number;
   };
+  mode?: 'live' | 'archive';
+  confiancaMin?: number;
+  sateliteFilter?: string;
 }
 
 export const MapboxUnified = ({ 
@@ -36,13 +41,18 @@ export const MapboxUnified = ({
   showTravessias = false,
   initialCenter = [-46.63, -23.55],
   initialZoom = 7,
-  zoneConfig
+  zoneConfig,
+  mode = 'live',
+  confiancaMin = 50,
+  sateliteFilter = ''
 }: MapboxUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [layers, setLayers] = useState<MapLayer[]>([]);
+  const [mapStyle, setMapStyle] = useState('satellite-streets-v12');
+  const [showStateBorders, setShowStateBorders] = useState(true);
 
   useEffect(() => {
     const token = import.meta.env.VITE_MAPBOX_TOKEN || import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
@@ -67,6 +77,37 @@ export const MapboxUnified = ({
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
       map.current.on('load', async () => {
+        // Adicionar terreno 3D com exagero 2x
+        map.current!.addSource('mapbox-dem', {
+          type: 'raster-dem',
+          url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+          tileSize: 512,
+          maxzoom: 14
+        });
+
+        map.current!.setTerrain({ 
+          source: 'mapbox-dem', 
+          exaggeration: 2
+        });
+
+        // Adicionar sky (atmosfera)
+        map.current!.addLayer({
+          id: 'sky',
+          type: 'sky',
+          paint: {
+            'sky-type': 'atmosphere',
+            'sky-atmosphere-sun': [0.0, 90.0],
+            'sky-atmosphere-sun-intensity': 15
+          }
+        });
+
+        // Ajustar perspectiva 3D
+        map.current!.setPitch(50);
+        map.current!.setBearing(-17.6);
+
+        // Adicionar limites estaduais
+        addStateBorders();
+
         setIsLoading(false);
         if (showInfrastructure) {
           await loadInfrastructure();
@@ -102,6 +143,108 @@ export const MapboxUnified = ({
       map.current = null;
     };
   }, []);
+
+  const addStateBorders = () => {
+    if (!map.current) return;
+
+    try {
+      // Adicionar linha de fronteira estadual
+      map.current.addLayer({
+        id: 'state-borders',
+        type: 'line',
+        source: {
+          type: 'vector',
+          url: 'mapbox://mapbox.boundaries-adm1-v4'
+        },
+        'source-layer': 'boundaries_admin_1',
+        filter: ['==', 'iso_3166_1', 'BR'],
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': 2,
+          'line-opacity': 0.8,
+          'line-dasharray': [2, 2]
+        }
+      });
+
+      // Adicionar labels dos estados
+      map.current.addLayer({
+        id: 'state-labels',
+        type: 'symbol',
+        source: {
+          type: 'vector',
+          url: 'mapbox://mapbox.boundaries-adm1-v4'
+        },
+        'source-layer': 'boundaries_admin_1',
+        filter: ['==', 'iso_3166_1', 'BR'],
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+          'text-size': 12
+        },
+        paint: {
+          'text-color': '#ffffff',
+          'text-halo-color': '#000000',
+          'text-halo-width': 1.5
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao adicionar limites estaduais:', error);
+    }
+  };
+
+  const changeMapStyle = (newStyle: string) => {
+    if (!map.current) return;
+    
+    setMapStyle(newStyle);
+    map.current.setStyle(`mapbox://styles/mapbox/${newStyle}`);
+    
+    // Recarregar layers após troca de estilo
+    map.current.once('style.load', async () => {
+      // Re-adicionar terreno 3D
+      map.current!.addSource('mapbox-dem', {
+        type: 'raster-dem',
+        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+        tileSize: 512,
+        maxzoom: 14
+      });
+
+      map.current!.setTerrain({ 
+        source: 'mapbox-dem', 
+        exaggeration: 2
+      });
+
+      map.current!.addLayer({
+        id: 'sky',
+        type: 'sky',
+        paint: {
+          'sky-type': 'atmosphere',
+          'sky-atmosphere-sun': [0.0, 90.0],
+          'sky-atmosphere-sun-intensity': 15
+        }
+      });
+
+      addStateBorders();
+
+      // Recarregar dados
+      if (showInfrastructure) await loadInfrastructure();
+      if (showQueimadas) await loadQueimadas();
+      if (showVegetacao) await loadVegetacao();
+      if (showEstruturas) await loadEstruturas();
+      if (showTravessias) await loadTravessias();
+    });
+  };
+
+  const toggleStateBorders = () => {
+    if (!map.current) return;
+    
+    const newVisibility = showStateBorders ? 'none' : 'visible';
+    setShowStateBorders(!showStateBorders);
+    
+    if (map.current.getLayer('state-borders')) {
+      map.current.setLayoutProperty('state-borders', 'visibility', newVisibility);
+      map.current.setLayoutProperty('state-labels', 'visibility', newVisibility);
+    }
+  };
 
   const loadInfrastructure = async () => {
     if (!map.current) return;
@@ -260,9 +403,247 @@ export const MapboxUnified = ({
     }
   };
 
+  const fetchNASAFiresDirectly = async () => {
+    const MAP_KEY = import.meta.env.VITE_NASA_FIRMS_KEY;
+    if (!MAP_KEY) {
+      console.warn('NASA FIRMS API Key não configurada');
+      return { type: 'FeatureCollection', features: [] };
+    }
+
+    try {
+      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${MAP_KEY}/VIIRS_SNPP_NRT/country/BRA/1`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Erro ao buscar dados da NASA: ${response.status}`);
+      }
+
+      const csvText = await response.text();
+      const lines = csvText.split('\n').slice(1);
+      
+      const features = lines
+        .filter(line => line.trim())
+        .map((line, index) => {
+          const parts = line.split(',');
+          const [latitude, longitude, brightness, scan, track, acq_date, acq_time, satellite, confidence, version, bright_t31, frp, daynight] = parts;
+          
+          return {
+            type: 'Feature' as const,
+            properties: {
+              id: `nasa-${index}`,
+              brilho: parseFloat(brightness) || 0,
+              confianca: parseFloat(confidence) || 0,
+              satelite: satellite?.trim() || 'VIIRS',
+              data_aquisicao: `${acq_date} ${acq_time}`,
+              fonte: 'NASA FIRMS',
+              frp: parseFloat(frp) || 0,
+              daynight: daynight?.trim() || 'D'
+            },
+            geometry: {
+              type: 'Point' as const,
+              coordinates: [parseFloat(longitude), parseFloat(latitude)]
+            }
+          };
+        })
+        .filter(f => !isNaN(f.geometry.coordinates[0]) && !isNaN(f.geometry.coordinates[1]));
+      
+      return {
+        type: 'FeatureCollection' as const,
+        features
+      };
+    } catch (error) {
+      console.error('Erro ao buscar dados NASA FIRMS:', error);
+      return { type: 'FeatureCollection' as const, features: [] };
+    }
+  };
+
+  const calculateDistanceToNearestLine = (coords: [number, number]): number => {
+    // Simplificado: retornar distância aleatória para demo
+    // Em produção, calcular distância real para linhas da infraestrutura
+    return Math.floor(Math.random() * 10000);
+  };
+
+  const getZonaByDistance = (distancia: number, config: any): string => {
+    if (!config) return 'fora';
+    if (distancia <= config.critica) return 'critica';
+    if (distancia <= config.acomp) return 'acompanhamento';
+    if (distancia <= config.obs) return 'observacao';
+    return 'fora';
+  };
+
   const loadQueimadas = async () => {
-    // Implementar carregamento de queimadas se necessário
-    // Similar à estrutura acima
+    if (!map.current) return;
+
+    try {
+      let geojson: any;
+      
+      // Modo Live: buscar direto da NASA
+      if (mode === 'live') {
+        geojson = await fetchNASAFiresDirectly();
+      } else {
+        // Modo Archive: buscar do banco via edge function
+        const params = new URLSearchParams({
+          concessao: filterRegiao || 'TODAS',
+          min_conf: confiancaMin.toString(),
+          sat: sateliteFilter || 'ALL',
+          max_km: ((zoneConfig?.obs || 10000) / 1000).toString(),
+        });
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/queimadas-archive?${params}`,
+          {
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+          }
+        );
+
+        if (!response.ok) throw new Error('Erro ao buscar queimadas do arquivo');
+        geojson = await response.json();
+      }
+
+      // Calcular distâncias e zonas
+      geojson.features = geojson.features.map((f: any) => {
+        const distancia = calculateDistanceToNearestLine(f.geometry.coordinates);
+        const zona = getZonaByDistance(distancia, zoneConfig);
+        
+        return {
+          ...f,
+          properties: { 
+            ...f.properties, 
+            distancia_m: distancia, 
+            zona 
+          }
+        };
+      });
+
+      const sourceId = 'queimadas-source';
+      
+      if (map.current.getSource(sourceId)) {
+        (map.current.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+      } else {
+        // Adicionar source com clustering
+        map.current.addSource(sourceId, {
+          type: 'geojson',
+          data: geojson,
+          cluster: true,
+          clusterMaxZoom: 14,
+          clusterRadius: 50,
+        });
+
+        // Layer: Clusters
+        map.current.addLayer({
+          id: 'queimadas-clusters',
+          type: 'circle',
+          source: sourceId,
+          filter: ['has', 'point_count'],
+          paint: {
+            'circle-color': [
+              'step',
+              ['get', 'point_count'],
+              '#fbbf24', 10,
+              '#f97316', 25,
+              '#ef4444'
+            ],
+            'circle-radius': [
+              'step',
+              ['get', 'point_count'],
+              20, 10,
+              30, 25,
+              40
+            ],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#fff'
+          },
+        });
+
+        // Layer: Cluster count
+        map.current.addLayer({
+          id: 'queimadas-cluster-count',
+          type: 'symbol',
+          source: sourceId,
+          filter: ['has', 'point_count'],
+          layout: {
+            'text-field': '{point_count_abbreviated}',
+            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+            'text-size': 12,
+          },
+          paint: {
+            'text-color': '#ffffff'
+          }
+        });
+
+        // Layer: Pontos individuais
+        map.current.addLayer({
+          id: 'queimadas-points',
+          type: 'circle',
+          source: sourceId,
+          filter: ['!', ['has', 'point_count']],
+          paint: {
+            'circle-color': [
+              'match',
+              ['get', 'zona'],
+              'critica', '#ef4444',
+              'acompanhamento', '#f59e0b',
+              'observacao', '#22c55e',
+              '#94a3b8'
+            ],
+            'circle-radius': 8,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff',
+          },
+        });
+
+        // Click em cluster: zoom
+        map.current.on('click', 'queimadas-clusters', (e) => {
+          const features = map.current!.queryRenderedFeatures(e.point, {
+            layers: ['queimadas-clusters'],
+          });
+          const clusterId = features[0].properties?.cluster_id;
+          const source = map.current!.getSource(sourceId) as mapboxgl.GeoJSONSource;
+          
+          source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+            if (err || !features[0].geometry || features[0].geometry.type !== 'Point') return;
+            map.current!.easeTo({
+              center: features[0].geometry.coordinates as [number, number],
+              zoom: zoom || map.current!.getZoom() + 2
+            });
+          });
+        });
+
+        // Click em ponto
+        map.current.on('click', 'queimadas-points', (e) => {
+          if (e.features && e.features[0]) {
+            onFeatureClick?.(e.features[0].properties);
+          }
+        });
+
+        // Cursor pointer
+        ['queimadas-clusters', 'queimadas-points'].forEach(layerId => {
+          map.current!.on('mouseenter', layerId, () => {
+            map.current!.getCanvas().style.cursor = 'pointer';
+          });
+          map.current!.on('mouseleave', layerId, () => {
+            map.current!.getCanvas().style.cursor = '';
+          });
+        });
+      }
+
+      setLayers(prev => {
+        const filtered = prev.filter(l => l.id !== 'queimadas-points');
+        return [...filtered, {
+          id: 'queimadas-points',
+          name: `Queimadas (${mode === 'live' ? '24h' : 'Histórico'})`,
+          type: 'fires' as const,
+          visible: true,
+          color: '#ef4444',
+          count: geojson.features.length,
+        }];
+      });
+
+    } catch (error) {
+      console.error('Erro ao carregar queimadas:', error);
+    }
   };
 
   const loadVegetacao = async () => {
@@ -569,7 +950,18 @@ export const MapboxUnified = ({
         </div>
       )}
       
-      <div className="absolute top-4 left-4 z-10">
+      <BasemapSelector value={mapStyle} onChange={changeMapStyle} />
+      
+      <Button
+        onClick={toggleStateBorders}
+        size="sm"
+        variant="secondary"
+        className="absolute top-20 left-4 z-10 shadow-lg"
+      >
+        {showStateBorders ? '🗺️ Ocultar Estados' : '📍 Mostrar Estados'}
+      </Button>
+      
+      <div className="absolute top-4 right-4 z-10">
         <MapViewSelector
           layers={layers}
           onLayerToggle={handleLayerToggle}
