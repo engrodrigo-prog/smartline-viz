@@ -1,13 +1,18 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-type Regiao = 'A' | 'B' | 'C';
+export type Empresa = 'CPFL Piratininga' | 'CPFL Santa Cruz' | 'ENEL' | 
+                     'CPFL Transmissão' | 'ARGO' | 'CPFL RGE' | 
+                     'CEMIG' | 'EQUATORIAL';
 type Tipo = 'Vegetação' | 'Travessias' | 'Estruturas' | 'Emendas' | 'Compliance' | 'Sensores' | 'Drones' | 'Eventos';
 type Order = 'Nome' | 'Data' | 'Criticidade' | 'Status';
 
 export type FiltersState = {
-  regiao?: Regiao;
+  empresa?: Empresa;
+  regiao?: string;
   linha?: string;
   ramal?: string;
+  tensaoKv?: string;
+  tipoMaterial?: string;
   dataInicio?: string;
   dataFim?: string;
   tipo?: Tipo;

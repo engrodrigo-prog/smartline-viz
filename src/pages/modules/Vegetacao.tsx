@@ -6,7 +6,7 @@ import ModuleLayout from "@/components/ModuleLayout";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import MapViewGeneric from "@/components/MapViewGeneric";
+import { MapboxUnified } from "@/components/MapboxUnified";
 
 const Vegetacao = () => {
   const { filters } = useFilters();
@@ -102,11 +102,13 @@ const Vegetacao = () => {
           </TabsContent>
           
           <TabsContent value="mapa" className="mt-4">
-            <MapViewGeneric
-              items={filteredData}
-              markerIcon={TreePine}
-              colorBy="criticidade"
-              onMarkerClick={() => {}}
+            <MapboxUnified
+              filterRegiao={filters.regiao}
+              filterEmpresa={filters.empresa}
+              showVegetacao={true}
+              showInfrastructure={true}
+              initialCenter={[-46.63, -23.55]}
+              initialZoom={filters.linha ? 13 : 7}
             />
           </TabsContent>
         </Tabs>
