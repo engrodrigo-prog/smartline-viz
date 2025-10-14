@@ -6,6 +6,7 @@ import ModuleLayout from "@/components/ModuleLayout";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MapboxUnified } from "@/components/MapboxUnified";
 
 const Estruturas = () => {
   const { filters } = useFilters();
@@ -57,10 +58,11 @@ const Estruturas = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="tech-card p-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="corrosao">Corrosão</TabsTrigger>
             <TabsTrigger value="furto">Furto</TabsTrigger>
             <TabsTrigger value="integridade">Integridade</TabsTrigger>
+            <TabsTrigger value="mapa">🗺️ Mapa</TabsTrigger>
           </TabsList>
 
           <TabsContent value="corrosao" className="mt-4">
@@ -104,6 +106,18 @@ const Estruturas = () => {
                   <Badge variant={item.status === 'OK' ? 'default' : 'outline'}>{item.status}</Badge>
                 </div>
               ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="mapa" className="mt-4">
+            <div className="h-[600px]">
+              <MapboxUnified
+                filterRegiao={filters.regiao}
+                filterEmpresa={filters.empresa}
+                filterLinha={filters.linha}
+                showEstruturas={true}
+                initialZoom={filters.linha ? 13 : 7}
+              />
             </div>
           </TabsContent>
         </Tabs>
