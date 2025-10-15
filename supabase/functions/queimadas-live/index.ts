@@ -16,64 +16,39 @@ Deno.serve(async (req) => {
     const minConf = parseInt(url.searchParams.get('min_conf') || '50');
     const satelite = url.searchParams.get('sat') || 'ALL';
     const maxKm = parseFloat(url.searchParams.get('max_km') || '1');
+    const zonaCritica = parseFloat(url.searchParams.get('zona_critica') || '500');
+    const zonaAcomp = parseFloat(url.searchParams.get('zona_acomp') || '1500');
+    const zonaObs = parseFloat(url.searchParams.get('zona_obs') || '3000');
 
-    console.log('Queimadas live request:', { concessao, minConf, satelite, maxKm });
+    console.log('Queimadas live request:', {
+      concessao,
+      minConf,
+      satelite,
+      maxKm,
+      zonaCritica,
+      zonaAcomp,
+      zonaObs,
+    });
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Buscar queimadas das últimas 24h
-    let query = supabase
-      .from('queimadas')
-      .select('*')
-      .gte('data_aquisicao', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-      .gte('confianca', minConf)
-      .lte('distancia_m', maxKm * 1000)
-      .order('data_aquisicao', { ascending: false });
-
-    if (concessao !== 'TODAS') {
-      query = query.eq('concessao', concessao);
-    }
-
-    if (satelite !== 'ALL') {
-      query = query.like('fonte', `%${satelite}%`);
-    }
-
-    const { data, error } = await query;
+    const { data, error } = await supabase.rpc('get_queimadas_geojson', {
+      p_mode: 'live',
+      p_concessao: concessao,
+      p_min_conf: minConf,
+      p_sat: satelite,
+      p_max_km: maxKm,
+      p_zona_critica: zonaCritica,
+      p_zona_acomp: zonaAcomp,
+      p_zona_obs: zonaObs,
+    });
 
     if (error) throw error;
 
-    // Converter geometrias para GeoJSON
-    const geojson = {
-      type: 'FeatureCollection',
-      features: (data || []).map((item: any) => {
-        // Parse WKT geometry to lon/lat
-        const match = item.geometry?.match(/POINT\(([^ ]+) ([^ ]+)\)/);
-        const coords = match ? [parseFloat(match[1]), parseFloat(match[2])] : [0, 0];
-
-        return {
-          type: 'Feature',
-          properties: {
-            id: item.id,
-            fonte: item.fonte,
-            satelite: item.satelite,
-            data_aquisicao: item.data_aquisicao,
-            brilho: item.brilho,
-            confianca: item.confianca,
-            concessao: item.concessao,
-            id_linha: item.id_linha,
-            ramal: item.ramal,
-            distancia_m: item.distancia_m
-          },
-          geometry: {
-            type: 'Point',
-            coordinates: coords
-          }
-        };
-      })
-    };
+    const geojson = data ?? { type: 'FeatureCollection', features: [] };
 
     return new Response(
       JSON.stringify(geojson),
@@ -82,8 +57,8 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+      JSON.stringify({
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

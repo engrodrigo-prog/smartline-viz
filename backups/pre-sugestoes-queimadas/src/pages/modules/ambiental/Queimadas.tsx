@@ -9,6 +9,7 @@ import ModuleLayout from "@/components/ModuleLayout";
 import FiltersBar from "@/components/FiltersBar";
 import AlarmZoneConfig from "@/components/AlarmZoneConfig";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MapboxQueimadas } from "@/components/MapboxQueimadas";
 import { MapboxUnified } from "@/components/MapboxUnified";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import DetailDrawer from "@/components/DetailDrawer";
@@ -42,19 +43,16 @@ const Queimadas = () => {
     satelite: sateliteFilter || 'ALL',
     maxKm: config.zonaObs / 1000, // Converter para km
     startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
-    zonaCritica: config.zonaCritica,
-    zonaAcomp: config.zonaAcomp,
-    zonaObs: config.zonaObs
+    endDate: dateRange.endDate
   });
   
   const filteredData = useMemo(() => {
     if (!geojsonData?.features) return [];
     
     let features = geojsonData.features.map((f: any) => {
-      const distancia = Number(f.properties.distancia_m || 0);
-      const zona = f.properties.zona || getZone(distancia);
-
+      const distancia = f.properties.distancia_m || 0;
+      const zona = getZone(distancia);
+      
       return {
         id: f.properties.id,
         nome: `Queimada ${f.properties.fonte}-${f.properties.id}`,
@@ -72,7 +70,7 @@ const Queimadas = () => {
         zonaLabel: getZoneLabel(zona),
         acionamento: getAcionamento(zona),
         estruturaProxima: f.properties.estrutura_codigo || 'N/A',
-        nivelRisco: f.properties.confianca >= 80 ? 'Crítico' :
+        nivelRisco: f.properties.confianca >= 80 ? 'Crítico' : 
                      f.properties.confianca >= 65 ? 'Alto' :
                      f.properties.confianca >= 50 ? 'Médio' : 'Baixo',
       };
@@ -379,13 +377,14 @@ const Queimadas = () => {
                 showQueimadas={true}
                 showInfrastructure={true}
                 mode={mode}
+                confiancaMin={confiancaMin}
+                sateliteFilter={sateliteFilter}
                 focusCoord={focusCoord}
                 zoneConfig={{
                   critica: config.zonaCritica,
                   acomp: config.zonaAcomp,
                   obs: config.zonaObs
                 }}
-                queimadasData={geojsonData}
                 onFeatureClick={(props) => {
                   const queimada = filteredData.find(q => q.id === props.id);
                   if (queimada) setSelectedQueimada(queimada);

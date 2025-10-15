@@ -9,9 +9,6 @@ interface QueimadasFilters {
   mode: 'live' | 'archive';
   startDate?: string;
   endDate?: string;
-  zonaCritica?: number;
-  zonaAcomp?: number;
-  zonaObs?: number;
 }
 
 export const useQueimadas = (filters: QueimadasFilters) => {
@@ -24,16 +21,6 @@ export const useQueimadas = (filters: QueimadasFilters) => {
         sat: filters.satelite || 'ALL',
         max_km: (filters.maxKm || 1).toString(),
       });
-
-      if (filters.zonaCritica) {
-        params.append('zona_critica', filters.zonaCritica.toString());
-      }
-      if (filters.zonaAcomp) {
-        params.append('zona_acomp', filters.zonaAcomp.toString());
-      }
-      if (filters.zonaObs) {
-        params.append('zona_obs', filters.zonaObs.toString());
-      }
 
       if (filters.mode === 'archive' && filters.startDate && filters.endDate) {
         params.append('start_date', filters.startDate);

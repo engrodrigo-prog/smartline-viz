@@ -28,8 +28,9 @@ interface MapboxUnifiedProps {
     obs: number;
   };
   mode?: 'live' | 'archive';
+  confiancaMin?: number;
+  sateliteFilter?: string;
   focusCoord?: [number, number] | null;
-  queimadasData?: GeoJSON.FeatureCollection | null;
 }
 
 export const MapboxUnified = ({ 
@@ -49,8 +50,9 @@ export const MapboxUnified = ({
   initialZoom = 7,
   zoneConfig = { critica: 500, acomp: 1500, obs: 3000 },
   mode = 'live',
-  focusCoord = null,
-  queimadasData = null
+  confiancaMin = 50,
+  sateliteFilter = 'ALL',
+  focusCoord = null
 }: MapboxUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -60,7 +62,6 @@ export const MapboxUnified = ({
   const [mapStyle, setMapStyle] = useState('satellite-streets-v12');
   const [showStateBorders, setShowStateBorders] = useState(true);
   const [is3D, setIs3D] = useState(true);
-  const queimadasDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
 
   useEffect(() => {
     const token = import.meta.env.VITE_MAPBOX_TOKEN || import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
@@ -120,7 +121,7 @@ export const MapboxUnified = ({
           await loadInfrastructure();
         }
         if (showQueimadas) {
-          await loadQueimadas(queimadasData);
+          await loadQueimadas();
         }
         if (showVegetacao) {
           await loadVegetacao();
@@ -269,7 +270,7 @@ export const MapboxUnified = ({
 
       // Recarregar dados
       if (showInfrastructure) await loadInfrastructure();
-      if (showQueimadas) await loadQueimadas(queimadasDataRef.current);
+      if (showQueimadas) await loadQueimadas();
       if (showVegetacao) await loadVegetacao();
       if (showEstruturas) await loadEstruturas();
       if (showTravessias) await loadTravessias();
@@ -474,6 +475,66 @@ export const MapboxUnified = ({
     }
   };
 
+  const fetchNASAFiresFromKML = async () => {
+    try {
+      const kmlUrl = mode === 'live' 
+        ? 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/kml/MODIS_C6_1_South_America_24h.kml'
+        : 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/kml/MODIS_C6_1_South_America_48h.kml';
+      
+      const response = await fetch(kmlUrl);
+      const kmlText = await response.text();
+      
+      // Parsear XML
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(kmlText, 'text/xml');
+      
+      // Extrair todos os <Placemark>
+      const placemarks = xmlDoc.getElementsByTagName('Placemark');
+      
+      const features = Array.from(placemarks).map(placemark => {
+        // Extrair coordenadas
+        const coordsText = placemark.getElementsByTagName('coordinates')[0]?.textContent?.trim();
+        const [lon, lat] = coordsText?.split(',').map(parseFloat) || [0, 0];
+        
+        // Extrair descrição (contém confiança, satélite, data)
+        const descText = placemark.getElementsByTagName('description')[0]?.textContent || '';
+        
+        // Regex para extrair dados
+        const confidenceMatch = descText.match(/Confidence.*?(\d+)/);
+        const satelliteMatch = descText.match(/Satellite.*?(\w+)/);
+        const dateMatch = descText.match(/Date.*?([\d-]+)/);
+        const timeMatch = descText.match(/Time.*?([\d:]+)/);
+        
+        return {
+          type: 'Feature' as const,
+          properties: {
+            confianca: parseInt(confidenceMatch?.[1] || '0'),
+            satelite: satelliteMatch?.[1] === 'T' ? 'Terra' : 'Aqua',
+            data_aquisicao: `${dateMatch?.[1]} ${timeMatch?.[1]}`,
+            fonte: 'NASA FIRMS KML'
+          },
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [lon, lat]
+          }
+        };
+      });
+      
+      return {
+        type: 'FeatureCollection' as const,
+        features
+      };
+    } catch (error) {
+      console.error('Erro ao buscar KML da NASA:', error);
+      return { type: 'FeatureCollection' as const, features: [] };
+    }
+  };
+
+  const calculateDistanceToNearestLine = (coords: [number, number]): number => {
+    // Simplificado: retornar distância aleatória para demo
+    // Em produção, calcular distância real para linhas da infraestrutura
+    return Math.floor(Math.random() * 10000);
+  };
 
   const getZonaByDistance = (distancia: number, config: any): string => {
     if (!config) return 'fora';
@@ -483,74 +544,50 @@ export const MapboxUnified = ({
     return 'fora';
   };
 
-  const removeQueimadasLayers = () => {
-    if (!map.current) return;
-
-    const sourceId = 'queimadas-source';
-    const layersToRemove = ['queimadas-points', 'queimadas-cluster-count', 'queimadas-clusters'];
-
-    layersToRemove.forEach(layerId => {
-      if (map.current!.getLayer(layerId)) {
-        map.current!.removeLayer(layerId);
-      }
-    });
-
-    if (map.current.getSource(sourceId)) {
-      map.current.removeSource(sourceId);
-    }
-
-    setLayers(prev => prev.filter(l => l.id !== 'queimadas-points'));
-  };
-
-  const normalizeQueimadasData = (data?: GeoJSON.FeatureCollection | null) => {
-    if (!data) return null;
-
-    const normalizedFeatures = data.features.map((feature: any) => {
-      const distancia = Number(feature?.properties?.distancia_m ?? 0);
-      const zona = feature?.properties?.zona || getZonaByDistance(distancia, zoneConfig);
-
-      return {
-        ...feature,
-        properties: {
-          ...feature.properties,
-          distancia_m: Number.isFinite(distancia) ? Math.round(distancia * 100) / 100 : 0,
-          zona,
-        },
-      };
-    });
-
-    return {
-      type: 'FeatureCollection' as const,
-      features: normalizedFeatures,
-    } as GeoJSON.FeatureCollection;
-  };
-
-  const loadQueimadas = async (incomingData?: GeoJSON.FeatureCollection | null) => {
+  const loadQueimadas = async () => {
     if (!map.current) return;
 
     try {
-      const preparedData = normalizeQueimadasData(incomingData ?? queimadasDataRef.current);
+      // Buscar KML direto da NASA (modo Live ou Archive)
+      let geojson: any = await fetchNASAFiresFromKML();
+      
+      // Aplicar filtros de confiança e satélite
+      geojson.features = geojson.features.filter((f: any) => {
+        const passaConfianca = f.properties.confianca >= (confiancaMin || 0);
+        const passaSatelite = !sateliteFilter || f.properties.satelite.includes(sateliteFilter);
+        return passaConfianca && passaSatelite;
+      });
 
-      if (!preparedData || preparedData.features.length === 0) {
-        removeQueimadasLayers();
-        return;
-      }
-
-      queimadasDataRef.current = preparedData;
+      // Calcular distâncias e zonas
+      geojson.features = geojson.features.map((f: any) => {
+        const distancia = calculateDistanceToNearestLine(f.geometry.coordinates);
+        const zona = getZonaByDistance(distancia, zoneConfig);
+        
+        return {
+          ...f,
+          properties: { 
+            ...f.properties, 
+            distancia_m: distancia, 
+            zona 
+          }
+        };
+      });
 
       const sourceId = 'queimadas-source';
-
+      
       if (map.current.getSource(sourceId)) {
-        (map.current.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(preparedData as any);
+        (map.current.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
       } else {
+        // Adicionar source com clustering
         map.current.addSource(sourceId, {
           type: 'geojson',
-          data: preparedData,
+          data: geojson,
           cluster: true,
           clusterMaxZoom: 14,
           clusterRadius: 50,
         });
 
+        // Layer: Clusters
         map.current.addLayer({
           id: 'queimadas-clusters',
           type: 'circle',
@@ -576,6 +613,7 @@ export const MapboxUnified = ({
           },
         });
 
+        // Layer: Cluster count
         map.current.addLayer({
           id: 'queimadas-cluster-count',
           type: 'symbol',
@@ -591,6 +629,7 @@ export const MapboxUnified = ({
           }
         });
 
+        // Layer: Pontos individuais
         map.current.addLayer({
           id: 'queimadas-points',
           type: 'circle',
@@ -611,13 +650,14 @@ export const MapboxUnified = ({
           },
         });
 
+        // Click em cluster: zoom
         map.current.on('click', 'queimadas-clusters', (e) => {
           const features = map.current!.queryRenderedFeatures(e.point, {
             layers: ['queimadas-clusters'],
           });
           const clusterId = features[0].properties?.cluster_id;
           const source = map.current!.getSource(sourceId) as mapboxgl.GeoJSONSource;
-
+          
           source.getClusterExpansionZoom(clusterId, (err, zoom) => {
             if (err || !features[0].geometry || features[0].geometry.type !== 'Point') return;
             map.current!.easeTo({
@@ -627,12 +667,14 @@ export const MapboxUnified = ({
           });
         });
 
+        // Click em ponto
         map.current.on('click', 'queimadas-points', (e) => {
           if (e.features && e.features[0]) {
             onFeatureClick?.(e.features[0].properties);
           }
         });
 
+        // Cursor pointer
         ['queimadas-clusters', 'queimadas-points'].forEach(layerId => {
           map.current!.on('mouseenter', layerId, () => {
             map.current!.getCanvas().style.cursor = 'pointer';
@@ -651,68 +693,15 @@ export const MapboxUnified = ({
           type: 'fires' as const,
           visible: true,
           color: '#ef4444',
-          count: preparedData.features.length,
+          count: geojson.features.length,
         }];
       });
 
     } catch (error) {
       console.error('Erro ao carregar queimadas:', error);
-      setError('Erro ao carregar dados de queimadas.');
     }
   };
 
-  useEffect(() => {
-    const normalized = normalizeQueimadasData(queimadasData);
-    queimadasDataRef.current = normalized;
-
-    if (!map.current) {
-      return;
-    }
-
-    if (!showQueimadas) {
-      removeQueimadasLayers();
-      return;
-    }
-
-    void loadQueimadas(normalized);
-  }, [queimadasData, showQueimadas, zoneConfig.critica, zoneConfig.acomp, zoneConfig.obs]);
-
-  const handleLayerVisibilityChange = (layerId: string, visible: boolean) => {
-    if (!map.current) return;
-
-    const layer = map.current.getLayer(layerId);
-    if (layer) {
-      map.current.setLayoutProperty(
-        layerId,
-        'visibility',
-        visible ? 'visible' : 'none'
-      );
-    }
-
-    // Update labels if exists
-    const labelsId = layerId.replace('-points', '-labels');
-    const labelsLayer = map.current.getLayer(labelsId);
-    if (labelsLayer) {
-      map.current.setLayoutProperty(
-        labelsId,
-        'visibility',
-        visible ? 'visible' : 'none'
-      );
-    }
-
-    setLayers(prev =>
-      prev.map(l =>
-        l.id === layerId ? { ...l, visible } : l
-      )
-    );
-  };
-
-  const handleLayerToggle = (layerId: string) => {
-    const layer = layers.find(l => l.id === layerId);
-    if (layer) {
-      handleLayerVisibilityChange(layerId, !layer.visible);
-    }
-  };
   const loadVegetacao = async () => {
     if (!map.current) return;
 
@@ -1207,6 +1196,52 @@ export const MapboxUnified = ({
     }
   };
 
+  const handleLayerVisibilityChange = (layerId: string, visible: boolean) => {
+    if (!map.current) return;
+
+    const layer = map.current.getLayer(layerId);
+    if (layer) {
+      map.current.setLayoutProperty(
+        layerId,
+        'visibility',
+        visible ? 'visible' : 'none'
+      );
+    }
+
+    // Update labels if exists
+    const labelsId = layerId.replace('-points', '-labels');
+    const labelsLayer = map.current.getLayer(labelsId);
+    if (labelsLayer) {
+      map.current.setLayoutProperty(
+        labelsId,
+        'visibility',
+        visible ? 'visible' : 'none'
+      );
+    }
+
+    setLayers(prev =>
+      prev.map(l =>
+        l.id === layerId ? { ...l, visible } : l
+      )
+    );
+  };
+
+  const handleLayerToggle = (layerId: string) => {
+    const layer = layers.find(l => l.id === layerId);
+    if (layer) {
+      handleLayerVisibilityChange(layerId, !layer.visible);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="w-full h-[600px] rounded-lg border border-border bg-background flex items-center justify-center">
+        <div className="text-center p-6">
+          <p className="text-destructive mb-2">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-[600px] rounded-lg overflow-hidden">
