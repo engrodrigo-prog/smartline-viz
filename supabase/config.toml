@@ -9,6 +9,12 @@ verify_jwt = false
 [functions.queimadas-footprints]
 verify_jwt = false
 
+[functions.firms-sync]
+verify_jwt = true
+
+[functions.firms-footprints-sync]
+verify_jwt = true
+
 [functions.get-weather-data]
 verify_jwt = false
 

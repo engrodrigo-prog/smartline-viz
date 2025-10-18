@@ -120,21 +120,18 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
-          role: string | null
           tenant_id: string | null
         }
         Insert: {
           created_at?: string | null
           email?: string | null
           id?: string
-          role?: string | null
           tenant_id?: string | null
         }
         Update: {
           created_at?: string | null
           email?: string | null
           id?: string
-          role?: string | null
           tenant_id?: string | null
         }
         Relationships: [
@@ -3320,6 +3317,10 @@ export type Database = {
           schema_name: string
           table_name: string
         }
+        Returns: string
+      }
+      user_tenant_id: {
+        Args: { _user_id: string }
         Returns: string
       }
     }
