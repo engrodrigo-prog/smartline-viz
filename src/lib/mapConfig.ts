@@ -151,6 +151,9 @@ export function changeBasemap(map: maplibregl.Map, basemapId: keyof typeof ESRI_
   const basemap = ESRI_BASEMAPS[basemapId];
   const newStyle = createESRIStyle(basemap);
   
+  // Emitir evento antes de trocar basemap
+  map.fire('basemap-changing' as any);
+  
   // Preservar layers customizadas antes de trocar style
   const customLayers: any[] = [];
   const customSources: any = {};
@@ -191,5 +194,8 @@ export function changeBasemap(map: maplibregl.Map, basemapId: keyof typeof ESRI_
         map.addLayer(layer);
       }
     });
+    
+    // Emitir evento após restaurar layers
+    map.fire('basemap-changed' as any);
   });
 }

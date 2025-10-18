@@ -53,6 +53,11 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
+    console.log(`Found ${data?.length || 0} fire points in the last 24h`);
+    if (data && data.length > 0) {
+      console.log('Sample fire point:', data[0]);
+    }
+
     // Converter geometrias para GeoJSON
     const geojson = {
       type: 'FeatureCollection',

@@ -24,6 +24,7 @@ interface MapLibreUnifiedProps {
   sateliteFilter?: string;
   focusCoord?: [number, number];
   zoneConfig?: any;
+  queimadasData?: GeoJSON.FeatureCollection;
   onFeatureClick?: (feature: any) => void;
   onMapLoad?: (map: maplibregl.Map) => void;
 }
@@ -47,6 +48,7 @@ export const MapLibreUnified = ({
   sateliteFilter,
   focusCoord,
   zoneConfig,
+  queimadasData,
   onFeatureClick,
   onMapLoad
 }: MapLibreUnifiedProps) => {
@@ -264,6 +266,17 @@ export const MapLibreUnified = ({
       map.current.once('style.load', loadQueimadas);
     }
   }, [map.current, showQueimadas, mode, confiancaMin, sateliteFilter, onFeatureClick]);
+
+  // Update queimadas data when it changes
+  useEffect(() => {
+    if (!map.current || !showQueimadas || !queimadasData) return;
+
+    const source = map.current.getSource('queimadas') as maplibregl.GeoJSONSource;
+    if (source) {
+      console.log(`Updating queimadas layer with ${queimadasData.features.length} features`);
+      source.setData(queimadasData);
+    }
+  }, [queimadasData, showQueimadas]);
 
   return (
     <div className="relative w-full h-full">
