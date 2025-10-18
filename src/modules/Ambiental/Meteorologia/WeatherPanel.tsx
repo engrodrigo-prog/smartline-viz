@@ -6,6 +6,7 @@ import TimelineSlider from "./TimelineSlider";
 import WeatherMap from "./WeatherMap";
 import { useWeather } from "@/hooks/useWeather";
 import ModuleLayout from "@/components/ModuleLayout";
+import FloatingFiltersBar from "@/components/FloatingFiltersBar";
 import { Loader2 } from "lucide-react";
 import { WeatherLayerSelector, DEFAULT_WEATHER_LAYERS, WeatherLayer } from "./WeatherLayerSelector";
 import { WeatherLegend } from "./WeatherLegend";
@@ -70,7 +71,9 @@ const WeatherPanel = () => {
 
   return (
     <ModuleLayout title="Meteorologia" icon={Cloud}>
-      <div className="space-y-4 h-full flex flex-col">
+      <div className="p-6 space-y-4 h-full flex flex-col">
+        <FloatingFiltersBar />
+        
         {/* Seletor de modo */}
         <div className="flex justify-between items-center">
           <Tabs value={mode} onValueChange={handleModeChange}>
