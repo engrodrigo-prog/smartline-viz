@@ -18,6 +18,9 @@ verify_jwt = true
 [functions.firms-footprints-sync]
 verify_jwt = true
 
+[functions.evaluate-footprint-alerts]
+verify_jwt = false
+
 [functions.get-weather-data]
 verify_jwt = false
 

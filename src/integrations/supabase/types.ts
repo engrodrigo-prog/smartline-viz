@@ -2052,12 +2052,30 @@ export type Database = {
         Args: { lat: number; lon: number } | { p_lat: number; p_lon: number }
         Returns: string
       }
+      find_nearby_lines: {
+        Args: { footprint_wkt: string; max_distance_m?: number }
+        Returns: {
+          codigo: string
+          concessao: string
+          distancia_m: number
+          nome: string
+          regiao: string
+        }[]
+      }
       find_nearest_linha: {
         Args: { p_lat: number; p_lon: number }
         Returns: {
           codigo: string
           distancia_m: number
           id: number
+        }[]
+      }
+      find_structures_near_footprint: {
+        Args: { footprint_wkt: string; max_distance_m?: number }
+        Returns: {
+          codigo: string
+          distancia_m: number
+          tipo: string
         }[]
       }
       geography: {
