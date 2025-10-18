@@ -9,6 +9,15 @@ verify_jwt = false
 [functions.get-weather-data]
 verify_jwt = false
 
+[functions.process-raster]
+verify_jwt = true
+
+[functions.detect-changes]
+verify_jwt = true
+
+[functions.evaluate-alerts]
+verify_jwt = true
+
 [functions.process-unifilar-diagram]
 verify_jwt = true
 
