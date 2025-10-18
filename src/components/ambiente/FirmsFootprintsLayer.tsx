@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type maplibregl from 'maplibre-gl';
+import maplibregl from 'maplibre-gl';
 
 interface FirmsFootprintsLayerProps {
   map: maplibregl.Map | null;
@@ -112,10 +112,48 @@ export const FirmsFootprintsLayer = ({
       },
     });
 
-    // Click handler
+    // Click handler with detailed popup
     const handleClick = (e: maplibregl.MapLayerMouseEvent) => {
-      if (e.features && e.features.length > 0 && onFeatureClick) {
-        onFeatureClick(e.features[0]);
+      if (!e.features || e.features.length === 0) return;
+      
+      const feature = e.features[0];
+      const props = feature.properties || {};
+      
+      // Criar popup com informações detalhadas
+      const area_ha = props.area_ha || 0;
+      const nivel_risco = props.nivel_risco || 'desconhecido';
+      const name = props.name || 'Área de Queimada';
+      
+      const popupContent = `
+        <div class="p-3 min-w-[200px]">
+          <h3 class="font-bold text-sm mb-2 flex items-center gap-2">
+            🔥 ${name}
+          </h3>
+          <div class="space-y-1 text-xs">
+            <div class="flex justify-between">
+              <span class="text-muted-foreground">Área:</span>
+              <span class="font-semibold">${area_ha.toFixed(1)} ha</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-muted-foreground">Risco:</span>
+              <span class="font-semibold ${
+                nivel_risco === 'critico' ? 'text-red-500' :
+                nivel_risco === 'alto' ? 'text-orange-500' :
+                nivel_risco === 'medio' ? 'text-yellow-500' :
+                'text-green-500'
+              }">${nivel_risco.toUpperCase()}</span>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      new maplibregl.Popup({ closeButton: true, closeOnClick: true })
+        .setLngLat(e.lngLat)
+        .setHTML(popupContent)
+        .addTo(map);
+      
+      if (onFeatureClick) {
+        onFeatureClick(feature);
       }
     };
 

@@ -1,8 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useFilters } from "@/context/FiltersContext";
 import { useQueimadas } from "@/hooks/useQueimadas";
 import { useAlarmZones } from "@/hooks/useAlarmZones";
-import { Flame, Activity, Clock, AlertTriangle, Eye, Shield, Search, Globe } from "lucide-react";
+import { useFirmsKml } from "@/hooks/useFirmsKml";
+import { useEvaluateFootprints } from "@/hooks/useEvaluateFootprints";
+import { useFootprintAlerts } from "@/hooks/useFootprintAlerts";
+import { Flame, Activity, Clock, AlertTriangle, Eye, Shield, Search, Globe, FolderOpen, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import ModuleLayout from "@/components/ModuleLayout";
@@ -30,6 +33,10 @@ const Queimadas = () => {
   const [activeTab, setActiveTab] = useState<string>('lista');
   const [focusCoord, setFocusCoord] = useState<[number, number] | null>(null);
   const [modoBrasil, setModoBrasil] = useState<boolean>(false);
+  const [useLocalData, setUseLocalData] = useState<boolean>(false);
+  const [alertsZonaFilter, setAlertsZonaFilter] = useState<string>('');
+  const [alertsRiscoFilter, setAlertsRiscoFilter] = useState<string>('');
+  const [alertsLinhaFilter, setAlertsLinhaFilter] = useState<string>('');
   
   const getRiscoLabel = (nivelRisco?: string): string => {
     switch (nivelRisco) {
@@ -59,10 +66,51 @@ const Queimadas = () => {
     concessao: modoBrasil ? 'BRASIL' : (filters.regiao || 'TODAS'),
     minConf: confiancaMin,
     satelite: sateliteFilter || 'ALL',
-    maxKm: modoBrasil ? 999999 : (config.zonaObs / 1000), // Modo Brasil: sem limite de distância
+    maxKm: modoBrasil ? 999999 : (config.zonaObs / 1000),
     startDate: dateRange.startDate,
     endDate: dateRange.endDate
   });
+
+  // Hook para carregar footprints do KMZ local
+  const { data: localFootprints, isLoading: loadingLocalFootprints } = useFirmsKml({
+    localFile: useLocalData ? '/src/assets/FirespotArea_J2_VIIRS_C2_South_America_24h.kmz' : undefined,
+    enabled: useLocalData
+  });
+
+  // Hook para avaliar footprints e gerar alarmes
+  const evaluateFootprintsMutation = useEvaluateFootprints();
+
+  // Hook para buscar alarmes de área
+  const { data: footprintAlerts, refetch: refetchAlerts } = useFootprintAlerts({
+    zona: alertsZonaFilter || undefined,
+    nivelRisco: alertsRiscoFilter || undefined,
+    linha: alertsLinhaFilter || undefined,
+  });
+
+  // Avaliar footprints quando carregados
+  useEffect(() => {
+    if (localFootprints && localFootprints.features.length > 0 && !evaluateFootprintsMutation.isPending) {
+      evaluateFootprintsMutation.mutate({
+        footprints: localFootprints,
+        concessao: filters.regiao
+      }, {
+        onSuccess: (result) => {
+          toast({
+            title: "✅ Alarmes gerados",
+            description: `${result.alertas_criados} alarmes criados | 🔴 ${result.criticos} críticos | 🟡 ${result.altos} altos | 🟢 ${result.medios} médios`,
+          });
+          refetchAlerts();
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Erro ao gerar alarmes",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
+      });
+    }
+  }, [localFootprints]);
   
   const filteredData = useMemo(() => {
     if (!geojsonData?.features) return [];
@@ -112,7 +160,9 @@ const Queimadas = () => {
     zonaAcomp: filteredData.filter(q => q.zona === 'acompanhamento').length,
     zonaObs: filteredData.filter(q => q.zona === 'observacao').length,
     estruturasAmeacadas: new Set(filteredData.filter(q => q.zona === 'critica').map(q => q.estruturaProxima)).size,
-  }), [filteredData]);
+    areasAtivas: localFootprints?.features.length || 0,
+    areasCriticas: localFootprints?.features.filter(f => f.properties.nivel_risco === 'critico').length || 0,
+  }), [filteredData, localFootprints]);
 
   const columns = [
     { 
@@ -219,6 +269,16 @@ const Queimadas = () => {
               >
                 <Globe className="w-3 h-3 mr-1" />
                 Modo Brasil
+              </Button>
+
+              <Button
+                variant={useLocalData ? 'default' : 'outline'}
+                onClick={() => setUseLocalData(!useLocalData)}
+                size="sm"
+                className="h-8"
+              >
+                <FolderOpen className="w-3 h-3 mr-1" />
+                Dados Locais (24h)
               </Button>
               
               {mode === 'archive' && (
@@ -373,11 +433,20 @@ const Queimadas = () => {
             value={kpis.estruturasAmeacadas} 
             icon={Flame}
           />
+          {useLocalData && (
+            <CardKPI 
+              title="🔥 Áreas Ativas" 
+              value={kpis.areasAtivas} 
+              icon={MapPin}
+              description={`${kpis.areasCriticas} críticas`}
+            />
+          )}
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="lista">Lista</TabsTrigger>
+            <TabsTrigger value="lista">Lista de Focos</TabsTrigger>
+            <TabsTrigger value="alarmes">Alarmes por Área</TabsTrigger>
             <TabsTrigger value="mapa">Mapa</TabsTrigger>
           </TabsList>
           
@@ -417,6 +486,131 @@ const Queimadas = () => {
                   setFocusCoord([queimada.coords.lon, queimada.coords.lat]);
                   // Esperar um tick para garantir sincronização
                   setTimeout(() => setActiveTab('mapa'), 50);
+                }}
+                exportable
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="alarmes" className="mt-4">
+            <div className="mb-4 p-4 border border-border rounded-lg bg-card">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Zona</label>
+                  <select 
+                    value={alertsZonaFilter}
+                    onChange={(e) => setAlertsZonaFilter(e.target.value)}
+                    className="flex h-8 w-full rounded-md border border-border bg-input px-2 py-1 text-xs"
+                  >
+                    <option value="">Todas</option>
+                    <option value="critica">🔴 Crítica</option>
+                    <option value="acompanhamento">🟡 Acomp.</option>
+                    <option value="observacao">🟢 Obs.</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Nível de Risco</label>
+                  <select 
+                    value={alertsRiscoFilter}
+                    onChange={(e) => setAlertsRiscoFilter(e.target.value)}
+                    className="flex h-8 w-full rounded-md border border-border bg-input px-2 py-1 text-xs"
+                  >
+                    <option value="">Todos</option>
+                    <option value="critico">Crítico</option>
+                    <option value="alto">Alto</option>
+                    <option value="medio">Médio</option>
+                    <option value="baixo">Baixo</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Linha</label>
+                  <input
+                    type="text"
+                    value={alertsLinhaFilter}
+                    onChange={(e) => setAlertsLinhaFilter(e.target.value)}
+                    placeholder="Filtrar por linha..."
+                    className="flex h-8 w-full rounded-md border border-border bg-input px-2 py-1 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {!footprintAlerts || footprintAlerts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center border border-border rounded-lg bg-card">
+                <MapPin className="w-16 h-16 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Nenhum alarme de área</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Carregue dados locais para gerar alarmes baseados em áreas de queimada detectadas.
+                </p>
+              </div>
+            ) : (
+              <DataTableAdvanced
+                data={footprintAlerts.map(alert => ({
+                  id: alert.id,
+                  dataDeteccao: alert.data_criacao,
+                  linha: alert.linha_codigo || 'N/A',
+                  zona: alert.metadata?.zona_alarme || 'N/A',
+                  area_ha: alert.area_ameacada_ha || 0,
+                  nivelRisco: alert.nivel_alerta,
+                  estruturas: alert.metadata?.estruturas_ameacadas?.length || 0,
+                  distancia_m: alert.distancia_m || 0,
+                  status: alert.status,
+                  footprint_id: alert.footprint_id
+                }))}
+                columns={[
+                  { 
+                    key: 'dataDeteccao', 
+                    label: 'Data Detecção',
+                    render: (value: string) => {
+                      const date = new Date(value);
+                      return (
+                        <div className="flex flex-col">
+                          <span className="font-medium text-xs">{date.toLocaleDateString('pt-BR')}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      );
+                    }
+                  },
+                  { key: 'linha', label: 'Linha/Ramal' },
+                  { 
+                    key: 'zona', 
+                    label: 'Zona',
+                    render: (value: string) => {
+                      const variant = value === 'critica' ? 'destructive' : 
+                                     value === 'acompanhamento' ? 'default' : 
+                                     'secondary';
+                      return <Badge variant={variant}>{value}</Badge>;
+                    }
+                  },
+                  { 
+                    key: 'area_ha', 
+                    label: 'Área (ha)',
+                    render: (value: number) => value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+                  },
+                  { 
+                    key: 'nivelRisco', 
+                    label: 'Nível Risco',
+                    render: (value: string) => {
+                      const variant = value === 'critico' ? 'destructive' : 
+                                     value === 'alto' ? 'default' : 
+                                     'outline';
+                      return <Badge variant={variant}>{value.toUpperCase()}</Badge>;
+                    }
+                  },
+                  { key: 'estruturas', label: 'Estruturas' },
+                  { 
+                    key: 'distancia_m', 
+                    label: 'Distância',
+                    render: (value: number) => `${value.toLocaleString('pt-BR')}m`
+                  },
+                ]}
+                onRowClick={(alert) => {
+                  // Buscar geometria do footprint e focar no mapa
+                  setActiveTab('mapa');
                 }}
                 exportable
               />

@@ -9,16 +9,20 @@ interface CardKPIProps {
     value: number;
     isPositive: boolean;
   };
+  description?: string;
   className?: string;
 }
 
-const CardKPI = ({ title, value, icon: Icon, trend, className }: CardKPIProps) => {
+const CardKPI = ({ title, value, icon: Icon, trend, description, className }: CardKPIProps) => {
   return (
     <div className={cn("tech-card p-6", className)}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm text-muted-foreground mb-1">{title}</p>
           <p className="text-3xl font-bold">{value}</p>
+          {description && (
+            <p className="text-xs text-muted-foreground mt-1">{description}</p>
+          )}
           {trend && (
             <p
               className={cn(
