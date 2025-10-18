@@ -1445,6 +1445,30 @@ export type Database = {
           },
         ]
       }
+      weather_cache: {
+        Row: {
+          created_at: string | null
+          id: string
+          params_json: Json
+          roi_id: string
+          ts: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          params_json: Json
+          roi_id?: string
+          ts?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          params_json?: Json
+          roi_id?: string
+          ts?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       geography_columns: {

@@ -32,6 +32,7 @@ import PainelSensores from "./pages/sensores/PainelSensores";
 import Cameras from "./pages/sensores/Cameras";
 import SensorDashboard from "./pages/sensores/SensorDashboard";
 import Alertas from "./pages/sensores/Alertas";
+import WeatherPanel from "./modules/Ambiental/Meteorologia/WeatherPanel";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => (
           <Route path="/ambiental/alagadas" element={<ProtectedRoute><AreasAlagadas /></ProtectedRoute>} />
           <Route path="/ambiental/erosao" element={<ProtectedRoute><Erosao /></ProtectedRoute>} />
           <Route path="/ambiental/queimadas" element={<ProtectedRoute><QueimadasModern /></ProtectedRoute>} />
+          <Route path="/ambiental/meteorologia" element={<ProtectedRoute><WeatherPanel /></ProtectedRoute>} />
           <Route path="/ambiental/vegetacao" element={<ProtectedRoute><Vegetacao /></ProtectedRoute>} />
           <Route path="/ambiental/ocupacao" element={<ProtectedRoute><OcupacaoFaixa /></ProtectedRoute>} />
           <Route path="/ambiental/distancia" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
