@@ -144,6 +144,42 @@ export type Database = {
           },
         ]
       }
+      base_layers_catalog: {
+        Row: {
+          active: boolean | null
+          bbox: Json | null
+          created_at: string | null
+          file_url: string
+          id: string
+          layer_type: string
+          name: string
+          source: string
+          style_json: Json | null
+        }
+        Insert: {
+          active?: boolean | null
+          bbox?: Json | null
+          created_at?: string | null
+          file_url: string
+          id?: string
+          layer_type: string
+          name: string
+          source: string
+          style_json?: Json | null
+        }
+        Update: {
+          active?: boolean | null
+          bbox?: Json | null
+          created_at?: string | null
+          file_url?: string
+          id?: string
+          layer_type?: string
+          name?: string
+          source?: string
+          style_json?: Json | null
+        }
+        Relationships: []
+      }
       camera_recordings: {
         Row: {
           camera_id: string | null
@@ -273,6 +309,56 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      custom_layers: {
+        Row: {
+          created_at: string | null
+          file_url: string
+          id: string
+          layer_type: string | null
+          metadata: Json | null
+          name: string
+          permanent: boolean | null
+          style_json: Json | null
+          tenant_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_url: string
+          id?: string
+          layer_type?: string | null
+          metadata?: Json | null
+          name: string
+          permanent?: boolean | null
+          style_json?: Json | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          file_url?: string
+          id?: string
+          layer_type?: string | null
+          metadata?: Json | null
+          name?: string
+          permanent?: boolean | null
+          style_json?: Json | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_layers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dataset_catalog: {
         Row: {
@@ -607,6 +693,30 @@ export type Database = {
         }
         Relationships: []
       }
+      health_cache: {
+        Row: {
+          error_message: string | null
+          last_check: string | null
+          metadata: Json | null
+          service: string
+          status: string
+        }
+        Insert: {
+          error_message?: string | null
+          last_check?: string | null
+          metadata?: Json | null
+          service: string
+          status: string
+        }
+        Update: {
+          error_message?: string | null
+          last_check?: string | null
+          metadata?: Json | null
+          service?: string
+          status?: string
+        }
+        Relationships: []
+      }
       infrastructure: {
         Row: {
           alt: number | null
@@ -676,6 +786,39 @@ export type Database = {
           tipo_material?: string | null
           uploaded_by?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      layer_presets: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          enabled_layers: Json
+          id: string
+          is_default: boolean | null
+          map_config: Json | null
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          enabled_layers: Json
+          id?: string
+          is_default?: boolean | null
+          map_config?: Json | null
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          enabled_layers?: Json
+          id?: string
+          is_default?: boolean | null
+          map_config?: Json | null
+          name?: string
         }
         Relationships: []
       }
@@ -782,6 +925,59 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      ndvi_stats: {
+        Row: {
+          area_cresceu_m2: number | null
+          area_limpa_m2: number | null
+          created_at: string | null
+          delta_ndvi: number | null
+          geometry: unknown | null
+          id: string
+          metadata: Json | null
+          ndvi_t0: number | null
+          ndvi_t1: number | null
+          roi_id: string | null
+          tenant_id: string | null
+          torre_id: string | null
+        }
+        Insert: {
+          area_cresceu_m2?: number | null
+          area_limpa_m2?: number | null
+          created_at?: string | null
+          delta_ndvi?: number | null
+          geometry?: unknown | null
+          id?: string
+          metadata?: Json | null
+          ndvi_t0?: number | null
+          ndvi_t1?: number | null
+          roi_id?: string | null
+          tenant_id?: string | null
+          torre_id?: string | null
+        }
+        Update: {
+          area_cresceu_m2?: number | null
+          area_limpa_m2?: number | null
+          created_at?: string | null
+          delta_ndvi?: number | null
+          geometry?: unknown | null
+          id?: string
+          metadata?: Json | null
+          ndvi_t0?: number | null
+          ndvi_t1?: number | null
+          roi_id?: string | null
+          tenant_id?: string | null
+          torre_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ndvi_stats_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profile_data: {
         Row: {
@@ -946,6 +1142,44 @@ export type Database = {
           satelite?: string | null
         }
         Relationships: []
+      }
+      roi_metrics: {
+        Row: {
+          calculated_at: string | null
+          id: string
+          metadata: Json | null
+          metric_type: string
+          metric_value: number
+          period_days: number | null
+          tenant_id: string | null
+        }
+        Insert: {
+          calculated_at?: string | null
+          id?: string
+          metadata?: Json | null
+          metric_type: string
+          metric_value: number
+          period_days?: number | null
+          tenant_id?: string | null
+        }
+        Update: {
+          calculated_at?: string | null
+          id?: string
+          metadata?: Json | null
+          metric_type?: string
+          metric_value?: number
+          period_days?: number | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roi_metrics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sensor_readings: {
         Row: {
@@ -1170,6 +1404,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "teams_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telemetry_events: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          tenant_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          tenant_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          tenant_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telemetry_events_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenant"
@@ -1727,6 +1996,14 @@ export type Database = {
           linha_codigo: string
           linha_id: number
           ramal: string
+        }[]
+      }
+      calculate_roi_metrics: {
+        Args: { _period_days?: number; _tenant_id: string }
+        Returns: {
+          metric_type: string
+          metric_value: number
+          period_days: number
         }[]
       }
       detect_footprint_threats: {
