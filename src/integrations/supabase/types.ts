@@ -79,6 +79,112 @@ export type Database = {
           },
         ]
       }
+      camera_recordings: {
+        Row: {
+          camera_id: string | null
+          duration_seconds: number | null
+          end_time: string | null
+          event_type: string | null
+          file_url: string | null
+          id: string
+          metadata: Json | null
+          start_time: string
+          thumbnail_url: string | null
+        }
+        Insert: {
+          camera_id?: string | null
+          duration_seconds?: number | null
+          end_time?: string | null
+          event_type?: string | null
+          file_url?: string | null
+          id?: string
+          metadata?: Json | null
+          start_time: string
+          thumbnail_url?: string | null
+        }
+        Update: {
+          camera_id?: string | null
+          duration_seconds?: number | null
+          end_time?: string | null
+          event_type?: string | null
+          file_url?: string | null
+          id?: string
+          metadata?: Json | null
+          start_time?: string
+          thumbnail_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camera_recordings_camera_id_fkey"
+            columns: ["camera_id"]
+            isOneToOne: false
+            referencedRelation: "cameras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cameras: {
+        Row: {
+          camera_type: string | null
+          created_at: string | null
+          id: string
+          installed_at: string | null
+          last_snapshot: string | null
+          line_code: string | null
+          location: unknown
+          metadata: Json | null
+          name: string
+          region: string | null
+          status: string | null
+          stream_url: string | null
+          tenant_id: string | null
+          thumbnail_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          camera_type?: string | null
+          created_at?: string | null
+          id?: string
+          installed_at?: string | null
+          last_snapshot?: string | null
+          line_code?: string | null
+          location: unknown
+          metadata?: Json | null
+          name: string
+          region?: string | null
+          status?: string | null
+          stream_url?: string | null
+          tenant_id?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          camera_type?: string | null
+          created_at?: string | null
+          id?: string
+          installed_at?: string | null
+          last_snapshot?: string | null
+          line_code?: string | null
+          location?: unknown
+          metadata?: Json | null
+          name?: string
+          region?: string | null
+          status?: string | null
+          stream_url?: string | null
+          tenant_id?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cameras_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       concessoes_geo: {
         Row: {
           created_at: string | null
@@ -727,6 +833,112 @@ export type Database = {
           satelite?: string | null
         }
         Relationships: []
+      }
+      sensor_readings: {
+        Row: {
+          corrosion_level: number | null
+          humidity: number | null
+          id: string
+          luminosity: number | null
+          metadata: Json | null
+          sensor_id: string | null
+          status: string | null
+          temperature: number | null
+          timestamp: string | null
+          vibration_level: number | null
+          wind_speed: number | null
+        }
+        Insert: {
+          corrosion_level?: number | null
+          humidity?: number | null
+          id?: string
+          luminosity?: number | null
+          metadata?: Json | null
+          sensor_id?: string | null
+          status?: string | null
+          temperature?: number | null
+          timestamp?: string | null
+          vibration_level?: number | null
+          wind_speed?: number | null
+        }
+        Update: {
+          corrosion_level?: number | null
+          humidity?: number | null
+          id?: string
+          luminosity?: number | null
+          metadata?: Json | null
+          sensor_id?: string | null
+          status?: string | null
+          temperature?: number | null
+          timestamp?: string | null
+          vibration_level?: number | null
+          wind_speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sensor_readings_sensor_id_fkey"
+            columns: ["sensor_id"]
+            isOneToOne: false
+            referencedRelation: "sensors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sensors: {
+        Row: {
+          created_at: string | null
+          id: string
+          installed_at: string | null
+          last_maintenance: string | null
+          line_code: string | null
+          location: unknown
+          metadata: Json | null
+          name: string
+          region: string | null
+          sensor_type: string
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          installed_at?: string | null
+          last_maintenance?: string | null
+          line_code?: string | null
+          location: unknown
+          metadata?: Json | null
+          name: string
+          region?: string | null
+          sensor_type: string
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          installed_at?: string | null
+          last_maintenance?: string | null
+          line_code?: string | null
+          location?: unknown
+          metadata?: Json | null
+          name?: string
+          region?: string | null
+          sensor_type?: string
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sensors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       span_analysis: {
         Row: {
