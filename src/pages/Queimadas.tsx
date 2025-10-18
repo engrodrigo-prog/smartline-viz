@@ -19,22 +19,23 @@ const Queimadas = () => {
   const [showFootprints, setShowFootprints] = useState(true);
   const [showPoints, setShowPoints] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [modoBrasil, setModoBrasil] = useState(false);
 
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
 
-  // Fetch fire points (existing)
+  // Fetch fire points
   const { data: pointsData, refetch: refetchPoints } = useQueimadas({
-    concessao,
+    concessao: modoBrasil ? 'BRASIL' : concessao,
     minConf: 50,
     satelite: 'ALL',
-    maxKm: 3,
+    maxKm: modoBrasil ? 10 : 3,
     mode: 'live'
   });
 
-  // Fetch fire footprints (NEW)
+  // Fetch fire footprints
   const { data: footprintsData, refetch: refetchFootprints } = useFirmsFootprints({
-    concessao,
+    concessao: modoBrasil ? 'BRASIL' : concessao,
     minArea: 0
   });
 
@@ -51,9 +52,12 @@ const Queimadas = () => {
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
+    const initialCenter: [number, number] = modoBrasil ? [-52.0, -12.0] : [-46.6333, -23.5505];
+    const initialZoom = modoBrasil ? 4 : 8;
+
     map.current = initializeESRIMap(mapContainer.current, {
-      center: [-46.6333, -23.5505],
-      zoom: 8,
+      center: initialCenter,
+      zoom: initialZoom,
       basemap: 'imagery'
     });
 
@@ -68,7 +72,7 @@ const Queimadas = () => {
       map.current?.remove();
       map.current = null;
     };
-  }, []);
+  }, [modoBrasil]);
 
   // Add fire points layer
   useEffect(() => {
@@ -89,25 +93,27 @@ const Queimadas = () => {
       data: pointsData,
     });
 
-    map.current.addLayer({
-      id: layerId,
-      type: 'circle',
-      source: sourceId,
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 3, 15, 8],
-        'circle-color': [
-          'step',
-          ['get', 'confianca'],
-          '#ffeb3b', 60,
-          '#ff9800', 80,
-          '#f44336'
-        ],
-        'circle-opacity': 0.8,
-      },
-      layout: {
-        visibility: showPoints ? 'visible' : 'none',
-      },
-    });
+      map.current.addLayer({
+        id: layerId,
+        type: 'circle',
+        source: sourceId,
+        paint: {
+          'circle-radius': modoBrasil 
+            ? ['interpolate', ['linear'], ['zoom'], 3, 2, 8, 5, 15, 8]
+            : ['interpolate', ['linear'], ['zoom'], 5, 3, 15, 8],
+          'circle-color': [
+            'step',
+            ['get', 'confianca'],
+            '#ffeb3b', 60,
+            '#ff9800', 80,
+            '#f44336'
+          ],
+          'circle-opacity': 0.8,
+        },
+        layout: {
+          visibility: showPoints ? 'visible' : 'none',
+        },
+      });
 
     // Click handler
     map.current.on('click', layerId, (e) => {
@@ -171,25 +177,42 @@ const Queimadas = () => {
               <Flame className="w-5 h-5 text-primary" />
               <h2 className="text-lg font-semibold">Controles</h2>
             </div>
-            <Button size="sm" variant="outline" onClick={handleRefresh}>
-              <RefreshCw className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                size="sm" 
+                variant={modoBrasil ? "default" : "outline"}
+                onClick={() => setModoBrasil(!modoBrasil)}
+              >
+                {modoBrasil ? "🌎 Brasil" : "📍 ROI"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleRefresh}>
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
-          <div>
-            <Label>Concessão</Label>
-            <Select value={concessao} onValueChange={setConcessao}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODAS">Todas</SelectItem>
-                <SelectItem value="CPFL">CPFL</SelectItem>
-                <SelectItem value="ENEL">ENEL</SelectItem>
-                <SelectItem value="ENERGISA">ENERGISA</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {modoBrasil && (
+            <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-sm">
+              🌎 <strong>Modo Brasil</strong> - Exibindo todos os focos (últimas 24h)
+            </div>
+          )}
+
+          {!modoBrasil && (
+            <div>
+              <Label>Concessão</Label>
+              <Select value={concessao} onValueChange={setConcessao}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODAS">Todas</SelectItem>
+                  <SelectItem value="CPFL">CPFL</SelectItem>
+                  <SelectItem value="ENEL">ENEL</SelectItem>
+                  <SelectItem value="ENERGISA">ENERGISA</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <input

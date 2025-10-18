@@ -20,6 +20,7 @@ export const useQueimadas = (filters: QueimadasFilters) => {
         min_conf: (filters.minConf || 50).toString(),
         sat: filters.satelite || 'ALL',
         max_km: (filters.maxKm || 1).toString(),
+        mode: filters.concessao === 'BRASIL' ? 'brasil' : 'roi',
       });
 
       if (filters.mode === 'archive' && filters.startDate && filters.endDate) {
@@ -29,13 +30,12 @@ export const useQueimadas = (filters: QueimadasFilters) => {
 
       const functionName = filters.mode === 'live' ? 'queimadas-live' : 'queimadas-archive';
       
-      // Construir URL com query params
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
       const response = await fetch(`${baseUrl}?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        signal: AbortSignal.timeout(30000), // Timeout de 30s
+        signal: AbortSignal.timeout(30000),
       });
 
       if (!response.ok) {
@@ -47,9 +47,9 @@ export const useQueimadas = (filters: QueimadasFilters) => {
       const data = await response.json();
       return data as GeoJSON.FeatureCollection;
     },
-    refetchInterval: filters.mode === 'live' ? 30000 : false, // Atualiza a cada 30s em modo live
+    refetchInterval: filters.mode === 'live' ? 30000 : false,
     staleTime: filters.mode === 'live' ? 30000 : 60000,
-    retry: 2, // Retry até 2 vezes em caso de falha
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Backoff exponencial
+    retry: 2,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };

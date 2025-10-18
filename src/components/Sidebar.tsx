@@ -95,6 +95,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Configurações Gerais", path: "/config/geral", icon: Settings },
       { title: "Usuários", path: "/config/usuarios", icon: Users },
       { title: "Permissões", path: "/config/permissoes", icon: Lock },
+      { title: "Gerenciar Camadas", path: "/config/layers", icon: MapPin },
     ],
   },
 ];

@@ -7,6 +7,8 @@ import WeatherMap from "./WeatherMap";
 import { useWeather } from "@/hooks/useWeather";
 import ModuleLayout from "@/components/ModuleLayout";
 import { Loader2 } from "lucide-react";
+import { WeatherLayerSelector, DEFAULT_WEATHER_LAYERS, WeatherLayer } from "./WeatherLayerSelector";
+import { WeatherLegend } from "./WeatherLegend";
 
 type WeatherMode = 'openweather' | 'ventusky';
 
@@ -19,6 +21,17 @@ const WeatherPanel = () => {
   const [intervalValue, setIntervalValue] = useState<'1h' | '3h' | '6h' | '24h'>('1h');
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [isPlaying, setIsPlaying] = useState(false);
+  const [weatherLayers, setWeatherLayers] = useState<WeatherLayer[]>(DEFAULT_WEATHER_LAYERS);
+
+  const handleLayerToggle = (layerId: string) => {
+    setWeatherLayers((prev) =>
+      prev.map((layer) =>
+        layer.id === layerId ? { ...layer, enabled: !layer.enabled } : layer
+      )
+    );
+  };
+
+  const enabledLayerIds = weatherLayers.filter(l => l.enabled).map(l => l.id);
 
   // Santos, SP como padrão
   const center: [number, number] = [-46.33, -23.96];
@@ -67,6 +80,11 @@ const WeatherPanel = () => {
             </TabsList>
           </Tabs>
         </div>
+
+        {/* Seletor de Camadas */}
+        {mode === 'openweather' && (
+          <WeatherLayerSelector layers={weatherLayers} onLayerToggle={handleLayerToggle} />
+        )}
 
         {/* Dados meteorológicos atuais */}
         {mode === 'openweather' && weatherData && (
@@ -119,14 +137,23 @@ const WeatherPanel = () => {
         )}
 
         {/* Mapa */}
-        <div className="flex-1 min-h-[600px]">
+        <div className="flex-1 min-h-[600px] relative">
           {mode === 'openweather' ? (
             isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : (
-              <WeatherMap center={center} weatherData={weatherData} />
+              <>
+                <WeatherMap 
+                  center={center} 
+                  weatherData={weatherData}
+                  currentTime={new Date(currentTime)}
+                  intervalValue={parseInt(intervalValue)}
+                  enabledLayers={weatherLayers}
+                />
+                <WeatherLegend visibleLayers={enabledLayerIds} />
+              </>
             )
           ) : (
             <iframe
