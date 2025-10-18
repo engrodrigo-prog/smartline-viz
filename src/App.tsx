@@ -27,6 +27,10 @@ import Erosao from "./pages/modules/ambiental/Erosao";
 import OcupacaoFaixa from "./pages/modules/ambiental/OcupacaoFaixa";
 import Emendas from "./pages/modules/estrutura/Emendas";
 import RastreamentoCampo from "./pages/equipes/RastreamentoCampo";
+import PainelSensores from "./pages/sensores/PainelSensores";
+import Cameras from "./pages/sensores/Cameras";
+import SensorDashboard from "./pages/sensores/SensorDashboard";
+import Alertas from "./pages/sensores/Alertas";
 
 const queryClient = new QueryClient();
 
@@ -72,10 +76,10 @@ const App = () => (
           <Route path="/estrutura/corrosao" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
           {/* Sensores */}
-          <Route path="/sensores/painel" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
-          <Route path="/sensores/cameras" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
-          <Route path="/sensores/dashboard" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
-          <Route path="/sensores/alertas" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/sensores/painel" element={<ProtectedRoute><PainelSensores /></ProtectedRoute>} />
+          <Route path="/sensores/cameras" element={<ProtectedRoute><Cameras /></ProtectedRoute>} />
+          <Route path="/sensores/dashboard" element={<ProtectedRoute><SensorDashboard /></ProtectedRoute>} />
+          <Route path="/sensores/alertas" element={<ProtectedRoute><Alertas /></ProtectedRoute>} />
           
           {/* Operação */}
           <Route path="/operacao/missoes" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
