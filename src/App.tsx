@@ -20,6 +20,7 @@ import UploadUnificado from "./pages/upload/UploadUnificado";
 import UploadHistorico from "./pages/upload/UploadHistorico";
 import QueimadasModern from "./pages/modules/ambiental/Queimadas";
 import Vegetacao from "./pages/modules/Vegetacao";
+import AmbienteModule from "./modules/ambiente";
 import Travessias from "./pages/modules/Travessias";
 import Estruturas from "./pages/modules/Estruturas";
 import AreasAlagadas from "./pages/modules/ambiental/AreasAlagadas";
@@ -67,6 +68,7 @@ const App = () => (
           <Route path="/ambiental/ocupacao" element={<ProtectedRoute><OcupacaoFaixa /></ProtectedRoute>} />
           <Route path="/ambiental/distancia" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/ambiental/compliance" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/ambiente" element={<ProtectedRoute><AmbienteModule /></ProtectedRoute>} />
           
           {/* Estrutura */}
           <Route path="/estrutura/estruturas" element={<ProtectedRoute><Estruturas /></ProtectedRoute>} />
