@@ -9,8 +9,8 @@ import ModuleLayout from "@/components/ModuleLayout";
 import FiltersBar from "@/components/FiltersBar";
 import AlarmZoneConfig from "@/components/AlarmZoneConfig";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapboxQueimadas } from "@/components/MapboxQueimadas";
-import { MapboxUnified } from "@/components/MapboxUnified";
+import { MapLibreQueimadas } from "@/components/MapLibreQueimadas";
+import { MapLibreUnified } from "@/components/MapLibreUnified";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import DetailDrawer from "@/components/DetailDrawer";
 import CardKPI from "@/components/CardKPI";
@@ -401,7 +401,7 @@ const Queimadas = () => {
                 </div>
               </div>
             ) : (
-              <MapboxUnified
+              <MapLibreUnified
                 filterRegiao={filters.regiao}
                 showQueimadas={true}
                 showInfrastructure={true}

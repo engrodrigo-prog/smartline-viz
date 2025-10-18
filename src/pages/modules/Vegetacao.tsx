@@ -6,7 +6,7 @@ import ModuleLayout from "@/components/ModuleLayout";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapboxUnified } from "@/components/MapboxUnified";
+import { MapLibreUnified } from "@/components/MapLibreUnified";
 
 const Vegetacao = () => {
   const { filters } = useFilters();
@@ -102,7 +102,7 @@ const Vegetacao = () => {
           </TabsContent>
           
           <TabsContent value="mapa" className="mt-4">
-            <MapboxUnified
+            <MapLibreUnified
               filterRegiao={filters.regiao}
               filterEmpresa={filters.empresa}
               showVegetacao={true}

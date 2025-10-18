@@ -6,7 +6,7 @@ import ModuleLayout from "@/components/ModuleLayout";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapboxUnified } from "@/components/MapboxUnified";
+import { MapLibreUnified } from "@/components/MapLibreUnified";
 
 const Estruturas = () => {
   const { filters } = useFilters();
@@ -111,7 +111,7 @@ const Estruturas = () => {
 
           <TabsContent value="mapa" className="mt-4">
             <div className="h-[600px]">
-              <MapboxUnified
+              <MapLibreUnified
                 filterRegiao={filters.regiao}
                 filterEmpresa={filters.empresa}
                 filterLinha={filters.linha}
