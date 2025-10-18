@@ -1,46 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
-import FiltersBar from "@/components/FiltersBar";
-import { ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { AdminOnly } from "@/components/AdminOnly";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-
-type NoUnifilar = {
-  id: string;
-  tipo: "torre" | "conexao" | "sensor";
-  label: string;
-  x: number;
-  y: number;
-};
-
-const mockNodes: NoUnifilar[] = [
-  { id: "T1", tipo: "torre", label: "Torre 1", x: 100, y: 200 },
-  { id: "T2", tipo: "torre", label: "Torre 2", x: 250, y: 180 },
-  { id: "T3", tipo: "torre", label: "Torre 3", x: 400, y: 220 },
-  { id: "C1", tipo: "conexao", label: "Conexão 1", x: 175, y: 190 },
-  { id: "S1", tipo: "sensor", label: "Sensor 1", x: 325, y: 200 },
-];
+import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Construction, Upload, ZoomIn, ZoomOut, Maximize } from "lucide-react";
 
 const Unifilar = () => {
   const [zoom, setZoom] = useState(1);
-  const [selectedNode, setSelectedNode] = useState<NoUnifilar | null>(null);
+  const [diagrams, setDiagrams] = useState<any[]>([]);
+  const [selectedDiagram, setSelectedDiagram] = useState<any>(null);
+
+  useEffect(() => {
+    async function fetchDiagrams() {
+      const { data, error } = await supabase
+        .from('unifilar_diagrams')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) {
+        setDiagrams(data);
+        if (data.length > 0) {
+          setSelectedDiagram(data[0]);
+        }
+      }
+    }
+    
+    fetchDiagrams();
+  }, []);
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 0.2, 2));
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 0.2, 0.5));
   const handleReset = () => setZoom(1);
-
-  const getNodeColor = (tipo: string) => {
-    switch (tipo) {
-      case "torre":
-        return "fill-primary";
-      case "conexao":
-        return "fill-secondary";
-      case "sensor":
-        return "fill-accent";
-      default:
-        return "fill-muted";
-    }
-  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -53,112 +47,140 @@ const Unifilar = () => {
         />
         
         <main className="flex-1 overflow-y-auto p-6">
-          <FiltersBar />
-
-          {/* Controls */}
-          <div className="flex gap-2 mb-4">
-            <Button onClick={handleZoomIn} variant="outline" size="sm">
-              <ZoomIn className="w-4 h-4 mr-2" />
-              Zoom In
-            </Button>
-            <Button onClick={handleZoomOut} variant="outline" size="sm">
-              <ZoomOut className="w-4 h-4 mr-2" />
-              Zoom Out
-            </Button>
-            <Button onClick={handleReset} variant="outline" size="sm">
-              <Maximize className="w-4 h-4 mr-2" />
-              Reset
-            </Button>
-          </div>
-
-          {/* SVG Diagram */}
-          <div className="tech-card p-6 overflow-auto">
-            <svg
-              width="800"
-              height="400"
-              viewBox="0 0 800 400"
-              style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
-              className="transition-transform duration-300"
-            >
-              {/* Connections */}
-              <line x1="100" y1="200" x2="250" y2="180" stroke="hsl(var(--border))" strokeWidth="2" />
-              <line x1="250" y1="180" x2="400" y2="220" stroke="hsl(var(--border))" strokeWidth="2" />
-              <line x1="100" y1="200" x2="175" y2="190" stroke="hsl(var(--primary))" strokeWidth="2" strokeDasharray="5,5" />
-              <line x1="250" y1="180" x2="325" y2="200" stroke="hsl(var(--accent))" strokeWidth="2" strokeDasharray="5,5" />
-
-              {/* Nodes */}
-              {mockNodes.map((node) => (
-                <g
-                  key={node.id}
-                  onClick={() => setSelectedNode(node)}
-                  className="cursor-pointer hover:opacity-80 transition-opacity"
-                >
-                  <circle
-                    cx={node.x}
-                    cy={node.y}
-                    r={node.tipo === "torre" ? 12 : 8}
-                    className={getNodeColor(node.tipo)}
-                    stroke="hsl(var(--foreground))"
-                    strokeWidth="2"
-                  />
-                  <text
-                    x={node.x}
-                    y={node.y + 30}
-                    textAnchor="middle"
-                    fill="hsl(var(--foreground))"
-                    fontSize="12"
-                    fontWeight="500"
-                  >
-                    {node.label}
-                  </text>
-                </g>
-              ))}
-            </svg>
-          </div>
-
-          {/* Legend */}
-          <div className="tech-card p-4 mt-4">
-            <h3 className="text-sm font-semibold mb-3">Legenda</h3>
-            <div className="flex gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-primary border-2 border-foreground" />
-                <span className="text-sm">Torre</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-secondary border-2 border-foreground" />
-                <span className="text-sm">Conexão</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-accent border-2 border-foreground" />
-                <span className="text-sm">Sensor</span>
-              </div>
+          {diagrams.length === 0 ? (
+            <div className="tech-card p-12 text-center max-w-2xl mx-auto">
+              <Construction className="w-20 h-20 mx-auto mb-6 text-primary" />
+              <h2 className="text-3xl font-bold mb-4">
+                Diagrama <span className="gradient-text">Unifilar</span>
+              </h2>
+              <p className="text-lg text-muted-foreground mb-6">
+                Nenhum diagrama disponível. 
+              </p>
+              <AdminOnly fallback={
+                <p className="text-sm text-muted-foreground">
+                  Contate um administrador para fazer upload de diagramas.
+                </p>
+              }>
+                <Link to="/upload">
+                  <Button>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Fazer Upload de Diagrama
+                  </Button>
+                </Link>
+              </AdminOnly>
             </div>
-          </div>
-
-          {/* Node Details */}
-          {selectedNode && (
-            <div className="tech-card p-6 mt-4">
-              <h3 className="text-lg font-semibold mb-4">Detalhes do Nó</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <span className="text-sm text-muted-foreground">ID</span>
-                  <p className="font-medium">{selectedNode.id}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Tipo</span>
-                  <p className="font-medium capitalize">{selectedNode.tipo}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Label</span>
-                  <p className="font-medium">{selectedNode.label}</p>
-                </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Diagramas Unifilares Disponíveis</h2>
+                
+                <AdminOnly fallback={null}>
+                  <Link to="/upload">
+                    <Button variant="outline" size="sm">
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload Novo Diagrama
+                    </Button>
+                  </Link>
+                </AdminOnly>
               </div>
-              <button 
-                className="btn-primary mt-4"
-                onClick={() => setSelectedNode(null)}
-              >
-                Fechar
-              </button>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {diagrams.map(diagram => (
+                  <Card 
+                    key={diagram.id}
+                    className={`cursor-pointer transition-all hover:shadow-lg ${
+                      selectedDiagram?.id === diagram.id ? 'border-primary ring-2 ring-primary/20' : ''
+                    }`}
+                    onClick={() => setSelectedDiagram(diagram)}
+                  >
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-lg mb-1">{diagram.name}</h3>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Código: {diagram.line_code}
+                      </p>
+                      {diagram.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {diagram.description}
+                        </p>
+                      )}
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                          {diagram.file_type.toUpperCase()}
+                        </span>
+                        {diagram.organization && (
+                          <span className="text-xs text-muted-foreground">
+                            {diagram.organization}
+                          </span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {selectedDiagram && (
+                <>
+                  <div className="flex gap-2">
+                    <Button onClick={handleZoomIn} variant="outline" size="sm">
+                      <ZoomIn className="w-4 h-4 mr-2" />
+                      Zoom In
+                    </Button>
+                    <Button onClick={handleZoomOut} variant="outline" size="sm">
+                      <ZoomOut className="w-4 h-4 mr-2" />
+                      Zoom Out
+                    </Button>
+                    <Button onClick={handleReset} variant="outline" size="sm">
+                      <Maximize className="w-4 h-4 mr-2" />
+                      Reset
+                    </Button>
+                  </div>
+
+                  <Card className="p-6">
+                    <div className="mb-4">
+                      <h3 className="text-xl font-semibold mb-2">{selectedDiagram.name}</h3>
+                      {selectedDiagram.description && (
+                        <p className="text-muted-foreground">{selectedDiagram.description}</p>
+                      )}
+                    </div>
+
+                    <div className="border rounded-lg p-4 bg-secondary/5 overflow-auto">
+                      {selectedDiagram.file_type === 'svg' && (
+                        <div 
+                          className="w-full transition-transform duration-300"
+                          style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}
+                        >
+                          <img 
+                            src={selectedDiagram.file_url} 
+                            alt={selectedDiagram.name} 
+                            className="w-full h-auto"
+                          />
+                        </div>
+                      )}
+                      
+                      {selectedDiagram.file_type === 'json' && selectedDiagram.diagram_data && (
+                        <div className="w-full overflow-auto max-h-96">
+                          <pre className="text-xs bg-secondary p-4 rounded">
+                            {JSON.stringify(selectedDiagram.diagram_data, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                      
+                      {(selectedDiagram.file_type === 'png' || selectedDiagram.file_type === 'jpg') && (
+                        <div 
+                          className="w-full transition-transform duration-300"
+                          style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}
+                        >
+                          <img 
+                            src={selectedDiagram.file_url} 
+                            alt={selectedDiagram.name} 
+                            className="w-full h-auto rounded"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </>
+              )}
             </div>
           )}
         </main>

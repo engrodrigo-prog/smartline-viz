@@ -3,6 +3,9 @@ project_id = "ndmelhwkpthvgjiqarrs"
 [functions.queimadas-live]
 verify_jwt = false
 
+[functions.process-unifilar-diagram]
+verify_jwt = true
+
 [functions.queimadas-archive]
 verify_jwt = false
 
