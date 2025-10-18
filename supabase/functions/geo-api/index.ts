@@ -1,10 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const GeoApiParamsSchema = z.object({
+  fn: z.enum(['lines', 'domain', 'profile']),
+  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  tenant_id: z.string().uuid().optional(),
+  format: z.enum(['geojson', 'wkt']).default('geojson')
+});
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -38,16 +46,16 @@ serve(async (req) => {
       throw new Error('Invalid authentication token');
     }
 
-    // Parse query parameters
+    // Parse and validate query parameters
     const url = new URL(req.url);
-    const fn = url.searchParams.get('fn'); // lines | domain | profile
-    const lineCode = url.searchParams.get('line_code');
-    const tenantId = url.searchParams.get('tenant_id');
-    const format = url.searchParams.get('format') || 'geojson'; // geojson | wkt
+    const params = GeoApiParamsSchema.parse({
+      fn: url.searchParams.get('fn'),
+      line_code: url.searchParams.get('line_code'),
+      tenant_id: url.searchParams.get('tenant_id'),
+      format: url.searchParams.get('format') || 'geojson'
+    });
 
-    if (!fn) {
-      throw new Error('Missing required parameter: fn (lines|domain|profile)');
-    }
+    const { fn, line_code: lineCode, tenant_id: tenantId, format } = params;
 
     // Validate tenant access if tenant_id provided
     let validatedTenant = tenantId;

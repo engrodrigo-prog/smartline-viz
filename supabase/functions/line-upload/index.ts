@@ -1,20 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface LineUploadRequest {
-  line_code: string;
-  name?: string;
-  kml_data?: string;  // KML content as string
-  file_url?: string;  // Or URL to KML file in storage
-  x_left: number;     // Left buffer in meters
-  x_right: number;    // Right buffer in meters
-  tenant_id?: string; // Optional, will be inferred if user has single tenant
-}
+const LineUploadSchema = z.object({
+  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9_-]+$/),
+  name: z.string().trim().max(200).optional(),
+  kml_data: z.string().max(10_000_000).optional(), // 10MB max
+  file_url: z.string().url().optional(),
+  x_left: z.number().min(0).max(10000),
+  x_right: z.number().min(0).max(10000),
+  tenant_id: z.string().uuid().optional()
+});
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -23,18 +24,22 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client with service role
+    // Initialize Supabase clients
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify JWT and get user
+    // Verify JWT and get user with anon client
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing authorization header');
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
 
@@ -42,11 +47,12 @@ serve(async (req) => {
       throw new Error('Invalid authentication token');
     }
 
-    // Parse request body
-    const body: LineUploadRequest = await req.json();
+    // Parse and validate request body
+    const rawBody = await req.json();
+    const body = LineUploadSchema.parse(rawBody);
 
-    // Validate tenant_id using security definer function
-    const { data: validatedTenant, error: tenantError } = await supabase.rpc(
+    // Validate tenant access BEFORE using service role
+    const { data: validatedTenant, error: tenantError } = await anonClient.rpc(
       'validate_tenant_access',
       {
         _user_id: user.id,
@@ -65,6 +71,9 @@ serve(async (req) => {
     }
 
     const tenant_id = validatedTenant;
+
+    // NOW safe to use service role with validated tenant
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse KML and extract LineString geometry
     let lineGeometry: any = null;

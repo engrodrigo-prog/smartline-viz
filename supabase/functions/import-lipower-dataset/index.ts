@@ -1,22 +1,68 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { parse } from "https://deno.land/std@0.200.0/csv/mod.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface LiPowerlineDatasetRequest {
-  dataset_name: string;
-  line_code: string;
-  line_kml_url: string;        // URL to Line.kml in storage
-  tower_csv_url: string;        // URL to TowerAccount.csv in storage
-  span_csv_url: string;         // URL to SpanAnalysis.csv in storage
-  dem_tif_url?: string;         // Optional: URL to DEM.tif in storage
-  x_left: number;               // Left buffer in meters
-  x_right: number;              // Right buffer in meters
-  tenant_id?: string;           // Optional, will be inferred if user has single tenant
+// Allowed storage domains for security
+const ALLOWED_DOMAINS = [
+  'supabase.co',
+  'ndmelhwkpthvgjiqarrs.supabase.co'
+];
+
+const LiPowerlineSchema = z.object({
+  dataset_name: z.string().trim().min(1).max(200),
+  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9_-]+$/),
+  line_kml_url: z.string().url(),
+  tower_csv_url: z.string().url(),
+  span_csv_url: z.string().url(),
+  dem_tif_url: z.string().url().optional(),
+  x_left: z.number().min(0).max(10000),
+  x_right: z.number().min(0).max(10000),
+  tenant_id: z.string().uuid().optional()
+});
+
+function validateUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    return ALLOWED_DOMAINS.some(d => parsed.hostname.endsWith(d));
+  } catch {
+    return false;
+  }
+}
+
+async function fetchWithLimits(url: string, maxSize = 100_000_000): Promise<Response> {
+  if (!validateUrl(url)) {
+    throw new Error(`Invalid URL domain. Allowed: ${ALLOWED_DOMAINS.join(', ')}`);
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'Accept': 'application/xml,text/csv,text/plain' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+    }
+
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > maxSize) {
+      throw new Error(`File too large (max ${maxSize / 1_000_000}MB)`);
+    }
+
+    return response;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 serve(async (req) => {
@@ -26,18 +72,22 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client with service role
+    // Initialize Supabase clients
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify JWT and get user
+    // Verify JWT with anon client
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing authorization header');
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
 
@@ -45,11 +95,12 @@ serve(async (req) => {
       throw new Error('Invalid authentication token');
     }
 
-    // Parse request body
-    const body: LiPowerlineDatasetRequest = await req.json();
+    // Parse and validate request body
+    const rawBody = await req.json();
+    const body = LiPowerlineSchema.parse(rawBody);
 
-    // Validate tenant_id
-    const { data: validatedTenant, error: tenantError } = await supabase.rpc(
+    // Validate tenant access BEFORE using service role
+    const { data: validatedTenant, error: tenantError } = await anonClient.rpc(
       'validate_tenant_access',
       {
         _user_id: user.id,
@@ -68,6 +119,9 @@ serve(async (req) => {
     }
 
     const tenant_id = validatedTenant;
+
+    // NOW safe to use service role
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Create dataset catalog entry
     const { data: dataset, error: datasetError } = await supabase
@@ -97,9 +151,9 @@ serve(async (req) => {
       throw new Error('Failed to create dataset entry');
     }
 
-    // 1. Process Line.kml
+    // 1. Process Line.kml with security checks
     console.log('Processing Line.kml...');
-    const lineKmlResponse = await fetch(body.line_kml_url);
+    const lineKmlResponse = await fetchWithLimits(body.line_kml_url);
     const lineKmlText = await lineKmlResponse.text();
     
     const coordMatch = lineKmlText.match(/<LineString>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/);
@@ -144,9 +198,9 @@ serve(async (req) => {
       .select()
       .single();
 
-    // 2. Process TowerAccount.csv
+    // 2. Process TowerAccount.csv with security checks
     console.log('Processing TowerAccount.csv...');
-    const towerCsvResponse = await fetch(body.tower_csv_url);
+    const towerCsvResponse = await fetchWithLimits(body.tower_csv_url);
     const towerCsvText = await towerCsvResponse.text();
     const towerData = parse(towerCsvText, { skipFirstRow: true });
 
@@ -163,9 +217,9 @@ serve(async (req) => {
 
     await supabase.from('tower_asset').insert(towers);
 
-    // 3. Process SpanAnalysis.csv
+    // 3. Process SpanAnalysis.csv with security checks
     console.log('Processing SpanAnalysis.csv...');
-    const spanCsvResponse = await fetch(body.span_csv_url);
+    const spanCsvResponse = await fetchWithLimits(body.span_csv_url);
     const spanCsvText = await spanCsvResponse.text();
     const spanData = parse(spanCsvText, { skipFirstRow: true });
 

@@ -77,10 +77,6 @@ const Login = () => {
     }
   };
 
-  const handleVisitorAccess = () => {
-    localStorage.setItem('visitor_mode', 'true');
-    navigate("/dashboard");
-  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
@@ -150,22 +146,13 @@ const Login = () => {
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-border/50 text-center space-y-4">
+          <div className="mt-6 pt-6 border-t border-border/50 text-center">
             <button
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-sm text-primary hover:text-primary/80 font-medium transition-colors block w-full"
             >
               {isSignUp ? "Já tem uma conta? Entre aqui" : "Não tem conta? Cadastre-se"}
             </button>
-            
-            <Button 
-              type="button"
-              variant="outline" 
-              onClick={handleVisitorAccess}
-              className="w-full"
-            >
-              Entrar como visitante
-            </Button>
           </div>
 
           <div className="mt-6 text-center">
