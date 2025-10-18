@@ -32,7 +32,7 @@ export const FILE_TYPES: FileType[] = [
   // Estruturas
   {
     id: 'towers',
-    label: 'Torres',
+    label: 'Estruturas e Torres',
     description: 'Posições GPS das torres/estruturas',
     acceptedFormats: ['.csv', '.kml', '.kmz'],
     targetTable: 'tower_asset',
@@ -58,7 +58,8 @@ export const FILE_TYPES: FileType[] = [
   // Perigos
   {
     id: 'danger_trees',
-    label: 'Danger Trees',
+    label: 'Árvores de Risco',
+    subtitle: 'Danger Trees',
     description: 'Árvores com risco de queda',
     acceptedFormats: ['.kml', '.kmz', '.csv'],
     targetTable: 'eventos_geo',
@@ -71,8 +72,8 @@ export const FILE_TYPES: FileType[] = [
   
   {
     id: 'tree_fall',
-    label: 'Tree Fall',
-    subtitle: 'Árvores Laterais',
+    label: 'Árvores Laterais',
+    subtitle: 'Tree Fall',
     description: 'Árvores próximas à faixa de domínio',
     acceptedFormats: ['.kml', '.kmz', '.csv'],
     targetTable: 'eventos_geo',
@@ -85,8 +86,8 @@ export const FILE_TYPES: FileType[] = [
   
   {
     id: 'clearance_danger',
-    label: 'Clearance Danger',
-    subtitle: 'Distância de Segurança',
+    label: 'Distância de Segurança',
+    subtitle: 'Clearance Danger',
     description: 'Pontos com clearance comprometido',
     acceptedFormats: ['.kml', '.kmz', '.csv'],
     targetTable: 'eventos_geo',
@@ -99,8 +100,8 @@ export const FILE_TYPES: FileType[] = [
   
   {
     id: 'scissor_crossing',
-    label: 'Scissor Crossing',
-    subtitle: 'Cruzamentos',
+    label: 'Cruzamentos',
+    subtitle: 'Scissor Crossing',
     description: 'Cruzamentos com outras linhas',
     acceptedFormats: ['.kml', '.kmz'],
     targetTable: 'eventos_geo',
@@ -113,7 +114,8 @@ export const FILE_TYPES: FileType[] = [
   
   {
     id: 'dangers_kml',
-    label: 'Dangers KML',
+    label: 'Outros Perigos',
+    subtitle: 'Dangers KML',
     description: 'Outros perigos georreferenciados',
     acceptedFormats: ['.kml', '.kmz'],
     targetTable: 'eventos_geo',
@@ -127,7 +129,8 @@ export const FILE_TYPES: FileType[] = [
   // Outros
   {
     id: 'dem_surface',
-    label: 'DEM Surface',
+    label: 'Superfície DEM',
+    subtitle: 'Digital Elevation Model',
     description: 'Modelo Digital de Elevação (GeoTIFF)',
     acceptedFormats: ['.tif', '.tiff'],
     targetTable: 'dem_surface',

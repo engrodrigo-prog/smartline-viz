@@ -36,7 +36,7 @@ const Dashboard = () => {
         <FiltersBar />
 
         {/* Quick Access Shortcuts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Link to="/visual/mapa" className="tech-card p-6 hover:scale-[1.02] transition-transform">
             <div className="flex flex-col items-center text-center gap-4">
               <div className="p-4 bg-primary/10 rounded-2xl">
@@ -57,18 +57,6 @@ const Dashboard = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-1">Diagrama Unifilar</h3>
                 <p className="text-xs text-muted-foreground">Topologia da linha</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link to="/upload" className="tech-card p-6 hover:scale-[1.02] transition-transform">
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="p-4 bg-emerald-500/10 rounded-2xl">
-                <Upload className="w-8 h-8 text-emerald-500" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Upload de Dados</h3>
-                <p className="text-xs text-muted-foreground">Linha, Torres, Vãos, Perigos, DEM</p>
               </div>
             </div>
           </Link>
