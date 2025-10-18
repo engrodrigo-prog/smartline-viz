@@ -1,43 +1,48 @@
 import { useState } from "react";
-import AppLayout from "@/components/AppLayout";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Play } from "lucide-react";
-import { FileTypeSelector } from "@/components/upload/FileTypeSelector";
+import { FileTypeGrid } from "@/components/upload/FileTypeGrid";
 import { AdditionalFieldsForm } from "@/components/upload/AdditionalFieldsForm";
 import { UploadQueueManager, type UploadJob } from "@/components/upload/UploadQueueManager";
-import { getFileTypeById } from "@/lib/uploadConfig";
-import { supabase } from "@/integrations/supabase/client";
+import { getFileTypesByCategory, type FileType } from "@/lib/uploadConfig";
+import AppLayout from "@/components/AppLayout";
+import { ChevronDown, ChevronUp, Play, Trash } from "lucide-react";
 
 export default function UploadUnificado() {
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedFileType, setSelectedFileType] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<FileType | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [additionalData, setAdditionalData] = useState<Record<string, any>>({});
   const [uploadQueue, setUploadQueue] = useState<UploadJob[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [queueMinimized, setQueueMinimized] = useState(false);
 
-  const selectedFileTypeConfig = selectedFileType ? getFileTypeById(selectedFileType) : null;
+  const handleFileTypeSelect = (fileType: FileType) => {
+    setSelectedType(fileType);
+    setSelectedFile(null);
+    setAdditionalData({});
+    setDialogOpen(true);
+  };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (selectedFileTypeConfig) {
-      const ext = `.${file.name.split('.').pop()?.toLowerCase()}`;
-      if (!selectedFileTypeConfig.acceptedFormats.includes(ext)) {
-        toast.error(`Formato inválido. Esperado: ${selectedFileTypeConfig.acceptedFormats.join(', ')}`);
-        return;
-      }
+    if (!selectedType) return;
 
-      // Validate file size (100MB max)
-      if (file.size > 100 * 1024 * 1024) {
-        toast.error('Arquivo muito grande (máximo 100MB)');
-        return;
-      }
+    const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!selectedType.acceptedFormats.includes(extension)) {
+      toast.error(`Formato inválido. Aceitos: ${selectedType.acceptedFormats.join(', ')}`);
+      return;
+    }
+
+    const maxSize = 100 * 1024 * 1024; // 100MB
+    if (file.size > maxSize) {
+      toast.error('Arquivo muito grande. Máximo: 100MB');
+      return;
     }
 
     setSelectedFile(file);
@@ -48,218 +53,232 @@ export default function UploadUnificado() {
   };
 
   const addToQueue = () => {
-    if (!selectedFile || !selectedFileTypeConfig) {
+    if (!selectedFile || !selectedType) {
       toast.error('Selecione um arquivo');
       return;
     }
 
-    // Validate required fields
-    const missingFields = selectedFileTypeConfig.requiredFields?.filter(
-      field => !additionalData[field]
-    ) || [];
-
-    if (missingFields.length > 0) {
-      toast.error(`Campos obrigatórios faltando: ${missingFields.join(', ')}`);
-      return;
+    const requiredFields = selectedType.requiredFields || [];
+    for (const field of requiredFields) {
+      if (!additionalData[field]) {
+        toast.error(`Campo obrigatório: ${field}`);
+        return;
+      }
     }
 
     const job: UploadJob = {
       id: crypto.randomUUID(),
       file: selectedFile,
-      fileType: selectedFileTypeConfig,
-      additionalData: {
+      fileType: selectedType,
+      additionalData: { 
         ...additionalData,
-        ...selectedFileTypeConfig.metadata // Include metadata like tipo_evento
+        ...selectedType.metadata 
       },
       status: 'pending'
     };
 
     setUploadQueue(prev => [...prev, job]);
-    
-    // Reset form
+    setDialogOpen(false);
     setSelectedFile(null);
-    setSelectedFileType('');
     setAdditionalData({});
-    
-    toast.success(`${selectedFileTypeConfig.label} adicionado à fila`);
+    toast.success('Adicionado à fila de upload');
   };
 
   const removeFromQueue = (id: string) => {
     setUploadQueue(prev => prev.filter(job => job.id !== id));
   };
 
-  const updateJobStatus = (
-    id: string, 
-    status: UploadJob['status'], 
-    result?: any, 
-    error?: string
-  ) => {
+  const updateJobStatus = (id: string, status: UploadJob['status'], result?: any, error?: string) => {
     setUploadQueue(prev => prev.map(job => 
       job.id === id ? { ...job, status, result, error } : job
     ));
   };
 
+  const clearQueue = () => {
+    const hasProcessing = uploadQueue.some(j => j.status === 'uploading' || j.status === 'processing');
+    if (hasProcessing) {
+      toast.error('Aguarde o processamento atual terminar');
+      return;
+    }
+    setUploadQueue([]);
+    toast.success('Fila limpa');
+  };
+
   const processQueue = async () => {
-    if (uploadQueue.length === 0) {
-      toast.error('Nenhum arquivo na fila');
-      return;
-    }
-
-    setIsProcessing(true);
     const { data: { user } } = await supabase.auth.getUser();
-    
     if (!user) {
-      toast.error('Usuário não autenticado');
-      setIsProcessing(false);
+      toast.error('Você precisa estar logado');
       return;
     }
 
-    for (const job of uploadQueue) {
-      if (job.status !== 'pending') continue;
+    const pendingJobs = uploadQueue.filter(j => j.status === 'pending');
+    if (pendingJobs.length === 0) {
+      toast.error('Nenhum item pendente na fila');
+      return;
+    }
 
+    for (const job of pendingJobs) {
       try {
-        // 1. Upload to storage
         updateJobStatus(job.id, 'uploading');
+
+        const fileExtension = job.file.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}_${crypto.randomUUID()}.${fileExtension}`;
         
-        const fileName = `${user.id}/${job.fileType.id}/${Date.now()}_${job.file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('geodata-uploads')
           .upload(fileName, job.file);
 
         if (uploadError) throw uploadError;
 
-        // 2. Process file via edge function
         updateJobStatus(job.id, 'processing');
 
-        const { data: functionData, error: functionError } = await supabase.functions.invoke(
+        const { data, error: functionError } = await supabase.functions.invoke(
           job.fileType.edgeFunction,
           {
             body: {
               file_path: fileName,
-              ...job.additionalData
+              ...job.additionalData,
             }
           }
         );
 
         if (functionError) throw functionError;
 
-        updateJobStatus(
-          job.id, 
-          'success', 
-          functionData.message || 'Processado com sucesso'
-        );
+        updateJobStatus(job.id, 'success', data?.message || 'Processado com sucesso');
+        toast.success(`${job.fileType.label} processado`);
 
       } catch (error: any) {
-        console.error('Processing error:', error);
-        updateJobStatus(
-          job.id, 
-          'error', 
-          undefined,
-          error.message || 'Erro ao processar arquivo'
-        );
+        console.error('Upload error:', error);
+        updateJobStatus(job.id, 'error', undefined, error.message || 'Erro desconhecido');
+        toast.error(`Erro: ${error.message}`);
       }
-    }
-
-    setIsProcessing(false);
-    
-    const successCount = uploadQueue.filter(j => j.status === 'success').length;
-    const errorCount = uploadQueue.filter(j => j.status === 'error').length;
-    
-    if (successCount > 0) {
-      toast.success(`${successCount} arquivo(s) processado(s) com sucesso`);
-    }
-    if (errorCount > 0) {
-      toast.error(`${errorCount} arquivo(s) com erro`);
     }
   };
 
+  const toggleQueue = () => setQueueMinimized(!queueMinimized);
+
   return (
-    <AppLayout title="Upload Unificado" subtitle="Importe dados geoespaciais">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Upload de Dados Geoespaciais</h1>
-          <p className="text-muted-foreground">
-            Importe dados de linha, torres, vãos, perigos e mais
-          </p>
-        </div>
+    <AppLayout title="Upload de Dados Geoespaciais" subtitle="Selecione o tipo de dado que deseja importar">
+      <div className="space-y-8 pb-32">
+        
+        {/* Grid de Categorias */}
+        <FileTypeGrid 
+          category="linha" 
+          fileTypes={getFileTypesByCategory('linha')} 
+          onSelect={handleFileTypeSelect}
+        />
 
-        <Card className="p-6">
-          <div className="space-y-6">
-            <FileTypeSelector
-              selectedCategory={selectedCategory}
-              selectedFileType={selectedFileType}
-              onCategoryChange={(cat) => {
-                setSelectedCategory(cat);
-                setSelectedFileType('');
-                setSelectedFile(null);
-                setAdditionalData({});
-              }}
-              onFileTypeChange={setSelectedFileType}
-            />
+        <FileTypeGrid 
+          category="estrutura" 
+          fileTypes={getFileTypesByCategory('estrutura')} 
+          onSelect={handleFileTypeSelect}
+        />
 
-            {selectedFileTypeConfig && (
-              <>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    3. Selecione o Arquivo
-                  </label>
-                  <Input
-                    type="file"
-                    accept={selectedFileTypeConfig.acceptedFormats.join(',')}
-                    onChange={handleFileSelect}
-                  />
-                  {selectedFile && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Arquivo selecionado: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-                    </p>
-                  )}
-                </div>
+        <FileTypeGrid 
+          category="analise" 
+          fileTypes={getFileTypesByCategory('analise')} 
+          onSelect={handleFileTypeSelect}
+        />
 
-                <AdditionalFieldsForm
-                  fileType={selectedFileTypeConfig}
+        <FileTypeGrid 
+          category="perigo" 
+          fileTypes={getFileTypesByCategory('perigo')} 
+          onSelect={handleFileTypeSelect}
+        />
+
+        <FileTypeGrid 
+          category="outros" 
+          fileTypes={getFileTypesByCategory('outros')} 
+          onSelect={handleFileTypeSelect}
+        />
+
+        {/* Dialog de Upload (Sheet lateral) */}
+        <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+          <SheetContent className="w-full sm:max-w-[500px] overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                {selectedType && <selectedType.icon className="w-5 h-5" />}
+                {selectedType?.label}
+              </SheetTitle>
+              {selectedType?.subtitle && (
+                <SheetDescription>{selectedType.subtitle}</SheetDescription>
+              )}
+            </SheetHeader>
+
+            <div className="mt-6 space-y-6">
+              <p className="text-sm text-muted-foreground">{selectedType?.description}</p>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Selecione o arquivo</label>
+                <Input 
+                  type="file" 
+                  accept={selectedType?.acceptedFormats.join(',')} 
+                  onChange={handleFileSelect}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Formatos aceitos: {selectedType?.acceptedFormats.join(', ')}
+                </p>
+              </div>
+
+              {selectedType && (
+                <AdditionalFieldsForm 
+                  fileType={selectedType}
                   values={additionalData}
                   onChange={handleAdditionalDataChange}
                 />
+              )}
 
-                <Button
-                  onClick={addToQueue}
-                  disabled={!selectedFile}
-                  className="w-full"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Adicionar à Fila
-                </Button>
-              </>
-            )}
-          </div>
-        </Card>
-
-        {uploadQueue.length > 0 && (
-          <Card className="p-6">
-            <UploadQueueManager
-              queue={uploadQueue}
-              onRemove={removeFromQueue}
-            />
-
-            <div className="flex gap-3 mt-6">
-              <Button
-                onClick={processQueue}
-                disabled={isProcessing || uploadQueue.filter(j => j.status === 'pending').length === 0}
-                className="flex-1"
+              <Button 
+                onClick={addToQueue} 
+                className="w-full"
+                disabled={!selectedFile}
               >
-                <Play className="w-4 h-4 mr-2" />
-                {isProcessing ? 'Processando...' : 'Processar Fila'}
-              </Button>
-              
-              <Button
-                variant="outline"
-                onClick={() => setUploadQueue([])}
-                disabled={isProcessing}
-              >
-                Limpar Tudo
+                Adicionar à Fila
               </Button>
             </div>
-          </Card>
+          </SheetContent>
+        </Sheet>
+
+        {/* Fila Fixada no Canto (Minimizável) */}
+        {uploadQueue.length > 0 && (
+          <div className="fixed bottom-6 right-6 w-96 z-50 max-w-[calc(100vw-3rem)]">
+            <Card className="shadow-2xl border-2">
+              <CardHeader className="flex flex-row items-center justify-between py-3 px-4">
+                <div>
+                  <CardTitle className="text-base">Fila de Upload</CardTitle>
+                  <CardDescription>{uploadQueue.length} arquivo(s)</CardDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={toggleQueue}>
+                  {queueMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </Button>
+              </CardHeader>
+
+              {!queueMinimized && (
+                <CardContent className="px-4 pb-4">
+                  <UploadQueueManager queue={uploadQueue} onRemove={removeFromQueue} />
+                  
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      onClick={processQueue} 
+                      className="flex-1"
+                      disabled={uploadQueue.every(j => j.status !== 'pending')}
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      Processar Fila
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={clearQueue}
+                      disabled={uploadQueue.some(j => j.status === 'uploading' || j.status === 'processing')}
+                    >
+                      <Trash className="w-4 h-4 mr-2" />
+                      Limpar
+                    </Button>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          </div>
         )}
       </div>
     </AppLayout>
