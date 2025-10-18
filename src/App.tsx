@@ -26,7 +26,7 @@ import AreasAlagadas from "./pages/modules/ambiental/AreasAlagadas";
 import Erosao from "./pages/modules/ambiental/Erosao";
 import OcupacaoFaixa from "./pages/modules/ambiental/OcupacaoFaixa";
 import Emendas from "./pages/modules/estrutura/Emendas";
-import RastreamentoCampo from "./pages/equipes/RastreamentoCampo";
+import VeiculosOnline from "./pages/operacao/VeiculosOnline";
 import PainelSensores from "./pages/sensores/PainelSensores";
 import Cameras from "./pages/sensores/Cameras";
 import SensorDashboard from "./pages/sensores/SensorDashboard";
@@ -84,6 +84,7 @@ const App = () => (
           {/* Operação */}
           <Route path="/operacao/missoes" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/operacao/eventos" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/operacao/veiculos" element={<ProtectedRoute><VeiculosOnline /></ProtectedRoute>} />
           <Route path="/operacao/compliance" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/operacao/relatorios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
@@ -91,9 +92,6 @@ const App = () => (
           <Route path="/analises/gemeo-digital" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/fiscalizacao/obras" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/auditorias/qualidade" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
-          
-          {/* Gestão de Equipes */}
-          <Route path="/equipes/rastreamento" element={<ProtectedRoute><RastreamentoCampo /></ProtectedRoute>} />
           
           {/* Configurações */}
           <Route path="/config/geral" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />

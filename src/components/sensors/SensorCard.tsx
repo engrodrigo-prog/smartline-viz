@@ -55,6 +55,34 @@ export function SensorCard({ sensor, onClick }: Props) {
             </div>
           )}
           
+          {sensor.noise_level && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">Ruído</span>
+              <span className="text-sm font-semibold">{sensor.noise_level} dB</span>
+            </div>
+          )}
+          
+          {sensor.presence_detected && (
+            <div className="flex items-center gap-2 mt-2">
+              <div className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
+              <span className="text-xs text-destructive font-semibold">Presença Detectada</span>
+            </div>
+          )}
+          
+          {sensor.intrusion_alert && (
+            <div className="flex items-center gap-2 mt-2">
+              <div className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
+              <span className="text-xs text-destructive font-semibold">Alerta de Intrusão</span>
+            </div>
+          )}
+          
+          {sensor.short_circuit_current && (
+            <div className="flex justify-between items-center mt-2 p-2 bg-destructive/10 rounded">
+              <span className="text-xs text-destructive">Corrente de Curto</span>
+              <span className="text-sm font-bold text-destructive">{sensor.short_circuit_current} A</span>
+            </div>
+          )}
+          
           <Badge variant={sensor.status === 'critical' ? 'destructive' : 'secondary'} className="w-full justify-center">
             {sensor.status === 'normal' && 'Normal'}
             {sensor.status === 'warning' && 'Atenção'}
