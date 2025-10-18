@@ -91,12 +91,46 @@ Deno.serve(async (req) => {
         }).single();
         const concessaoNome = (concessaoData as { nome?: string } | null)?.nome || null;
 
-        // Encontrar linha mais próxima com tipagem explícita
-        const { data: linhaData } = await supabase.rpc('find_nearest_linha', {
+        // Usar nova função PostGIS para calcular distância REAL
+        const { data: linhaData } = await supabase.rpc('calculate_distance_to_nearest_line', {
           p_lon: lon,
           p_lat: lat
+        });
+        const linhaInfo = Array.isArray(linhaData) && linhaData.length > 0 
+          ? linhaData[0] as { linha_id?: number; linha_codigo?: string; distancia_m?: number; ramal?: string } 
+          : null;
+
+        const distancia_m = linhaInfo?.distancia_m || 999999;
+        
+        // Buscar dados de vento
+        let windDirection = null;
+        let windSpeed = null;
+        try {
+          const weatherResp = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/get-weather-data`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+            },
+            body: JSON.stringify({ lat, lon })
+          });
+          
+          if (weatherResp.ok) {
+            const windData = await weatherResp.json();
+            windDirection = windData.wind_direction;
+            windSpeed = windData.wind_speed;
+          }
+        } catch (e) {
+          console.warn('Erro ao buscar dados de vento:', e);
+        }
+        
+        // Calcular nível de risco
+        const { data: nivelRiscoData } = await supabase.rpc('avaliar_risco_queimada', {
+          p_distancia_m: distancia_m,
+          p_wind_direction: windDirection,
+          p_bearing_to_line: 0 // Simplificado
         }).single();
-        const linhaInfo = linhaData as { id?: number; codigo?: string; distancia_m?: number } | null;
+        const nivelRisco = typeof nivelRiscoData === 'string' ? nivelRiscoData : 'risco_desconhecido';
 
         const { error: insertError } = await supabase
           .from('queimadas')
@@ -108,9 +142,12 @@ Deno.serve(async (req) => {
             confianca,
             estado: 'SP',
             concessao: concessaoNome,
-            id_linha: linhaInfo?.id || null,
-            ramal: linhaInfo?.codigo?.split('-')[1] || null,
-            distancia_m: linhaInfo?.distancia_m || null,
+            id_linha: linhaInfo?.linha_id || null,
+            ramal: linhaInfo?.ramal || null,
+            distancia_m,
+            wind_direction: windDirection,
+            wind_speed: windSpeed,
+            nivel_risco: nivelRisco,
             geometry: `SRID=4326;POINT(${lon} ${lat})`,
             processado: true
           });

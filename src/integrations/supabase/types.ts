@@ -794,9 +794,12 @@ export type Database = {
           geometry: unknown
           id: number
           id_linha: number | null
+          nivel_risco: string | null
           processado: boolean | null
           ramal: string | null
           satelite: string | null
+          wind_direction: number | null
+          wind_speed: number | null
         }
         Insert: {
           brilho?: number | null
@@ -811,9 +814,12 @@ export type Database = {
           geometry: unknown
           id?: number
           id_linha?: number | null
+          nivel_risco?: string | null
           processado?: boolean | null
           ramal?: string | null
           satelite?: string | null
+          wind_direction?: number | null
+          wind_speed?: number | null
         }
         Update: {
           brilho?: number | null
@@ -828,9 +834,12 @@ export type Database = {
           geometry?: unknown
           id?: number
           id_linha?: number | null
+          nivel_risco?: string | null
           processado?: boolean | null
           ramal?: string | null
           satelite?: string | null
+          wind_direction?: number | null
+          wind_speed?: number | null
         }
         Relationships: []
       }
@@ -1524,6 +1533,14 @@ export type Database = {
             }
         Returns: string
       }
+      avaliar_risco_queimada: {
+        Args: {
+          p_bearing_to_line: number
+          p_distancia_m: number
+          p_wind_direction: number
+        }
+        Returns: string
+      }
       box: {
         Args: { "": unknown } | { "": unknown }
         Returns: unknown
@@ -1567,6 +1584,16 @@ export type Database = {
       bytea: {
         Args: { "": unknown } | { "": unknown }
         Returns: string
+      }
+      calculate_distance_to_nearest_line: {
+        Args: { p_lat: number; p_lon: number }
+        Returns: {
+          distancia_m: number
+          linha_codigo: string
+          linha_id: number
+          linha_nome: string
+          ramal: string
+        }[]
       }
       disablelongtransactions: {
         Args: Record<PropertyKey, never>
