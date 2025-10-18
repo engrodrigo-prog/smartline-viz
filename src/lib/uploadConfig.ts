@@ -135,6 +135,18 @@ export const FILE_TYPES: FileType[] = [
     category: 'outros',
     icon: Mountain,
     requiredFields: ['line_code', 'gsd_cm']
+  },
+  {
+    id: 'unifilar_diagram',
+    label: 'Diagrama Unifilar',
+    subtitle: 'SVG, JSON ou PNG',
+    description: 'Upload do diagrama unifilar da linha para visualização interativa',
+    acceptedFormats: ['.svg', '.json', '.png', '.jpg'],
+    targetTable: 'unifilar_diagrams',
+    edgeFunction: 'process-unifilar-diagram',
+    category: 'outros',
+    icon: Network,
+    requiredFields: ['line_code', 'name']
   }
 ];
 

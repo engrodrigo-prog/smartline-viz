@@ -873,6 +873,54 @@ export type Database = {
           },
         ]
       }
+      unifilar_diagrams: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          diagram_data: Json | null
+          file_type: string | null
+          file_url: string
+          id: string
+          line_code: string
+          meta: Json | null
+          name: string
+          organization: string | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          diagram_data?: Json | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          line_code: string
+          meta?: Json | null
+          name: string
+          organization?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          diagram_data?: Json | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          line_code?: string
+          meta?: Json | null
+          name?: string
+          organization?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
