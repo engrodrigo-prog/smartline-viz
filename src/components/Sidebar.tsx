@@ -5,7 +5,7 @@ import {
   Droplets, Trees, Mountain, Ruler, ShieldCheck, Building2,
   Link2, GitBranch, Shield, Skull, Camera, Gauge, ChartArea,
   Bell, Plane, Clock as ClockIcon, FileCheck, Settings, Users, Lock,
-  Award, HardHat, BrainCircuit, MapPin, Flame, Home, History, Truck
+  Award, HardHat, BrainCircuit, MapPin, Flame, Home, History, Truck, CloudRain
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
@@ -45,6 +45,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Áreas Alagadas", path: "/ambiental/alagadas", icon: Droplets },
       { title: "Erosão", path: "/ambiental/erosao", icon: Mountain },
       { title: "Queimadas", path: "/ambiental/queimadas", icon: Flame },
+      { title: "Meteorologia", path: "/ambiental/meteorologia", icon: CloudRain },
       { title: "Vegetação", path: "/ambiental/vegetacao", icon: Trees },
       { title: "Ocupação de Faixa", path: "/ambiental/ocupacao", icon: Home },
       { title: "Distância Cabo x Solo", path: "/ambiental/distancia", icon: Ruler },

@@ -2,7 +2,9 @@ import { Activity, AlertTriangle, CheckCircle, Clock, TrendingUp, Map, Network, 
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import CardKPI from "@/components/CardKPI";
-import FiltersBar from "@/components/FiltersBar";
+import FilterPanel from "@/components/FilterPanel";
+import UnifiedMapView from "@/components/map/UnifiedMapView";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockSensors, mockAssets, mockChartData } from "@/lib/mockData";
 import {
   BarChart,
@@ -33,7 +35,16 @@ const Dashboard = () => {
     <AppLayout title="Dashboard Principal" subtitle="Visão geral do sistema AssetHealth">
       <div className="space-y-6">
         {/* Filters */}
-        <FiltersBar />
+        <FilterPanel />
+
+        {/* Tabs: Dashboard e Mapa */}
+        <Tabs defaultValue="dashboard" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="mapa">Mapa</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-6">
 
         {/* Quick Access Shortcuts */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -251,6 +262,13 @@ const Dashboard = () => {
             </table>
           </div>
         </div>
+          </TabsContent>
+
+          {/* Aba Mapa */}
+          <TabsContent value="mapa" className="h-[calc(100vh-250px)]">
+            <UnifiedMapView />
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
