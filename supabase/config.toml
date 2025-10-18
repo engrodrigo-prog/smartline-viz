@@ -14,3 +14,15 @@ verify_jwt = true
 
 [functions.geo-api]
 verify_jwt = true
+
+[functions.process-tower-asset]
+verify_jwt = true
+
+[functions.process-span-analysis]
+verify_jwt = true
+
+[functions.process-evento]
+verify_jwt = true
+
+[functions.process-dem-surface]
+verify_jwt = true

@@ -105,11 +105,13 @@ export type Database = {
       }
       dataset_catalog: {
         Row: {
+          file_type: string | null
           files: Json | null
           id: string
           line_code: string
           meta: Json | null
           name: string | null
+          processing_details: Json | null
           source: string | null
           status: string | null
           tenant_id: string | null
@@ -117,11 +119,13 @@ export type Database = {
           upload_user: string | null
         }
         Insert: {
+          file_type?: string | null
           files?: Json | null
           id?: string
           line_code: string
           meta?: Json | null
           name?: string | null
+          processing_details?: Json | null
           source?: string | null
           status?: string | null
           tenant_id?: string | null
@@ -129,11 +133,13 @@ export type Database = {
           upload_user?: string | null
         }
         Update: {
+          file_type?: string | null
           files?: Json | null
           id?: string
           line_code?: string
           meta?: Json | null
           name?: string | null
+          processing_details?: Json | null
           source?: string | null
           status?: string | null
           tenant_id?: string | null

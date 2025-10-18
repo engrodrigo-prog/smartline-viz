@@ -4,8 +4,8 @@ import {
   ChevronDown, ChevronRight, LayoutDashboard, Map, Network, FileText, Upload,
   Droplets, Trees, Mountain, Ruler, ShieldCheck, Building2,
   Link2, GitBranch, Shield, Skull, Camera, Gauge, ChartArea,
-  Bell, Plane, Clock, FileCheck, Settings, Users, Lock,
-  Award, HardHat, BrainCircuit, MapPin, Flame, Home
+  Bell, Plane, Clock as ClockIcon, FileCheck, Settings, Users, Lock,
+  Award, HardHat, BrainCircuit, MapPin, Flame, Home, History
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
@@ -36,7 +36,8 @@ const menuGroups: MenuGroup[] = [
   {
     category: "Upload",
     items: [
-      { title: "Bases de Dados", path: "/upload/bases", icon: Upload },
+      { title: "Upload Unificado", path: "/upload", icon: Upload },
+      { title: "Histórico", path: "/upload/historico", icon: History },
     ],
   },
   {
@@ -74,7 +75,7 @@ const menuGroups: MenuGroup[] = [
     category: "Operações",
     items: [
       { title: "Missões de Drones", path: "/operacao/missoes", icon: Plane },
-      { title: "Eventos Históricos", path: "/operacao/eventos", icon: Clock },
+      { title: "Eventos Históricos", path: "/operacao/eventos", icon: ClockIcon },
       { title: "Compliance Operacional", path: "/operacao/compliance", icon: FileCheck },
       { title: "Relatórios", path: "/operacao/relatorios", icon: FileText },
     ],
