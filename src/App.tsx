@@ -16,6 +16,8 @@ import Unifilar from "./pages/Unifilar";
 import UploadBases from "./pages/UploadBases";
 import UploadTracados from "./pages/UploadTracados";
 import UploadKml from "./pages/UploadKml";
+import UploadUnificado from "./pages/upload/UploadUnificado";
+import UploadHistorico from "./pages/upload/UploadHistorico";
 import QueimadasModern from "./pages/modules/ambiental/Queimadas";
 import Vegetacao from "./pages/modules/Vegetacao";
 import Travessias from "./pages/modules/Travessias";
@@ -47,6 +49,8 @@ const App = () => (
           <Route path="/visual/unifilar" element={<ProtectedRoute><Unifilar /></ProtectedRoute>} />
           
           {/* Upload */}
+          <Route path="/upload" element={<ProtectedRoute><UploadUnificado /></ProtectedRoute>} />
+          <Route path="/upload/historico" element={<ProtectedRoute><UploadHistorico /></ProtectedRoute>} />
           <Route path="/upload/bases" element={<ProtectedRoute><UploadBases /></ProtectedRoute>} />
           <Route path="/upload/tracados" element={<ProtectedRoute><UploadTracados /></ProtectedRoute>} />
           <Route path="/upload/kml" element={<ProtectedRoute><UploadKml /></ProtectedRoute>} />

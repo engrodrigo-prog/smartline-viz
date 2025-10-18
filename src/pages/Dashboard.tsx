@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, CheckCircle, Clock, Database, TrendingUp, Map, Network, Upload } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle, Clock, TrendingUp, Map, Network, Upload, MapPin, Database } from "lucide-react";
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import CardKPI from "@/components/CardKPI";
@@ -61,26 +61,26 @@ const Dashboard = () => {
             </div>
           </Link>
 
-          <Link to="/upload/tracados" className="tech-card p-6 hover:scale-[1.02] transition-transform">
+          <Link to="/upload" className="tech-card p-6 hover:scale-[1.02] transition-transform">
             <div className="flex flex-col items-center text-center gap-4">
               <div className="p-4 bg-emerald-500/10 rounded-2xl">
                 <Upload className="w-8 h-8 text-emerald-500" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold mb-1">Upload Geodados</h3>
-                <p className="text-xs text-muted-foreground">KML/KMZ/Shapefile com atributos</p>
+                <h3 className="text-lg font-semibold mb-1">Upload de Dados</h3>
+                <p className="text-xs text-muted-foreground">Linha, Torres, Vãos, Perigos, DEM</p>
               </div>
             </div>
           </Link>
 
-          <Link to="/upload/bases" className="tech-card p-6 hover:scale-[1.02] transition-transform">
+          <Link to="/equipes/rastreamento" className="tech-card p-6 hover:scale-[1.02] transition-transform">
             <div className="flex flex-col items-center text-center gap-4">
-              <div className="p-4 bg-amber-500/10 rounded-2xl">
-                <Database className="w-8 h-8 text-amber-500" />
+              <div className="p-4 bg-blue-500/10 rounded-2xl">
+                <MapPin className="w-8 h-8 text-blue-500" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold mb-1">Cadastro de Bases</h3>
-                <p className="text-xs text-muted-foreground">Planilhas e dados auxiliares</p>
+                <h3 className="text-lg font-semibold mb-1">Rastreamento</h3>
+                <p className="text-xs text-muted-foreground">Equipes em campo</p>
               </div>
             </div>
           </Link>
