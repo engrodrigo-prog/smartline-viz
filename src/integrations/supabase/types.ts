@@ -1665,11 +1665,18 @@ export type Database = {
         Returns: string
       }
       avaliar_risco_queimada: {
-        Args: {
-          p_bearing_to_line: number
-          p_distancia_m: number
-          p_wind_direction: number
-        }
+        Args:
+          | {
+              p_bearing_to_line: number
+              p_distancia_m: number
+              p_wind_direction: number
+            }
+          | {
+              p_confianca: number
+              p_distancia_m: number
+              p_wind_direction?: number
+              p_wind_speed?: number
+            }
         Returns: string
       }
       box: {
@@ -1717,12 +1724,11 @@ export type Database = {
         Returns: string
       }
       calculate_distance_to_nearest_line: {
-        Args: { p_lat: number; p_lon: number }
+        Args: { lat: number; lon: number } | { p_lat: number; p_lon: number }
         Returns: {
           distancia_m: number
           linha_codigo: string
           linha_id: number
-          linha_nome: string
           ramal: string
         }[]
       }
@@ -1769,10 +1775,8 @@ export type Database = {
         Returns: boolean
       }
       find_concessao: {
-        Args: { p_lat: number; p_lon: number }
-        Returns: {
-          nome: string
-        }[]
+        Args: { lat: number; lon: number } | { p_lat: number; p_lon: number }
+        Returns: string
       }
       find_nearest_linha: {
         Args: { p_lat: number; p_lon: number }

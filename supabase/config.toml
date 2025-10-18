@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.queimadas-archive]
 verify_jwt = false
 
+[functions.queimadas-footprints]
+verify_jwt = false
+
 [functions.get-weather-data]
 verify_jwt = false
 

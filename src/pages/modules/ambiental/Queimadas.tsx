@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useFilters } from "@/context/FiltersContext";
 import { useQueimadas } from "@/hooks/useQueimadas";
 import { useAlarmZones } from "@/hooks/useAlarmZones";
-import { Flame, Activity, Clock, AlertTriangle, Eye, Shield, Search } from "lucide-react";
+import { Flame, Activity, Clock, AlertTriangle, Eye, Shield, Search, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import ModuleLayout from "@/components/ModuleLayout";
@@ -29,6 +29,7 @@ const Queimadas = () => {
   const [linhaRamalFilter, setLinhaRamalFilter] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('lista');
   const [focusCoord, setFocusCoord] = useState<[number, number] | null>(null);
+  const [modoBrasil, setModoBrasil] = useState<boolean>(false);
   
   const getRiscoLabel = (nivelRisco?: string): string => {
     switch (nivelRisco) {
@@ -55,10 +56,10 @@ const Queimadas = () => {
 
   const { data: geojsonData, isLoading, error } = useQueimadas({
     mode,
-    concessao: filters.regiao || 'TODAS',
+    concessao: modoBrasil ? 'BRASIL' : (filters.regiao || 'TODAS'),
     minConf: confiancaMin,
     satelite: sateliteFilter || 'ALL',
-    maxKm: config.zonaObs / 1000, // Converter para km
+    maxKm: modoBrasil ? 999999 : (config.zonaObs / 1000), // Modo Brasil: sem limite de distância
     startDate: dateRange.startDate,
     endDate: dateRange.endDate
   });
@@ -208,6 +209,16 @@ const Queimadas = () => {
               >
                 <Clock className="w-3 h-3 mr-1" />
                 Histórico
+              </Button>
+              
+              <Button
+                variant={modoBrasil ? 'default' : 'outline'}
+                onClick={() => setModoBrasil(!modoBrasil)}
+                size="sm"
+                className="h-8"
+              >
+                <Globe className="w-3 h-3 mr-1" />
+                Modo Brasil
               </Button>
               
               {mode === 'archive' && (
@@ -371,18 +382,45 @@ const Queimadas = () => {
           </TabsList>
           
           <TabsContent value="lista" className="mt-4">
-            <DataTableAdvanced
-              data={filteredData}
-              columns={columns}
-              onRowClick={(queimada) => {
-                setSelectedQueimada(queimada);
-                // Focar no mapa ANTES de trocar aba
-                setFocusCoord([queimada.coords.lon, queimada.coords.lat]);
-                // Esperar um tick para garantir sincronização
-                setTimeout(() => setActiveTab('mapa'), 50);
-              }}
-              exportable
-            />
+            {isLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <Flame className="w-16 h-16 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Nenhuma queimada detectada</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  {modoBrasil 
+                    ? "Não há focos de queimada ativos no Brasil nas últimas 24h."
+                    : "Não há focos de queimada próximos às linhas de transmissão no período selecionado."}
+                </p>
+                {!modoBrasil && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4"
+                    onClick={() => setModoBrasil(true)}
+                  >
+                    <Globe className="w-4 h-4 mr-2" />
+                    Ver queimadas em todo o Brasil
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <DataTableAdvanced
+                data={filteredData}
+                columns={columns}
+                onRowClick={(queimada) => {
+                  setSelectedQueimada(queimada);
+                  // Focar no mapa ANTES de trocar aba
+                  setFocusCoord([queimada.coords.lon, queimada.coords.lat]);
+                  // Esperar um tick para garantir sincronização
+                  setTimeout(() => setActiveTab('mapa'), 50);
+                }}
+                exportable
+              />
+            )}
           </TabsContent>
           
           <TabsContent value="mapa" className="mt-4">
