@@ -92,7 +92,8 @@ export const DEFAULT_LAYERS: Layer[] = [
   { id: 'vegetacao', name: 'Vegetação Crítica', icon: Trees, visible: false },
   { id: 'ocupacoes', name: 'Ocupações de Faixa', icon: Home, visible: false },
   { id: 'travessias', name: 'Travessias', icon: Building2, visible: false },
-  { id: 'queimadas', name: 'Queimadas (FIRMS)', icon: Flame, visible: true },
+  { id: 'queimadas', name: 'Queimadas FIRMS (Pontos)', icon: Flame, visible: true },
+  { id: 'queimadas_footprints', name: 'Queimadas FIRMS (Áreas)', icon: Flame, visible: false },
 ];
 
 export const BASE_LAYERS: Layer[] = [
