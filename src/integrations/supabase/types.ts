@@ -47,6 +47,38 @@ export type Database = {
         }
         Relationships: []
       }
+      app_user: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          role: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          role?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          role?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_user_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       concessoes_geo: {
         Row: {
           created_at: string | null
@@ -70,6 +102,91 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      dataset_catalog: {
+        Row: {
+          files: Json | null
+          id: string
+          line_code: string
+          meta: Json | null
+          name: string | null
+          source: string | null
+          status: string | null
+          tenant_id: string | null
+          upload_date: string | null
+          upload_user: string | null
+        }
+        Insert: {
+          files?: Json | null
+          id?: string
+          line_code: string
+          meta?: Json | null
+          name?: string | null
+          source?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          upload_date?: string | null
+          upload_user?: string | null
+        }
+        Update: {
+          files?: Json | null
+          id?: string
+          line_code?: string
+          meta?: Json | null
+          name?: string | null
+          source?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          upload_date?: string | null
+          upload_user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_catalog_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dem_surface: {
+        Row: {
+          bands: number | null
+          file_url: string | null
+          gsd_cm: number | null
+          id: string
+          line_code: string | null
+          meta: Json | null
+          tenant_id: string | null
+        }
+        Insert: {
+          bands?: number | null
+          file_url?: string | null
+          gsd_cm?: number | null
+          id?: string
+          line_code?: string | null
+          meta?: Json | null
+          tenant_id?: string | null
+        }
+        Update: {
+          bands?: number | null
+          file_url?: string | null
+          gsd_cm?: number | null
+          id?: string
+          line_code?: string | null
+          meta?: Json | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dem_surface_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       estruturas: {
         Row: {
@@ -385,6 +502,65 @@ export type Database = {
         }
         Relationships: []
       }
+      line_asset: {
+        Row: {
+          created_at: string | null
+          domain_geom: unknown | null
+          file_path: string | null
+          geom: unknown | null
+          id: string
+          line_code: string
+          meta: Json | null
+          name: string | null
+          src_source: string | null
+          tenant_id: string | null
+          utm_srid: number | null
+          utm_zone: number | null
+          x_left: number
+          x_right: number
+        }
+        Insert: {
+          created_at?: string | null
+          domain_geom?: unknown | null
+          file_path?: string | null
+          geom?: unknown | null
+          id?: string
+          line_code: string
+          meta?: Json | null
+          name?: string | null
+          src_source?: string | null
+          tenant_id?: string | null
+          utm_srid?: number | null
+          utm_zone?: number | null
+          x_left: number
+          x_right: number
+        }
+        Update: {
+          created_at?: string | null
+          domain_geom?: unknown | null
+          file_path?: string | null
+          geom?: unknown | null
+          id?: string
+          line_code?: string
+          meta?: Json | null
+          name?: string | null
+          src_source?: string | null
+          tenant_id?: string | null
+          utm_srid?: number | null
+          utm_zone?: number | null
+          x_left?: number
+          x_right?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_asset_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       linhas_transmissao: {
         Row: {
           codigo: string | null
@@ -429,6 +605,44 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      profile_data: {
+        Row: {
+          conductor_z_m: number | null
+          ground_z_m: number | null
+          id: string
+          line_code: string | null
+          meta: Json | null
+          s_m: number | null
+          tenant_id: string | null
+        }
+        Insert: {
+          conductor_z_m?: number | null
+          ground_z_m?: number | null
+          id?: string
+          line_code?: string | null
+          meta?: Json | null
+          s_m?: number | null
+          tenant_id?: string | null
+        }
+        Update: {
+          conductor_z_m?: number | null
+          ground_z_m?: number | null
+          id?: string
+          line_code?: string | null
+          meta?: Json | null
+          s_m?: number | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_data_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -508,6 +722,56 @@ export type Database = {
         }
         Relationships: []
       }
+      span_analysis: {
+        Row: {
+          angle_deg: number | null
+          id: string
+          line_code: string | null
+          meta: Json | null
+          min_clearance_m: number | null
+          sag_m: number | null
+          span_id: string | null
+          span_length_m: number | null
+          tenant_id: string | null
+          tower_from: string | null
+          tower_to: string | null
+        }
+        Insert: {
+          angle_deg?: number | null
+          id?: string
+          line_code?: string | null
+          meta?: Json | null
+          min_clearance_m?: number | null
+          sag_m?: number | null
+          span_id?: string | null
+          span_length_m?: number | null
+          tenant_id?: string | null
+          tower_from?: string | null
+          tower_to?: string | null
+        }
+        Update: {
+          angle_deg?: number | null
+          id?: string
+          line_code?: string | null
+          meta?: Json | null
+          min_clearance_m?: number | null
+          sag_m?: number | null
+          span_id?: string | null
+          span_length_m?: number | null
+          tenant_id?: string | null
+          tower_from?: string | null
+          tower_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "span_analysis_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spatial_ref_sys: {
         Row: {
           auth_name: string | null
@@ -531,6 +795,77 @@ export type Database = {
           srtext?: string | null
         }
         Relationships: []
+      }
+      tenant: {
+        Row: {
+          active: boolean | null
+          cnpj: string | null
+          created_at: string | null
+          id: string
+          name: string
+          plan: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          cnpj?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          plan?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          cnpj?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          plan?: string | null
+        }
+        Relationships: []
+      }
+      tower_asset: {
+        Row: {
+          altitude_m: number | null
+          cota_m: number | null
+          geom: unknown | null
+          id: string
+          line_code: string | null
+          meta: Json | null
+          structure_type: string | null
+          tenant_id: string | null
+          tower_id: string | null
+        }
+        Insert: {
+          altitude_m?: number | null
+          cota_m?: number | null
+          geom?: unknown | null
+          id?: string
+          line_code?: string | null
+          meta?: Json | null
+          structure_type?: string | null
+          tenant_id?: string | null
+          tower_id?: string | null
+        }
+        Update: {
+          altitude_m?: number | null
+          cota_m?: number | null
+          geom?: unknown | null
+          id?: string
+          line_code?: string | null
+          meta?: Json | null
+          structure_type?: string | null
+          tenant_id?: string | null
+          tower_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tower_asset_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
