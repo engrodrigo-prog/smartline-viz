@@ -25,6 +25,7 @@ interface MapLibreUnifiedProps {
   focusCoord?: [number, number];
   zoneConfig?: any;
   onFeatureClick?: (feature: any) => void;
+  onMapLoad?: (map: maplibregl.Map) => void;
 }
 
 export const MapLibreUnified = ({
@@ -46,7 +47,8 @@ export const MapLibreUnified = ({
   sateliteFilter,
   focusCoord,
   zoneConfig,
-  onFeatureClick
+  onFeatureClick,
+  onMapLoad
 }: MapLibreUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -72,6 +74,9 @@ export const MapLibreUnified = ({
 
       map.current.on('load', () => {
         setIsLoading(false);
+        if (onMapLoad && map.current) {
+          onMapLoad(map.current);
+        }
       });
 
       map.current.on('error', (e) => {
