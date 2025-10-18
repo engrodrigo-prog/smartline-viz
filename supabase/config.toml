@@ -48,5 +48,17 @@ verify_jwt = true
 [functions.process-evento]
 verify_jwt = true
 
-[functions.process-dem-surface]
+[functions.weather_fetch]
 verify_jwt = true
+
+[functions.custom-layer-upload]
+verify_jwt = true
+
+[functions.ndvi-compare-buffers]
+verify_jwt = true
+
+[functions.process-base-layers]
+verify_jwt = false
+
+[functions.health-check]
+verify_jwt = false
