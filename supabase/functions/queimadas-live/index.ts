@@ -16,26 +16,33 @@ Deno.serve(async (req) => {
     const minConf = parseInt(url.searchParams.get('min_conf') || '50');
     const satelite = url.searchParams.get('sat') || 'ALL';
     const maxKm = parseFloat(url.searchParams.get('max_km') || '1');
+    const mode = url.searchParams.get('mode') || 'roi';
 
-    console.log('Queimadas live request:', { concessao, minConf, satelite, maxKm });
+    console.log('Queimadas live request:', { concessao, minConf, satelite, maxKm, mode });
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Buscar queimadas das últimas 24h (cap em 1.5km e excluir risco zero)
     let query = supabase
       .from('queimadas')
       .select('*')
       .gte('data_aquisicao', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .gte('confianca', minConf)
-      .lte('distancia_m', Math.min(maxKm * 1000, 1500)) // Cap em 1.5km
-      .neq('nivel_risco', 'risco_zero') // Não mostrar queimadas com risco zero
+      .neq('nivel_risco', 'risco_zero')
       .order('data_aquisicao', { ascending: false });
 
-    if (concessao !== 'TODAS') {
-      query = query.eq('concessao', concessao);
+    if (mode === 'brasil') {
+      // Modo Brasil: todos os focos do Brasil
+      query = query.limit(50000);
+    } else {
+      // Modo ROI: filtrar por concessão e distância
+      query = query.lte('distancia_m', Math.min(maxKm * 1000, 1500));
+      
+      if (concessao !== 'TODAS') {
+        query = query.eq('concessao', concessao);
+      }
     }
 
     if (satelite !== 'ALL') {

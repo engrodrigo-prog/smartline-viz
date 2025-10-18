@@ -18,6 +18,8 @@ import UploadTracados from "./pages/UploadTracados";
 import UploadKml from "./pages/UploadKml";
 import UploadUnificado from "./pages/upload/UploadUnificado";
 import UploadHistorico from "./pages/upload/UploadHistorico";
+import LayerUpload from "./pages/upload/LayerUpload";
+import LayerManager from "./pages/settings/LayerManager";
 import QueimadasModern from "./pages/modules/ambiental/Queimadas";
 import Vegetacao from "./pages/modules/Vegetacao";
 import AmbienteModule from "./modules/ambiente";
@@ -57,6 +59,7 @@ const App = () => (
           {/* Upload */}
           <Route path="/upload" element={<ProtectedRoute><UploadUnificado /></ProtectedRoute>} />
           <Route path="/upload/historico" element={<ProtectedRoute><UploadHistorico /></ProtectedRoute>} />
+          <Route path="/upload/layers" element={<ProtectedRoute><LayerUpload /></ProtectedRoute>} />
           <Route path="/upload/bases" element={<ProtectedRoute><UploadBases /></ProtectedRoute>} />
           <Route path="/upload/tracados" element={<ProtectedRoute><UploadTracados /></ProtectedRoute>} />
           <Route path="/upload/kml" element={<ProtectedRoute><UploadKml /></ProtectedRoute>} />
@@ -101,6 +104,7 @@ const App = () => (
           <Route path="/config/geral" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/config/usuarios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/config/permissoes" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/config/layers" element={<ProtectedRoute><LayerManager /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>
