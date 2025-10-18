@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.queimadas-footprints]
 verify_jwt = false
 
+[functions.firms-fetch]
+verify_jwt = false
+
 [functions.firms-sync]
 verify_jwt = true
 

@@ -3,6 +3,8 @@ import { MapLibreUnified } from "@/components/MapLibreUnified";
 import LayerSelector, { DEFAULT_LAYERS, BASE_LAYERS, Layer } from "./LayerSelector";
 import { useFilters } from "@/context/FiltersContext";
 import { useQueimadas } from "@/hooks/useQueimadas";
+import { useFirmsKml } from "@/hooks/useFirmsKml";
+import { FirmsFootprintsLayer } from "@/components/ambiente/FirmsFootprintsLayer";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Globe, Loader2 } from "lucide-react";
 import { LayersStorage } from "@/lib/storage/layers";
@@ -16,14 +18,21 @@ const UnifiedMapView = () => {
   const [baseLayers, setBaseLayers] = useState<Layer[]>(BASE_LAYERS);
   const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null);
   const [loadingLayers, setLoadingLayers] = useState<Set<string>>(new Set());
+  const [isBasemapChanging, setIsBasemapChanging] = useState(false);
   
   // Determinar se deve mostrar modo Brasil
   const shouldShowBrazilMode = !filters.linha && !filters.regiao && !filters.empresa;
   
+  // CORRIGIDO: usar 'BRASIL' em modo Brasil para forçar mode=brasil no edge function
   const { data: queimadasData, isLoading } = useQueimadas({
     mode: 'live',
-    concessao: shouldShowBrazilMode ? 'TODAS' : (filters.empresa || 'TODAS'),
+    concessao: shouldShowBrazilMode ? 'BRASIL' : (filters.empresa || 'TODAS'),
     maxKm: shouldShowBrazilMode ? 999999 : 3,
+  });
+
+  // Buscar footprints FIRMS via KML/KMZ quando em modo Brasil
+  const { data: footprintsData } = useFirmsKml({
+    enabled: shouldShowBrazilMode,
   });
 
   const handleToggleLayer = (layerId: string) => {
@@ -42,14 +51,50 @@ const UnifiedMapView = () => {
     );
   };
 
+  // Listeners para eventos de troca de basemap
+  useEffect(() => {
+    if (!mapInstance) return;
+    
+    const onChanging = () => setIsBasemapChanging(true);
+    const onChanged = () => setIsBasemapChanging(false);
+    
+    mapInstance.on('basemap-changing' as any, onChanging);
+    mapInstance.on('basemap-changed' as any, onChanged);
+    
+    return () => {
+      mapInstance.off('basemap-changing' as any, onChanging);
+      mapInstance.off('basemap-changed' as any, onChanged);
+    };
+  }, [mapInstance]);
+
   // Carregar camadas base dinamicamente
   useEffect(() => {
-    if (!mapInstance || !mapInstance.isStyleLoaded()) return;
+    if (!mapInstance || isBasemapChanging) return;
+    
+    // Verificação defensiva para evitar erro getLayer
+    if (!mapInstance.getStyle || !mapInstance.getStyle()) {
+      return;
+    }
+    
+    if (!mapInstance.isStyleLoaded()) {
+      mapInstance.once('style.load', () => {
+        // Trigger re-render após style carregar
+        setLoadingLayers(new Set());
+      });
+      return;
+    }
 
     const updateLayers = async () => {
       for (const layer of baseLayers) {
         try {
-          const layerExists = mapInstance.getLayer(layer.id);
+          // Verificação defensiva
+          let layerExists = false;
+          try {
+            layerExists = !!mapInstance.getLayer(layer.id);
+          } catch (e) {
+            // Ignorar erro se camada não existe
+            layerExists = false;
+          }
           
           if (layer.visible && !layerExists) {
             // Adicionar camada
@@ -146,7 +191,7 @@ const UnifiedMapView = () => {
     };
 
     updateLayers();
-  }, [baseLayers, mapInstance]);
+  }, [baseLayers, mapInstance, isBasemapChanging]);
 
   // Atualizar contagem de queimadas
   useEffect(() => {
@@ -209,6 +254,13 @@ const UnifiedMapView = () => {
           initialCenter={[centerCoords.lng, centerCoords.lat]}
           initialZoom={initialZoom}
           onMapLoad={setMapInstance}
+        />
+        
+        {/* Camada de footprints FIRMS */}
+        <FirmsFootprintsLayer
+          map={mapInstance}
+          geojson={footprintsData || null}
+          visible={layers.find(l => l.id === 'queimadas_footprints')?.visible ?? shouldShowBrazilMode}
         />
       </div>
     </div>
