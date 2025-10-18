@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.queimadas-archive]
 verify_jwt = false
+
+[functions.line-upload]
+verify_jwt = true
+
+[functions.import-lipower-dataset]
+verify_jwt = true
+
+[functions.geo-api]
+verify_jwt = true
