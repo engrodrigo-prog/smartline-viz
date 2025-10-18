@@ -17,17 +17,31 @@ export const FirmsFootprintsLayer = ({
   
   useEffect(() => {
     if (!map || !geojson) return;
+    
+    // Verificação defensiva: garantir que o estilo está carregado
+    if (!map.getStyle || !map.getStyle()) return;
+    if (!map.isStyleLoaded()) {
+      // Aguardar carregamento do estilo
+      map.once('style.load', () => {
+        // Força re-render após style carregar
+      });
+      return;
+    }
 
     const sourceId = 'firms-footprints';
     const fillLayerId = 'firms-footprints-fill';
     const outlineLayerId = 'firms-footprints-outline';
     const labelLayerId = 'firms-footprints-label';
 
-    // Remove existing layers/source if present
-    if (map.getLayer(labelLayerId)) map.removeLayer(labelLayerId);
-    if (map.getLayer(outlineLayerId)) map.removeLayer(outlineLayerId);
-    if (map.getLayer(fillLayerId)) map.removeLayer(fillLayerId);
-    if (map.getSource(sourceId)) map.removeSource(sourceId);
+    // Remove existing layers/source if present (com try/catch)
+    try {
+      if (map.getLayer(labelLayerId)) map.removeLayer(labelLayerId);
+      if (map.getLayer(outlineLayerId)) map.removeLayer(outlineLayerId);
+      if (map.getLayer(fillLayerId)) map.removeLayer(fillLayerId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+    } catch (e) {
+      console.debug('Layers not present, continuing...');
+    }
 
     // Add source
     map.addSource(sourceId, {
@@ -128,6 +142,10 @@ export const FirmsFootprintsLayer = ({
   // Handle visibility changes
   useEffect(() => {
     if (!map) return;
+    
+    // Verificação defensiva: garantir que o estilo está carregado
+    if (!map.getStyle || !map.getStyle()) return;
+    if (!map.isStyleLoaded()) return;
 
     const layers = [
       'firms-footprints-fill',
@@ -136,8 +154,13 @@ export const FirmsFootprintsLayer = ({
     ];
 
     layers.forEach(layerId => {
-      if (map.getLayer(layerId)) {
-        map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+      try {
+        if (map.getLayer(layerId)) {
+          map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+        }
+      } catch (e) {
+        // Ignorar erro se camada não existir ainda (estilo sendo carregado)
+        console.debug(`Layer ${layerId} not available yet`);
       }
     });
   }, [map, visible]);
