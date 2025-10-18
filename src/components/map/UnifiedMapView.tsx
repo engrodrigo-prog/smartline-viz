@@ -44,81 +44,94 @@ const UnifiedMapView = () => {
 
   // Carregar camadas base dinamicamente
   useEffect(() => {
-    if (!mapInstance) return;
+    if (!mapInstance || !mapInstance.isStyleLoaded()) return;
 
-    baseLayers.forEach(async (layer) => {
-      const layerExists = mapInstance.getLayer(layer.id);
-      
-      if (layer.visible && !layerExists) {
-        // Adicionar camada
-        setLoadingLayers(prev => new Set(prev).add(layer.id));
-        
+    const updateLayers = async () => {
+      for (const layer of baseLayers) {
         try {
-          const url = LayersStorage.getBaseLayerUrl(layer.filename || '');
-          const response = await fetch(url);
+          const layerExists = mapInstance.getLayer(layer.id);
           
-          if (!response.ok) {
-            throw new Error('Arquivo não encontrado no storage');
-          }
-
-          let geojson: any;
-
-          // Se for ZIP, descompactar
-          if (layer.filename?.endsWith('.zip')) {
-            const blob = await response.blob();
-            const zip = await JSZip.loadAsync(blob);
-            const geojsonFile = Object.keys(zip.files).find(f => 
-              f.endsWith('.geojson') || f.endsWith('.json')
-            );
+          if (layer.visible && !layerExists) {
+            // Adicionar camada
+            setLoadingLayers(prev => new Set(prev).add(layer.id));
             
-            if (!geojsonFile) {
-              throw new Error('Nenhum arquivo GeoJSON encontrado no ZIP');
+            const url = LayersStorage.getBaseLayerUrl(layer.filename || '');
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+              throw new Error('Arquivo não encontrado no storage');
             }
 
-            const geojsonContent = await zip.file(geojsonFile)?.async('string');
-            geojson = JSON.parse(geojsonContent || '{}');
-          } else {
-            // GeoJSON direto
-            geojson = await response.json();
-          }
+            let geojson: any;
 
-          // Adicionar source e layer ao mapa
-          if (!mapInstance.getSource(layer.id)) {
-            mapInstance.addSource(layer.id, {
-              type: 'geojson',
-              data: geojson,
+            // Se for ZIP, descompactar
+            if (layer.filename?.endsWith('.zip')) {
+              const blob = await response.blob();
+              const zip = await JSZip.loadAsync(blob);
+              const geojsonFile = Object.keys(zip.files).find(f => 
+                f.endsWith('.geojson') || f.endsWith('.json')
+              );
+              
+              if (!geojsonFile) {
+                throw new Error('Nenhum arquivo GeoJSON encontrado no ZIP');
+              }
+
+              const geojsonContent = await zip.file(geojsonFile)?.async('string');
+              geojson = JSON.parse(geojsonContent || '{}');
+            } else {
+              // GeoJSON direto
+              geojson = await response.json();
+            }
+
+            // Adicionar source e layer ao mapa
+            if (!mapInstance.getSource(layer.id)) {
+              mapInstance.addSource(layer.id, {
+                type: 'geojson',
+                data: geojson,
+              });
+            }
+
+            // Adicionar layer de linha
+            mapInstance.addLayer({
+              id: layer.id,
+              type: 'line',
+              source: layer.id,
+              paint: {
+                'line-color': '#3b82f6',
+                'line-width': 2,
+                'line-opacity': 0.7,
+              },
             });
+
+            // Adicionar layer de preenchimento (polígonos)
+            mapInstance.addLayer({
+              id: `${layer.id}-fill`,
+              type: 'fill',
+              source: layer.id,
+              paint: {
+                'fill-color': '#3b82f6',
+                'fill-opacity': 0.1,
+              },
+            });
+
+            toast.success(`Camada "${layer.name}" carregada`);
+          } else if (!layer.visible && layerExists) {
+            // Remover camada
+            if (mapInstance.getLayer(`${layer.id}-fill`)) {
+              mapInstance.removeLayer(`${layer.id}-fill`);
+            }
+            if (mapInstance.getLayer(layer.id)) {
+              mapInstance.removeLayer(layer.id);
+            }
+            if (mapInstance.getSource(layer.id)) {
+              mapInstance.removeSource(layer.id);
+            }
           }
-
-          // Adicionar layer de linha
-          mapInstance.addLayer({
-            id: layer.id,
-            type: 'line',
-            source: layer.id,
-            paint: {
-              'line-color': '#3b82f6',
-              'line-width': 2,
-              'line-opacity': 0.7,
-            },
-          });
-
-          // Adicionar layer de preenchimento (polígonos)
-          mapInstance.addLayer({
-            id: `${layer.id}-fill`,
-            type: 'fill',
-            source: layer.id,
-            paint: {
-              'fill-color': '#3b82f6',
-              'fill-opacity': 0.1,
-            },
-          });
-
-          toast.success(`Camada "${layer.name}" carregada`);
         } catch (error: any) {
-          console.error(`Erro ao carregar camada ${layer.id}:`, error);
+          console.error(`Erro ao processar camada ${layer.id}:`, error);
           toast.error(`Erro ao carregar "${layer.name}": ${error.message}`);
           
-          // Reverter visibilidade
+          // Reverter visibilidade em caso de erro
           setBaseLayers(prev =>
             prev.map(l => l.id === layer.id ? { ...l, visible: false } : l)
           );
@@ -129,23 +142,10 @@ const UnifiedMapView = () => {
             return next;
           });
         }
-      } else if (!layer.visible && layerExists) {
-        // Remover camada
-        try {
-          if (mapInstance.getLayer(`${layer.id}-fill`)) {
-            mapInstance.removeLayer(`${layer.id}-fill`);
-          }
-          if (mapInstance.getLayer(layer.id)) {
-            mapInstance.removeLayer(layer.id);
-          }
-          if (mapInstance.getSource(layer.id)) {
-            mapInstance.removeSource(layer.id);
-          }
-        } catch (error) {
-          console.error(`Erro ao remover camada ${layer.id}:`, error);
-        }
       }
-    });
+    };
+
+    updateLayers();
   }, [baseLayers, mapInstance]);
 
   // Atualizar contagem de queimadas
@@ -205,6 +205,7 @@ const UnifiedMapView = () => {
           filterLinha={filters.linha}
           showQueimadas={layers.find(l => l.id === 'queimadas')?.visible ?? true}
           showInfrastructure={layers.find(l => l.id === 'linhas')?.visible ?? true}
+          queimadasData={queimadasData}
           initialCenter={[centerCoords.lng, centerCoords.lat]}
           initialZoom={initialZoom}
           onMapLoad={setMapInstance}
