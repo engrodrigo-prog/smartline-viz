@@ -1,13 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface EvaluateAlertsRequest {
-  change_set_ids: string[];
-}
+const EvaluateAlertsSchema = z.object({
+  change_set_ids: z.array(z.string().uuid()).min(1).max(100),
+});
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -15,12 +16,34 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    // Verify JWT and get user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(
+      authHeader.replace('Bearer ', '')
     );
 
-    const { change_set_ids }: EvaluateAlertsRequest = await req.json();
+    if (authError || !user) {
+      throw new Error('Invalid authentication token');
+    }
+
+    // Parse and validate request body
+    const rawBody = await req.json();
+    const { change_set_ids } = EvaluateAlertsSchema.parse(rawBody);
+
+    // Use service role for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log('Evaluating alerts for', change_set_ids.length, 'change sets');
 

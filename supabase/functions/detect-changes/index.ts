@@ -1,18 +1,19 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface DetectChangesRequest {
-  raster_t0_id: string;
-  raster_t1_id: string;
-  corridor_id?: string;
-  threshold?: number;
-  min_area_m2?: number;
-  context?: 'vegetation_management' | 'corridor_invasion';
-}
+const DetectChangesSchema = z.object({
+  raster_t0_id: z.string().uuid(),
+  raster_t1_id: z.string().uuid(),
+  corridor_id: z.string().uuid().optional(),
+  threshold: z.number().min(0).max(1).optional(),
+  min_area_m2: z.number().min(1).max(10000).optional(),
+  context: z.enum(['vegetation_management', 'corridor_invasion']).optional(),
+});
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,11 +21,30 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    // Verify JWT and get user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(
+      authHeader.replace('Bearer ', '')
     );
 
+    if (authError || !user) {
+      throw new Error('Invalid authentication token');
+    }
+
+    // Parse and validate request body
+    const rawBody = await req.json();
     const {
       raster_t0_id,
       raster_t1_id,
@@ -32,7 +52,10 @@ Deno.serve(async (req) => {
       threshold = 0.15,
       min_area_m2 = 50,
       context = 'vegetation_management'
-    }: DetectChangesRequest = await req.json();
+    } = DetectChangesSchema.parse(rawBody);
+
+    // Use service role for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log('Detecting changes:', { raster_t0_id, raster_t1_id, context, threshold });
 
