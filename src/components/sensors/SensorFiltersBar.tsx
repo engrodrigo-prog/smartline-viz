@@ -87,14 +87,19 @@ export function SensorFiltersBar({ filters, onChange, regions, lines }: Props) {
             <SelectTrigger>
               <SelectValue placeholder="Todos os tipos" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os tipos</SelectItem>
-              <SelectItem value="meteorological">Meteorológico</SelectItem>
-              <SelectItem value="structural">Estrutural</SelectItem>
-              <SelectItem value="camera_iot">Câmera + IoT</SelectItem>
-              <SelectItem value="corrosion">Corrosão</SelectItem>
-              <SelectItem value="vibration">Vibração</SelectItem>
-            </SelectContent>
+          <SelectContent>
+            <SelectItem value="all">Todos os tipos</SelectItem>
+            <SelectItem value="meteorological">Meteorológico</SelectItem>
+            <SelectItem value="structural">Estrutural</SelectItem>
+            <SelectItem value="camera_iot">Câmera + IoT</SelectItem>
+            <SelectItem value="corrosion">Corrosão</SelectItem>
+            <SelectItem value="temperature">🌡️ Temperatura</SelectItem>
+            <SelectItem value="vibration">📳 Vibração</SelectItem>
+            <SelectItem value="noise">🔊 Ruído</SelectItem>
+            <SelectItem value="perimeter_alarm">🚨 Alarme Perimetral</SelectItem>
+            <SelectItem value="presence_camera">👁️ Presença (Câmera)</SelectItem>
+            <SelectItem value="short_circuit">⚡ Curto-Circuito</SelectItem>
+          </SelectContent>
           </Select>
         </div>
       </div>

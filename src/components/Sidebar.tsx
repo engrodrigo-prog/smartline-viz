@@ -5,7 +5,7 @@ import {
   Droplets, Trees, Mountain, Ruler, ShieldCheck, Building2,
   Link2, GitBranch, Shield, Skull, Camera, Gauge, ChartArea,
   Bell, Plane, Clock as ClockIcon, FileCheck, Settings, Users, Lock,
-  Award, HardHat, BrainCircuit, MapPin, Flame, Home, History
+  Award, HardHat, BrainCircuit, MapPin, Flame, Home, History, Truck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
@@ -75,14 +75,9 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "Missões de Drones", path: "/operacao/missoes", icon: Plane },
       { title: "Eventos Históricos", path: "/operacao/eventos", icon: ClockIcon },
+      { title: "Veículos On-Line", path: "/operacao/veiculos", icon: Truck },
       { title: "Compliance Operacional", path: "/operacao/compliance", icon: FileCheck },
       { title: "Relatórios", path: "/operacao/relatorios", icon: FileText },
-    ],
-  },
-  {
-    category: "Gestão de Equipes",
-    items: [
-      { title: "Rastreamento em Campo", path: "/equipes/rastreamento", icon: MapPin },
     ],
   },
   {

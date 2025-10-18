@@ -839,9 +839,13 @@ export type Database = {
           corrosion_level: number | null
           humidity: number | null
           id: string
+          intrusion_alert: boolean | null
           luminosity: number | null
           metadata: Json | null
+          noise_level: number | null
+          presence_detected: boolean | null
           sensor_id: string | null
+          short_circuit_current: number | null
           status: string | null
           temperature: number | null
           timestamp: string | null
@@ -852,9 +856,13 @@ export type Database = {
           corrosion_level?: number | null
           humidity?: number | null
           id?: string
+          intrusion_alert?: boolean | null
           luminosity?: number | null
           metadata?: Json | null
+          noise_level?: number | null
+          presence_detected?: boolean | null
           sensor_id?: string | null
+          short_circuit_current?: number | null
           status?: string | null
           temperature?: number | null
           timestamp?: string | null
@@ -865,9 +873,13 @@ export type Database = {
           corrosion_level?: number | null
           humidity?: number | null
           id?: string
+          intrusion_alert?: boolean | null
           luminosity?: number | null
           metadata?: Json | null
+          noise_level?: number | null
+          presence_detected?: boolean | null
           sensor_id?: string | null
+          short_circuit_current?: number | null
           status?: string | null
           temperature?: number | null
           timestamp?: string | null
@@ -1014,6 +1026,44 @@ export type Database = {
         }
         Relationships: []
       }
+      teams: {
+        Row: {
+          created_at: string | null
+          id: string
+          members_count: number | null
+          name: string
+          skill_type: string | null
+          supervisor_name: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          members_count?: number | null
+          name: string
+          skill_type?: string | null
+          supervisor_name?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          members_count?: number | null
+          name?: string
+          skill_type?: string | null
+          supervisor_name?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant: {
         Row: {
           active: boolean | null
@@ -1153,6 +1203,131 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vehicle_history: {
+        Row: {
+          event_type: string | null
+          heading: number | null
+          id: string
+          location: unknown
+          metadata: Json | null
+          speed_kmh: number | null
+          timestamp: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          event_type?: string | null
+          heading?: number | null
+          id?: string
+          location: unknown
+          metadata?: Json | null
+          speed_kmh?: number | null
+          timestamp?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          event_type?: string | null
+          heading?: number | null
+          id?: string
+          location?: unknown
+          metadata?: Json | null
+          speed_kmh?: number | null
+          timestamp?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_history_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          assigned_team_id: string | null
+          brand: string | null
+          created_at: string | null
+          current_location: unknown | null
+          external_id: string | null
+          fuel_level: number | null
+          heading: number | null
+          id: string
+          integration_source: string | null
+          last_update: string | null
+          metadata: Json | null
+          model: string | null
+          odometer_km: number | null
+          plate: string
+          skill_type: string | null
+          speed_kmh: number | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+          year: number | null
+        }
+        Insert: {
+          assigned_team_id?: string | null
+          brand?: string | null
+          created_at?: string | null
+          current_location?: unknown | null
+          external_id?: string | null
+          fuel_level?: number | null
+          heading?: number | null
+          id?: string
+          integration_source?: string | null
+          last_update?: string | null
+          metadata?: Json | null
+          model?: string | null
+          odometer_km?: number | null
+          plate: string
+          skill_type?: string | null
+          speed_kmh?: number | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          year?: number | null
+        }
+        Update: {
+          assigned_team_id?: string | null
+          brand?: string | null
+          created_at?: string | null
+          current_location?: unknown | null
+          external_id?: string | null
+          fuel_level?: number | null
+          heading?: number | null
+          id?: string
+          integration_source?: string | null
+          last_update?: string | null
+          metadata?: Json | null
+          model?: string | null
+          odometer_km?: number | null
+          plate?: string
+          skill_type?: string | null
+          speed_kmh?: number | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_assigned_team_id_fkey"
+            columns: ["assigned_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenant"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
