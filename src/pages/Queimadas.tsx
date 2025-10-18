@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,17 +12,16 @@ import { useFirmsFootprints } from "@/hooks/useFirmsFootprints";
 import { FirmsFootprintsLayer } from "@/components/ambiente/FirmsFootprintsLayer";
 import { Button } from "@/components/ui/button";
 import CardKPI from "@/components/CardKPI";
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-const FIRMS_KEY = import.meta.env.VITE_NASA_FIRMS_KEY;
+import { initializeESRIMap } from "@/lib/mapConfig";
 
 const Queimadas = () => {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
   const [concessao, setConcessao] = useState("TODAS");
-  const [loading, setLoading] = useState(true);
   const [showFootprints, setShowFootprints] = useState(true);
   const [showPoints, setShowPoints] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<maplibregl.Map | null>(null);
 
   // Fetch fire points (existing)
   const { data: pointsData, refetch: refetchPoints } = useQueimadas({
@@ -50,19 +49,16 @@ const Queimadas = () => {
   }, [pointsData, footprintsData]);
 
   useEffect(() => {
-    if (!mapContainer.current || !MAPBOX_TOKEN) return;
+    if (!mapContainer.current || map.current) return;
 
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/satellite-streets-v12",
+    map.current = initializeESRIMap(mapContainer.current, {
       center: [-46.6333, -23.5505],
       zoom: 8,
+      basemap: 'imagery'
     });
 
-    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-    map.current.addControl(new mapboxgl.FullscreenControl(), "top-right");
+    map.current.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.current.addControl(new maplibregl.FullscreenControl(), "top-right");
 
     map.current.on("load", () => {
       setLoading(false);
@@ -70,6 +66,7 @@ const Queimadas = () => {
 
     return () => {
       map.current?.remove();
+      map.current = null;
     };
   }, []);
 
@@ -116,7 +113,7 @@ const Queimadas = () => {
     map.current.on('click', layerId, (e) => {
       if (e.features && e.features.length > 0) {
         const props = e.features[0].properties;
-        new mapboxgl.Popup()
+        new maplibregl.Popup()
           .setLngLat(e.lngLat)
           .setHTML(`
             <div class="p-2">
@@ -136,21 +133,6 @@ const Queimadas = () => {
     refetchPoints();
     refetchFootprints();
   };
-
-  if (!MAPBOX_TOKEN) {
-    return (
-      <AppLayout title="Queimadas - Configuração">
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-center">
-            <p className="text-destructive">Mapbox token não configurado</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Configure VITE_MAPBOX_TOKEN nas variáveis de ambiente
-            </p>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
 
   return (
     <AppLayout title="Queimadas - Monitoramento FIRMS">

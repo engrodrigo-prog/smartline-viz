@@ -19,7 +19,7 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadas
 
     try {
       map.current = initializeESRIMap(mapContainer.current, {
-        center: [-47.0, -15.8], // Centro do Brasil
+        center: [-47.0, -15.8],
         zoom: 5,
         basemap: 'imagery'
       });
@@ -28,7 +28,6 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadas
         setIsLoading(false);
         if (!map.current) return;
 
-        // Adicionar source das queimadas
         map.current.addSource('queimadas', {
           type: 'geojson',
           data: geojson,
@@ -37,7 +36,6 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadas
           clusterRadius: 50
         });
 
-        // Clusters
         map.current.addLayer({
           id: 'clusters',
           type: 'circle',
@@ -62,7 +60,6 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadas
           }
         });
 
-        // Cluster count
         map.current.addLayer({
           id: 'cluster-count',
           type: 'symbol',
@@ -77,7 +74,6 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadas
           }
         });
 
-        // Pontos individuais
         map.current.addLayer({
           id: 'unclustered-point',
           type: 'circle',
@@ -96,33 +92,31 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadas
           }
         });
 
-        // Click handler
         map.current.on('click', 'unclustered-point', (e) => {
           if (e.features && e.features[0] && onFeatureClick) {
             onFeatureClick(e.features[0].properties);
           }
         });
 
-        // Cursor pointer
         map.current.on('mouseenter', 'unclustered-point', () => {
           if (map.current) map.current.getCanvas().style.cursor = 'pointer';
         });
+        
         map.current.on('mouseleave', 'unclustered-point', () => {
           if (map.current) map.current.getCanvas().style.cursor = '';
         });
 
-        // Cluster click to zoom
         map.current.on('click', 'clusters', async (e) => {
           if (!map.current) return;
-          const features = map.current.queryRenderedFeatures(e.point, {
-            layers: ['clusters']
-          });
-          const clusterId = features[0].properties?.cluster_id;
-          if (clusterId) {
+          const features = map.current.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+          const clusterId = features[0]?.properties?.cluster_id;
+          
+          if (clusterId && features[0].geometry.type === 'Point') {
             try {
-              const zoom = await (map.current.getSource('queimadas') as maplibregl.GeoJSONSource).getClusterExpansionZoom(clusterId);
+              const source = map.current.getSource('queimadas') as maplibregl.GeoJSONSource;
+              const zoom = await source.getClusterExpansionZoom(clusterId);
               map.current.easeTo({
-                center: (features[0].geometry as any).coordinates,
+                center: features[0].geometry.coordinates as [number, number],
                 zoom: zoom
               });
             } catch (err) {
@@ -134,6 +128,7 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadas
         map.current.on('mouseenter', 'clusters', () => {
           if (map.current) map.current.getCanvas().style.cursor = 'pointer';
         });
+        
         map.current.on('mouseleave', 'clusters', () => {
           if (map.current) map.current.getCanvas().style.cursor = '';
         });
@@ -150,7 +145,6 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadas
     };
   }, []);
 
-  // Atualizar dados quando geojson mudar
   useEffect(() => {
     if (map.current && map.current.getSource('queimadas')) {
       (map.current.getSource('queimadas') as maplibregl.GeoJSONSource).setData(geojson);

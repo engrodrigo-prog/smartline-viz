@@ -5,7 +5,7 @@ import { Mountain } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import FiltersBar from "@/components/FiltersBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapboxUnified } from "@/components/MapboxUnified";
+import { MapLibreUnified } from "@/components/MapLibreUnified";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import DetailDrawer from "@/components/DetailDrawer";
 import CardKPI from "@/components/CardKPI";
@@ -165,7 +165,7 @@ const Erosao = () => {
           <TabsContent value="mapa" className="mt-4">
             <div className="tech-card p-0 overflow-hidden">
               {/* @ts-ignore */}
-              <MapboxUnified
+              <MapLibreUnified
                 filterRegiao={filters.regiao}
                 filterEmpresa={filters.empresa}
                 filterLinha={filters.linha}

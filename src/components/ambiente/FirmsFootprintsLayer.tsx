@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import type mapboxgl from 'mapbox-gl';
+import type maplibregl from 'maplibre-gl';
 
 interface FirmsFootprintsLayerProps {
-  map: mapboxgl.Map | null;
+  map: maplibregl.Map | null;
   geojson: GeoJSON.FeatureCollection | null;
   visible?: boolean;
   onFeatureClick?: (feature: any) => void;
@@ -99,7 +99,7 @@ export const FirmsFootprintsLayer = ({
     });
 
     // Click handler
-    const handleClick = (e: mapboxgl.MapLayerMouseEvent) => {
+    const handleClick = (e: maplibregl.MapLayerMouseEvent) => {
       if (e.features && e.features.length > 0 && onFeatureClick) {
         onFeatureClick(e.features[0]);
       }
