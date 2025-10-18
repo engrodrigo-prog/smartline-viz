@@ -47,6 +47,74 @@ export type Database = {
         }
         Relationships: []
       }
+      alertas_queimadas: {
+        Row: {
+          area_ameacada_ha: number | null
+          concessao: string | null
+          data_criacao: string | null
+          distancia_m: number | null
+          estrutura_codigo: string | null
+          footprint_id: number | null
+          id: string
+          linha_codigo: string | null
+          metadata: Json | null
+          nivel_alerta: string
+          notas: string | null
+          queimada_id: number | null
+          regiao: string | null
+          resolvido_em: string | null
+          resolvido_por: string | null
+          status: string | null
+          tipo_alerta: string
+        }
+        Insert: {
+          area_ameacada_ha?: number | null
+          concessao?: string | null
+          data_criacao?: string | null
+          distancia_m?: number | null
+          estrutura_codigo?: string | null
+          footprint_id?: number | null
+          id?: string
+          linha_codigo?: string | null
+          metadata?: Json | null
+          nivel_alerta: string
+          notas?: string | null
+          queimada_id?: number | null
+          regiao?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          status?: string | null
+          tipo_alerta: string
+        }
+        Update: {
+          area_ameacada_ha?: number | null
+          concessao?: string | null
+          data_criacao?: string | null
+          distancia_m?: number | null
+          estrutura_codigo?: string | null
+          footprint_id?: number | null
+          id?: string
+          linha_codigo?: string | null
+          metadata?: Json | null
+          nivel_alerta?: string
+          notas?: string | null
+          queimada_id?: number | null
+          regiao?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          status?: string | null
+          tipo_alerta?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alertas_queimadas_footprint_id_fkey"
+            columns: ["footprint_id"]
+            isOneToOne: false
+            referencedRelation: "queimadas_footprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_user: {
         Row: {
           created_at: string | null
@@ -843,6 +911,45 @@ export type Database = {
         }
         Relationships: []
       }
+      queimadas_footprints: {
+        Row: {
+          area_ha: number | null
+          concessao: string | null
+          confidence: number | null
+          created_at: string | null
+          data_deteccao: string
+          geometry: unknown
+          id: number
+          nivel_risco: string | null
+          properties: Json | null
+          satelite: string | null
+        }
+        Insert: {
+          area_ha?: number | null
+          concessao?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          data_deteccao: string
+          geometry: unknown
+          id?: number
+          nivel_risco?: string | null
+          properties?: Json | null
+          satelite?: string | null
+        }
+        Update: {
+          area_ha?: number | null
+          concessao?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          data_deteccao?: string
+          geometry?: unknown
+          id?: number
+          nivel_risco?: string | null
+          properties?: Json | null
+          satelite?: string | null
+        }
+        Relationships: []
+      }
       sensor_readings: {
         Row: {
           corrosion_level: number | null
@@ -1593,6 +1700,17 @@ export type Database = {
           linha_id: number
           linha_nome: string
           ramal: string
+        }[]
+      }
+      detect_footprint_threats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          area_ameacada_ha: number
+          distancia_m: number
+          estrutura_codigo: string
+          footprint_id: number
+          linha_codigo: string
+          nivel_alerta: string
         }[]
       }
       disablelongtransactions: {
