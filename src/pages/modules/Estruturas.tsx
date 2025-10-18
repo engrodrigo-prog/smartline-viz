@@ -1,7 +1,7 @@
 import { useFilters } from "@/context/FiltersContext";
 import { eventos } from "@/lib/mockData";
 import { Building2 } from "lucide-react";
-import FiltersBar from "@/components/FiltersBar";
+import FloatingFiltersBar from "@/components/FloatingFiltersBar";
 import ModuleLayout from "@/components/ModuleLayout";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +34,7 @@ const Estruturas = () => {
     <ModuleLayout title="Gestão de Estruturas" icon={Building2}>
       <div className="p-6 space-y-6">
 
-      <FiltersBar />
+      <FloatingFiltersBar />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

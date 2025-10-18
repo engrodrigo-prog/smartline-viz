@@ -1,7 +1,7 @@
 import { useFilters } from "@/context/FiltersContext";
 import { eventos } from "@/lib/mockData";
 import { TreePine, MapPin } from "lucide-react";
-import FiltersBar from "@/components/FiltersBar";
+import FloatingFiltersBar from "@/components/FloatingFiltersBar";
 import ModuleLayout from "@/components/ModuleLayout";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +46,7 @@ const Vegetacao = () => {
     <ModuleLayout title="Gestão de Vegetação" icon={TreePine}>
       <div className="p-6 space-y-6">
 
-        <FiltersBar />
+        <FloatingFiltersBar />
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
