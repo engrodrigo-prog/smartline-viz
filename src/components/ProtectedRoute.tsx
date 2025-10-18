@@ -10,7 +10,6 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const isVisitor = localStorage.getItem('visitor_mode') === 'true';
 
   useEffect(() => {
     // Check current session
@@ -38,7 +37,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  if (!user && !isVisitor) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
