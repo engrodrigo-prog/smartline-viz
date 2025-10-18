@@ -475,72 +475,27 @@ export const MapboxUnified = ({
     }
   };
 
-  const fetchNASAFiresFromKML = async () => {
-    try {
-      const kmlUrl = mode === 'live' 
-        ? 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/kml/MODIS_C6_1_South_America_24h.kml'
-        : 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/kml/MODIS_C6_1_South_America_48h.kml';
-      
-      const response = await fetch(kmlUrl);
-      const kmlText = await response.text();
-      
-      // Parsear XML
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(kmlText, 'text/xml');
-      
-      // Extrair todos os <Placemark>
-      const placemarks = xmlDoc.getElementsByTagName('Placemark');
-      
-      const features = Array.from(placemarks).map(placemark => {
-        // Extrair coordenadas
-        const coordsText = placemark.getElementsByTagName('coordinates')[0]?.textContent?.trim();
-        const [lon, lat] = coordsText?.split(',').map(parseFloat) || [0, 0];
-        
-        // Extrair descrição (contém confiança, satélite, data)
-        const descText = placemark.getElementsByTagName('description')[0]?.textContent || '';
-        
-        // Regex para extrair dados
-        const confidenceMatch = descText.match(/Confidence.*?(\d+)/);
-        const satelliteMatch = descText.match(/Satellite.*?(\w+)/);
-        const dateMatch = descText.match(/Date.*?([\d-]+)/);
-        const timeMatch = descText.match(/Time.*?([\d:]+)/);
-        
-        return {
-          type: 'Feature' as const,
-          properties: {
-            confianca: parseInt(confidenceMatch?.[1] || '0'),
-            satelite: satelliteMatch?.[1] === 'T' ? 'Terra' : 'Aqua',
-            data_aquisicao: `${dateMatch?.[1]} ${timeMatch?.[1]}`,
-            fonte: 'NASA FIRMS KML'
-          },
-          geometry: {
-            type: 'Point' as const,
-            coordinates: [lon, lat]
-          }
-        };
-      });
-      
-      return {
-        type: 'FeatureCollection' as const,
-        features
-      };
-    } catch (error) {
-      console.error('Erro ao buscar KML da NASA:', error);
-      return { type: 'FeatureCollection' as const, features: [] };
+  const getZonaByDistance = (distancia: number, nivel_risco?: string): string => {
+    // Nova lógica baseada no nível de risco calculado no backend
+    if (nivel_risco) {
+      switch (nivel_risco) {
+        case 'risco_critico_vento':
+        case 'risco_alto':
+          return 'critica';
+        case 'risco_medio_vento':
+          return 'acompanhamento';
+        case 'risco_baixo':
+          return 'observacao';
+        case 'risco_zero':
+        default:
+          return 'fora';
+      }
     }
-  };
-
-  const calculateDistanceToNearestLine = (coords: [number, number]): number => {
-    // Simplificado: retornar distância aleatória para demo
-    // Em produção, calcular distância real para linhas da infraestrutura
-    return Math.floor(Math.random() * 10000);
-  };
-
-  const getZonaByDistance = (distancia: number, config: any): string => {
-    if (!config) return 'fora';
-    if (distancia <= config.critica) return 'critica';
-    if (distancia <= config.acomp) return 'acompanhamento';
-    if (distancia <= config.obs) return 'observacao';
+    
+    // Fallback para lógica antiga se não houver nivel_risco
+    if (distancia <= 500) return 'critica';
+    if (distancia <= 1000) return 'acompanhamento';
+    if (distancia <= 1500) return 'observacao';
     return 'fora';
   };
 
@@ -548,26 +503,47 @@ export const MapboxUnified = ({
     if (!map.current) return;
 
     try {
-      // Buscar KML direto da NASA (modo Live ou Archive)
-      let geojson: any = await fetchNASAFiresFromKML();
+      // NOVA IMPLEMENTAÇÃO: Buscar da edge function queimadas-live/archive
+      const functionName = mode === 'live' ? 'queimadas-live' : 'queimadas-archive';
       
-      // Aplicar filtros de confiança e satélite
-      geojson.features = geojson.features.filter((f: any) => {
-        const passaConfianca = f.properties.confianca >= (confiancaMin || 0);
-        const passaSatelite = !sateliteFilter || f.properties.satelite.includes(sateliteFilter);
-        return passaConfianca && passaSatelite;
+      const params = new URLSearchParams({
+        concessao: filterRegiao || 'TODAS',
+        min_conf: (confiancaMin || 50).toString(),
+        sat: sateliteFilter || 'ALL',
+        max_km: '1.5' // Cap em 1.5km
       });
 
-      // Calcular distâncias e zonas
+      if (mode === 'archive') {
+        // Adicionar datas para modo histórico
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        params.append('start_date', startDate.toISOString().split('T')[0]);
+        params.append('end_date', endDate.toISOString().split('T')[0]);
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}?${params}`,
+        {
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Erro ao buscar queimadas: ${response.status}`);
+      }
+
+      let geojson: any = await response.json();
+      
+      // Adicionar zonas baseadas no nivel_risco
       geojson.features = geojson.features.map((f: any) => {
-        const distancia = calculateDistanceToNearestLine(f.geometry.coordinates);
-        const zona = getZonaByDistance(distancia, zoneConfig);
+        const zona = getZonaByDistance(f.properties.distancia_m, f.properties.nivel_risco);
         
         return {
           ...f,
           properties: { 
             ...f.properties, 
-            distancia_m: distancia, 
             zona 
           }
         };

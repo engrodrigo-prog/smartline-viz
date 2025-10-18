@@ -24,13 +24,14 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Buscar queimadas das últimas 24h
+    // Buscar queimadas das últimas 24h (cap em 1.5km e excluir risco zero)
     let query = supabase
       .from('queimadas')
       .select('*')
       .gte('data_aquisicao', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .gte('confianca', minConf)
-      .lte('distancia_m', maxKm * 1000)
+      .lte('distancia_m', Math.min(maxKm * 1000, 1500)) // Cap em 1.5km
+      .neq('nivel_risco', 'risco_zero') // Não mostrar queimadas com risco zero
       .order('data_aquisicao', { ascending: false });
 
     if (concessao !== 'TODAS') {
@@ -65,7 +66,10 @@ Deno.serve(async (req) => {
             concessao: item.concessao,
             id_linha: item.id_linha,
             ramal: item.ramal,
-            distancia_m: item.distancia_m
+            distancia_m: item.distancia_m,
+            wind_direction: item.wind_direction,
+            wind_speed: item.wind_speed,
+            nivel_risco: item.nivel_risco
           },
           geometry: {
             type: 'Point',

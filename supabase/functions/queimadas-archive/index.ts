@@ -11,43 +11,22 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify authentication
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Create client with user auth to verify
-    const supabaseAuth = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const url = new URL(req.url);
+    const startDate = url.searchParams.get('start_date');
+    const endDate = url.searchParams.get('end_date');
     const concessao = url.searchParams.get('concessao') || 'TODAS';
     const minConf = parseInt(url.searchParams.get('min_conf') || '50');
     const satelite = url.searchParams.get('sat') || 'ALL';
-    const maxKm = parseFloat(url.searchParams.get('max_km') || '1');
-    const startDate = url.searchParams.get('start_date');
-    const endDate = url.searchParams.get('end_date');
+    const maxKm = parseFloat(url.searchParams.get('max_km') || '1.5');
 
-    if (!startDate || !endDate) {
-      throw new Error('start_date and end_date are required');
-    }
-
-    console.log('Queimadas archive request from user:', user.id);
+    console.log('Queimadas archive request:', { 
+      startDate, 
+      endDate, 
+      concessao, 
+      minConf, 
+      satelite, 
+      maxKm 
+    });
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -60,7 +39,8 @@ Deno.serve(async (req) => {
       .gte('data_aquisicao', startDate)
       .lte('data_aquisicao', endDate)
       .gte('confianca', minConf)
-      .lte('distancia_m', maxKm * 1000)
+      .lte('distancia_m', Math.min(maxKm * 1000, 1500)) // Cap em 1.5km
+      .neq('nivel_risco', 'risco_zero') // Não mostrar risco zero
       .order('data_aquisicao', { ascending: false });
 
     if (concessao !== 'TODAS') {
@@ -75,7 +55,7 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    // Converter para GeoJSON
+    // Converter geometrias para GeoJSON
     const geojson = {
       type: 'FeatureCollection',
       features: (data || []).map((item: any) => {
@@ -94,7 +74,10 @@ Deno.serve(async (req) => {
             concessao: item.concessao,
             id_linha: item.id_linha,
             ramal: item.ramal,
-            distancia_m: item.distancia_m
+            distancia_m: item.distancia_m,
+            wind_direction: item.wind_direction,
+            wind_speed: item.wind_speed,
+            nivel_risco: item.nivel_risco
           },
           geometry: {
             type: 'Point',

@@ -30,6 +30,23 @@ const Queimadas = () => {
   const [activeTab, setActiveTab] = useState<string>('lista');
   const [focusCoord, setFocusCoord] = useState<[number, number] | null>(null);
   
+  const getRiscoLabel = (nivelRisco?: string): string => {
+    switch (nivelRisco) {
+      case 'risco_critico_vento':
+        return '🔴 CRÍTICO';
+      case 'risco_alto':
+        return '🔴 Alto';
+      case 'risco_medio_vento':
+        return '🟡 Médio';
+      case 'risco_baixo':
+        return '🟢 Baixo';
+      case 'risco_zero':
+        return '🟢 Sem Risco';
+      default:
+        return '⚪ Desconhecido';
+    }
+  };
+  
   const [mode, setMode] = useState<'live' | 'archive'>('live');
   const [dateRange, setDateRange] = useState({
     startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -70,9 +87,10 @@ const Queimadas = () => {
         zonaLabel: getZoneLabel(zona),
         acionamento: getAcionamento(zona),
         estruturaProxima: f.properties.estrutura_codigo || 'N/A',
-        nivelRisco: f.properties.confianca >= 80 ? 'Crítico' : 
-                     f.properties.confianca >= 65 ? 'Alto' :
-                     f.properties.confianca >= 50 ? 'Médio' : 'Baixo',
+        windDirection: f.properties.wind_direction,
+        windSpeed: f.properties.wind_speed,
+        nivelRisco: getRiscoLabel(f.properties.nivel_risco),
+        nivelRiscoCode: f.properties.nivel_risco,
       };
     });
     
@@ -147,6 +165,17 @@ const Queimadas = () => {
       key: 'confianca', 
       label: 'Confiança',
       render: (value: number) => `${value}%`
+    },
+    { 
+      key: 'nivelRisco', 
+      label: 'Nível de Risco',
+      render: (value: string) => {
+        const variant = value.includes('CRÍTICO') ? 'destructive' : 
+                       value.includes('Alto') ? 'destructive' :
+                       value.includes('Médio') ? 'default' : 
+                       'outline';
+        return <Badge variant={variant}>{value}</Badge>;
+      }
     },
     { 
       key: 'satelite', 
@@ -412,51 +441,78 @@ const Queimadas = () => {
                   <p className="font-medium mt-1">{new Date(selectedQueimada.dataDeteccao).toLocaleDateString('pt-BR')}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-muted-foreground">Tipo</span>
+                  <span className="text-sm text-muted-foreground">Satélite</span>
                   <div className="mt-1">
-                    <Badge variant={selectedQueimada.tipoQueimada === 'Criminosa' ? 'destructive' : 'outline'}>
-                      {selectedQueimada.tipoQueimada}
-                    </Badge>
+                    <Badge variant="outline">{selectedQueimada.satelite}</Badge>
                   </div>
                 </div>
                 <div>
-                  <span className="text-sm text-muted-foreground">Extensão</span>
-                  <p className="font-bold text-lg">{selectedQueimada.extensaoQueimada.toFixed(1)} ha</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Status do Incêndio</span>
-                  <div className="mt-1">
-                    <Badge variant={
-                      selectedQueimada.statusIncendio === 'Ativo' ? 'destructive' : 
-                      selectedQueimada.statusIncendio === 'Controlado' ? 'secondary' : 
-                      'outline'
-                    }>
-                      {selectedQueimada.statusIncendio}
-                    </Badge>
-                  </div>
+                  <span className="text-sm text-muted-foreground">Confiança</span>
+                  <p className="font-bold text-lg">{selectedQueimada.confianca}%</p>
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Nível de Risco</span>
                   <div className="mt-1">
-                    <StatusBadge level={selectedQueimada.nivelRisco} />
+                    <Badge variant={
+                      selectedQueimada.nivelRisco.includes('CRÍTICO') ? 'destructive' : 
+                      selectedQueimada.nivelRisco.includes('Alto') ? 'destructive' :
+                      selectedQueimada.nivelRisco.includes('Médio') ? 'default' : 
+                      'outline'
+                    }>
+                      {selectedQueimada.nivelRisco}
+                    </Badge>
                   </div>
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Distância da Linha</span>
                   <p className="font-bold text-lg">{selectedQueimada.distanciaLinha.toLocaleString('pt-BR')}m</p>
                 </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Zona de Alarme</span>
+                  <div className="mt-1">
+                    <Badge variant={
+                      selectedQueimada.zona === 'critica' ? 'destructive' : 
+                      selectedQueimada.zona === 'acompanhamento' ? 'default' : 
+                      'secondary'
+                    }>
+                      {selectedQueimada.zonaLabel}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Linha/Ramal</span>
+                  <p className="font-medium mt-1">{selectedQueimada.linha} / {selectedQueimada.ramal}</p>
+                </div>
               </div>
               
               <div className="border-t pt-4">
-                <h4 className="font-semibold mb-3">Condições Climáticas</h4>
-                <div className="grid grid-cols-3 gap-4">
+                <h4 className="font-semibold mb-3">🌬️ Dados de Vento</h4>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="bg-muted/20 p-3 rounded-lg">
-                    <span className="text-xs text-muted-foreground">Temperatura</span>
-                    <p className="font-bold text-lg">{selectedQueimada.climaNoMomento.temperatura}°C</p>
+                    <span className="text-xs text-muted-foreground">Direção do Vento</span>
+                    <p className="font-bold text-lg">{selectedQueimada.windDirection || 'N/A'}°</p>
                   </div>
                   <div className="bg-muted/20 p-3 rounded-lg">
-                    <span className="text-xs text-muted-foreground">Umidade</span>
-                    <p className="font-bold text-lg">{selectedQueimada.climaNoMomento.umidade}%</p>
+                    <span className="text-xs text-muted-foreground">Velocidade do Vento</span>
+                    <p className="font-bold text-lg">{selectedQueimada.windSpeed ? `${selectedQueimada.windSpeed.toFixed(1)} km/h` : 'N/A'}</p>
+                  </div>
+                </div>
+                
+                {selectedQueimada.nivelRiscoCode === 'risco_critico_vento' && (
+                  <div className="mt-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                    <p className="text-sm font-medium text-destructive">
+                      ⚠️ ATENÇÃO: Vento está soprando na direção da linha de transmissão!
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="border-t pt-4">
+                <h4 className="font-semibold mb-3">Detalhes da Detecção</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-muted/20 p-3 rounded-lg">
+                    <span className="text-xs text-muted-foreground">Brilho</span>
+                    <p className="font-bold text-lg">{selectedQueimada.brilho || 'N/A'}K</p>
                   </div>
                   <div className="bg-muted/20 p-3 rounded-lg">
                     <span className="text-xs text-muted-foreground">Vento</span>
