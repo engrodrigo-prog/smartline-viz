@@ -1,0 +1,33 @@
+{
+  "name": "SmartLine Viz",
+  "build": {
+    "dockerfile": "./Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "pnpm": "true"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.14"
+    }
+  },
+  "postCreateCommand": "pnpm i && pip install -r workers/media/requirements.txt || true",
+  "forwardPorts": [5173, 8787],
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "zsh"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "eamodio.gitlens",
+        "redhat.vscode-yaml"
+      ]
+    }
+  }
+}

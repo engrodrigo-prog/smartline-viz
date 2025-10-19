@@ -1,0 +1,30 @@
+{
+  "name": "@smartline/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format esm --platform node --out-dir dist --clean",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@hono/cookie": "^3.7.2",
+    "@hono/cors": "^3.7.2",
+    "@hono/logger": "^3.7.2",
+    "@hono/node-server": "^1.11.7",
+    "@tmcw/togeojson": "^5.4.0",
+    "hono": "^4.5.5",
+    "jszip": "^3.10.1",
+    "lru-cache": "^11.1.0",
+    "xml2js": "^0.6.2",
+    "xmldom": "^0.8.10",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "tsup": "^8.3.0",
+    "tsx": "^4.17.0",
+    "typescript": "^5.6.3"
+  }
+}

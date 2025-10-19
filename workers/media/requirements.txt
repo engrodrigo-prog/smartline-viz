@@ -1,0 +1,1 @@
+# Add Python worker dependencies here (e.g., rasterio, pdal, numpy)

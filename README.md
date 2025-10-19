@@ -1,73 +1,41 @@
-# Welcome to your Lovable project
+# SmartLine Viz Monorepo
 
-## Project info
+SmartLine Viz agora opera como um monorepo focado em visualização geoespacial e serviços de apoio. O frontend original foi movido intacto para `apps/web` e será acompanhado por uma API Hono e pacotes compartilhados.
 
-**URL**: https://lovable.dev/projects/5c33b8ee-c511-4dbf-9006-38abf1bdf0af
+## Estrutura
 
-## How can I edit this code?
+- `apps/web`: aplicação Vite/React original.
+- `apps/api`: serviço Hono (em construção) para endpoints REST.
+- `packages/db`: utilitários de acesso a dados e scripts SQL.
+- `packages/config`: configuração compartilhada (lint, tsconfig, etc.).
+- `packages/utils`: funções comuns entre apps.
+- `workers/media`: jobs assíncronos para processamento de mídia.
+- `infra/devcontainer`: configuração do Dev Container.
+- `infra/github`: automações de CI/CD.
+- `infra/scripts`: scripts auxiliares.
 
-There are several ways of editing your application.
+## Pré-requisitos
 
-**Use Lovable**
+- Node.js 20+ com `corepack enable` (pnpm 9).
+- pnpm (`corepack prepare pnpm@9 --activate`).
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5c33b8ee-c511-4dbf-9006-38abf1bdf0af) and start prompting.
+## Desenvolvimento
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+pnpm install
+pnpm dev:web      # inicia o frontend
+pnpm dev:api      # inicia a API Hono
 ```
 
-**Edit a file directly in GitHub**
+A seção de instruções específicas para cada pacote encontra-se dentro de seus respectivos diretórios.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Dev Container
 
-**Use GitHub Codespaces**
+A pasta `infra/devcontainer` fornece uma configuração baseada em Ubuntu 24.04 com Python 3.14, GDAL, PDAL, Exiftool e FFmpeg.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Para usar, abra o projeto no VS Code e selecione **“Reopen in Container”**. O ambiente executará `pnpm i` automaticamente e tentará instalar as dependências Python listadas em `workers/media/requirements.txt`.
 
-## What technologies are used for this project?
+## Convenções
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/5c33b8ee-c511-4dbf-9006-38abf1bdf0af) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- Prefira pnpm scripts com `pnpm -C <path>` para rodar comandos nas aplicações.
+- Mantenha secrets fora do repositório (usar `.env`, `.env.example`).
