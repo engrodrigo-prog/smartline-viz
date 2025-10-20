@@ -420,6 +420,14 @@ export const changeBasemap = (
     return;
   }
 
+  const camera = {
+    center: map.getCenter(),
+    zoom: map.getZoom(),
+    bearing: map.getBearing(),
+    pitch: map.getPitch(),
+    padding: map.getPadding(),
+  };
+
   const preserved = preserveCustomSources(map);
   disableTerrain(map);
 
@@ -437,6 +445,7 @@ export const changeBasemap = (
     }
 
     restoreCustomSources(map, preserved);
+    map.jumpTo(camera);
     setBasemapState(map, targetBasemap);
     map.fire("basemap-changed" as any);
   });
