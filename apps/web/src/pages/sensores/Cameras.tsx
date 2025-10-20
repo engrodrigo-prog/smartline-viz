@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type SyntheticEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { SensorFiltersBar } from '@/components/sensors/SensorFiltersBar';
@@ -110,9 +110,8 @@ const cameraCatalog: CameraItem[] = [
     longitude: -46.6566,
     source: 'YouTube Cidades',
     streamType: 'youtube',
-    stream_url: 'https://www.youtube.com/embed/dsqdqntoXKE?autoplay=1&mute=1',
-    thumbnail_url: 'https://img.youtube.com/vi/dsqdqntoXKE/hqdefault.jpg',
-    description: 'Referência de câmera urbana mostrando a região da Avenida Paulista (fonte pública no YouTube).'
+    stream_url: 'https://www.youtube.com/embed/21X5lGlDOfg?autoplay=1&mute=1',
+    description: 'Referência de câmera urbana dinâmica (fonte pública no YouTube).'
   },
   {
     id: 'yt-rj-copacabana',
@@ -125,9 +124,8 @@ const cameraCatalog: CameraItem[] = [
     longitude: -43.1822,
     source: 'YouTube Cidades',
     streamType: 'youtube',
-    stream_url: 'https://www.youtube.com/embed/NMre6IAAAiU?autoplay=1&mute=1',
-    thumbnail_url: 'https://img.youtube.com/vi/NMre6IAAAiU/hqdefault.jpg',
-    description: 'Stream público ilustrando a orla de Copacabana (sujeito à disponibilidade do YouTube).'
+    stream_url: 'https://www.youtube.com/embed/5qap5aO4i9A?autoplay=1&mute=1',
+    description: 'Stream público ilustrando movimentação litorânea (sujeito à disponibilidade do YouTube).'
   },
   {
     id: 'yt-bh-praca-sete',
@@ -140,9 +138,8 @@ const cameraCatalog: CameraItem[] = [
     longitude: -43.9378,
     source: 'YouTube Cidades',
     streamType: 'youtube',
-    stream_url: 'https://www.youtube.com/embed/AdUw5RdyZxI?autoplay=1&mute=1',
-    thumbnail_url: 'https://img.youtube.com/vi/AdUw5RdyZxI/hqdefault.jpg',
-    description: 'Cenário urbano de grande fluxo (Times Square) usado como referência visual para analytics de centros urbanos.'
+    stream_url: 'https://www.youtube.com/embed/DWcJFNfaw9c?autoplay=1&mute=1',
+    description: 'Referência visual para centros urbanos com fluxo de pessoas/veículos (fonte pública no YouTube).'
   },
   {
     id: 'yt-ctba-centro',
@@ -155,9 +152,8 @@ const cameraCatalog: CameraItem[] = [
     longitude: -49.2733,
     source: 'YouTube Cidades',
     streamType: 'youtube',
-    stream_url: 'https://www.youtube.com/embed/QyY53XdMBvc?autoplay=1&mute=1',
-    thumbnail_url: 'https://img.youtube.com/vi/QyY53XdMBvc/hqdefault.jpg',
-    description: 'Stream ilustrativo de tráfego urbano (Shibuya Crossing) para demonstrar análise de pedestres/veículos.'
+    stream_url: 'https://www.youtube.com/embed/hHW1oY26kxQ?autoplay=1&mute=1',
+    description: 'Visualização contínua de tráfego urbano usada como proxy para Curitiba (fonte pública no YouTube).'
   },
   {
     id: 'yt-poa-centro',
@@ -171,7 +167,6 @@ const cameraCatalog: CameraItem[] = [
     source: 'YouTube Cidades',
     streamType: 'youtube',
     stream_url: 'https://www.youtube.com/embed/9K4uhSfa_Ho?autoplay=1&mute=1',
-    thumbnail_url: 'https://img.youtube.com/vi/9K4uhSfa_Ho/hqdefault.jpg',
     description: 'Exemplo de câmera pública (Las Vegas Strip) para ilustrar uso em corredores de alta luminosidade.'
   },
   {
