@@ -44,9 +44,10 @@ export const useDeleteDemanda = () => {
   });
 };
 
-export const useDemandasAnalytics = () =>
+export const useDemandasAnalytics = (options: { enabled?: boolean } = {}) =>
   useQuery<DemandasAnalytics>({
     queryKey: ["demandas_analytics"],
     queryFn: fetchDemandasAnalytics,
-    staleTime: 60_000
+    staleTime: 60_000,
+    enabled: options.enabled ?? true,
   });

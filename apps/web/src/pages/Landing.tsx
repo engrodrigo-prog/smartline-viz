@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import LandingHeader from "@/components/LandingHeader";
@@ -37,6 +37,7 @@ import { useFirmsData } from "@/hooks/useFirmsData";
 import { useMediaSearch } from "@/hooks/useMedia";
 import { useDemandasAnalytics } from "@/hooks/useDemandas";
 import { useMissoes } from "@/hooks/useMissoes";
+import { ENV } from "@/config/env";
 import logoSmartline from "@/assets/logo-smartline.png";
 import bgHero from "@/assets/bg-hero.png";
 import bannerIA from "@/assets/banner-ia.png";
@@ -47,10 +48,26 @@ import teamAnalysis from "@/assets/team-analysis.png";
 import controlRoom from "@/assets/control-room.png";
 
 const Landing = () => {
-  const firmsQuery = useFirmsData({ count: 1000 });
-  const mediaQuery = useMediaSearch({});
-  const analyticsQuery = useDemandasAnalytics();
-  const missoesQuery = useMissoes();
+  const [apiAvailable, setApiAvailable] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1500);
+    const base = (ENV.API_BASE_URL || "").replace(/\/+$/, "");
+    fetch(`${base}/health`, { method: "GET", signal: controller.signal })
+      .then((r) => setApiAvailable(r.ok))
+      .catch(() => setApiAvailable(false))
+      .finally(() => clearTimeout(timeout));
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  const firmsQuery = useFirmsData({ count: 1000, enabled: apiAvailable });
+  const mediaQuery = useMediaSearch({}, { enabled: apiAvailable });
+  const analyticsQuery = useDemandasAnalytics({ enabled: apiAvailable });
+  const missoesQuery = useMissoes({ enabled: apiAvailable });
 
   const automationCards = useMemo(() => {
     const cards: {
@@ -233,55 +250,7 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* Automations & Jobs Section */}
-        <section className="py-16 px-6">
-          <div className="container mx-auto max-w-6xl">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"
-            >
-              <div>
-                <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
-                  <Clock className="w-7 h-7 text-primary" /> Automations & Jobs
-                </h2>
-                <p className="text-muted-foreground max-w-2xl">
-                  Monitoramento em tempo real das rotinas críticas: ingestão FIRMS, processamento de mídias, indexação de
-                  nuvens e análises operacionais. Acione manualmente ou acompanhe logs ao vivo neste painel.
-                </p>
-              </div>
-            </motion.div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {automationCards.map((card) => (
-                <motion.div
-                  key={card.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4 }}
-                  className="tech-card p-6 space-y-4 border border-white/10"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">{card.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{card.description}</p>
-                    </div>
-                    {statusBadge(card.status, card.timestamp)}
-                  </div>
-                  <Button variant="outline" asChild className="w-full justify-between">
-                    <Link to={card.cta.href}>
-                      {card.cta.label}
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </Button>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
+        
 
         {/* Operational Excellence Section with Images */}
         <section className="py-20 px-10">
@@ -741,6 +710,61 @@ const Landing = () => {
                   <div className="text-5xl font-bold gradient-text mb-2">{benefit.percentage}</div>
                   <h3 className="text-xl font-semibold mb-3">{benefit.title}</h3>
                   <p className="text-sm text-muted-foreground">{benefit.description}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Automações (movido para fim da página) */}
+        <section className="py-16 px-6">
+          <div className="container mx-auto max-w-6xl">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"
+            >
+              <div>
+                <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
+                  <Clock className="w-7 h-7 text-primary" /> Automações Inteligentes
+                </h2>
+                <p className="text-muted-foreground max-w-2xl">
+                  Status ao vivo das rotinas críticas: ingestão FIRMS (NASA/VIIRS), processamento de mídias, indexação de
+                  nuvens de pontos e análises operacionais. Tudo pronto para rodar 24/7.
+                </p>
+                {!apiAvailable && (
+                  <p className="text-xs mt-2 text-amber-300/80">
+                    API offline no momento — exibindo indicadores em modo demonstração (nenhuma chamada será feita).
+                  </p>
+                )}
+              </div>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {automationCards.map((card) => (
+                <motion.div
+                  key={card.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4 }}
+                  className="tech-card p-6 space-y-4 border border-white/10"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{card.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{card.description}</p>
+                    </div>
+                    {statusBadge(card.status, card.timestamp)}
+                  </div>
+                  <Button variant="outline" asChild className="w-full justify-between">
+                    <Link to={card.cta.href}>
+                      {card.cta.label}
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </Button>
                 </motion.div>
               ))}
             </div>

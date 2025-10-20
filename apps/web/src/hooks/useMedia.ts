@@ -30,11 +30,12 @@ export const useMediaSearch = (params: {
   periodoFim?: string;
   lineId?: string;
   missionId?: string;
-}) =>
+}, options: { enabled?: boolean } = {}) =>
   useQuery({
     queryKey: ["media_search", params],
     queryFn: () => searchMedia(params),
-    keepPreviousData: true
+    keepPreviousData: true,
+    enabled: options.enabled ?? true,
   });
 
 export const useMediaUpload = () =>

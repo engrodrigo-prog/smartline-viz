@@ -9,11 +9,12 @@ export const useMissoesTipos = () =>
     staleTime: 60_000
   });
 
-export const useMissoes = () =>
+export const useMissoes = (options: { enabled?: boolean } = {}) =>
   useQuery<MissaoLista>({
     queryKey: ["missoes", "lista"],
     queryFn: fetchMissoes,
-    staleTime: 30_000
+    staleTime: 30_000,
+    enabled: options.enabled ?? true,
   });
 
 export const useCriarMissao = () => {
