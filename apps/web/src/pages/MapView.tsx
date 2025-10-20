@@ -6,6 +6,9 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { BasemapSelector } from "@/components/BasemapSelector";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterDrawer, FilterField } from "@/components/filters/FilterDrawer";
+import { FiltersProviderV2, useFiltersV2 } from "@/context/FiltersCtx";
 import {
   addOrUpdateGeoJsonSource,
   applyTerrainAndBuildings,
@@ -35,6 +38,36 @@ const MEASUREMENT_SOURCE_ID = "smartline-measurement";
 const emptyMeasurement: FeatureCollection = {
   type: "FeatureCollection",
   features: []
+};
+
+const MapFilters = ({
+  value,
+  onChange,
+  availableBasemaps,
+  onClearAll,
+}: {
+  value: BasemapId;
+  onChange: (v: BasemapId) => void;
+  availableBasemaps: BasemapId[];
+  onClearAll: () => void;
+}) => {
+  const filters = useFiltersV2();
+  return (
+    <FilterDrawer title="Filtros do mapa" onClearAll={onClearAll}>
+      <FilterField label="Base do mapa" onClear={() => onChange(DEFAULT_BASEMAP)}>
+        <Select value={value} onValueChange={(v: any) => onChange(v)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {availableBasemaps.map((id) => (
+              <SelectItem key={id} value={id}>{id}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterField>
+    </FilterDrawer>
+  );
 };
 
 const MapView = () => {
@@ -220,7 +253,12 @@ const MapView = () => {
 
   const availableBasemaps = useMemo(() => basemapIds(), []);
 
+  const clearAll = () => {
+    handleBasemapChange(DEFAULT_BASEMAP);
+  };
+
   return (
+    <FiltersProviderV2>
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -255,6 +293,13 @@ const MapView = () => {
             mapboxAvailable={Boolean(token)}
           />
 
+          <MapFilters
+            value={currentBasemap}
+            onChange={handleBasemapChange}
+            availableBasemaps={availableBasemaps}
+            onClearAll={clearAll}
+          />
+
           <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm border border-border rounded-lg px-3 py-2 text-xs z-20 text-foreground shadow">
             {hoverCoords ? (
               <div>
@@ -275,6 +320,7 @@ const MapView = () => {
         </main>
       </div>
     </div>
+    </FiltersProviderV2>
   );
 };
 
