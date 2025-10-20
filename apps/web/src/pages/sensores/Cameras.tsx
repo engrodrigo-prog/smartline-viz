@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import MapLibreViewer from '@/components/MapLibreViewer';
 
 type CameraSource = 'YouTube Demo' | 'Santos Mapeada' | 'Ecovias';
@@ -214,6 +215,7 @@ export default function Cameras() {
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(6);
+  const [playAll, setPlayAll] = useState(false);
 
   useEffect(() => {
     fetchCameras();
@@ -289,6 +291,28 @@ export default function Cameras() {
     }
   }, [cameras, selectedCameraId]);
 
+  useEffect(() => {
+    // When toggling play-all, adjust visible count and reset individual playing state
+    if (playAll) {
+      setVisibleCount(cameras.length);
+      setPlayingId(null);
+    } else {
+      setVisibleCount((c) => Math.min(Math.max(c, 6), cameras.length));
+    }
+  }, [playAll, cameras.length]);
+
+  const buildYouTubeEmbed = (raw?: string) => {
+    if (!raw) return undefined;
+    const u = new URL(raw);
+    // Ensure autoplay muted inline without controls/recommendations
+    u.searchParams.set('autoplay', '1');
+    u.searchParams.set('mute', '1');
+    u.searchParams.set('playsinline', '1');
+    u.searchParams.set('controls', '0');
+    u.searchParams.set('rel', '0');
+    return u.toString();
+  };
+
   const selectedCamera = useMemo(
     () => cameras.find((camera) => camera.id === selectedCameraId) ?? null,
     [cameras, selectedCameraId]
@@ -323,19 +347,25 @@ export default function Cameras() {
           <MapPin className="w-4 h-4 text-primary" />
           <span>Selecione a origem das câmeras para visualizar pontos na Baixada Santista.</span>
         </div>
-        <Select value={sourceFilter} onValueChange={(value) => setSourceFilter(value as 'Todos' | CameraSource)}>
-          <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder="Origem das câmeras" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Todos">Todas as origens</SelectItem>
-            {sources.map((source) => (
-              <SelectItem key={source} value={source}>
-                {source}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            <Switch checked={playAll} onCheckedChange={setPlayAll} id="play-all" />
+            <label htmlFor="play-all" className="cursor-pointer">Reproduzir todas</label>
+          </div>
+          <Select value={sourceFilter} onValueChange={(value) => setSourceFilter(value as 'Todos' | CameraSource)}>
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Origem das câmeras" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Todos">Todas as origens</SelectItem>
+              {sources.map((source) => (
+                <SelectItem key={source} value={source}>
+                  {source}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {selectedCamera && (
@@ -408,9 +438,9 @@ export default function Cameras() {
                 <CardContent>
                 <div className="aspect-video bg-secondary rounded-lg mb-3 flex items-center justify-center relative overflow-hidden">
                   {camera.streamType === 'youtube' && camera.stream_url ? (
-                    playingId === camera.id && isSelected ? (
+                    (playAll || (playingId === camera.id && isSelected)) ? (
                       <iframe
-                        src={camera.stream_url.replace('autoplay=1', 'autoplay=1')}
+                        src={buildYouTubeEmbed(camera.stream_url)}
                         loading="lazy"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
@@ -424,15 +454,17 @@ export default function Cameras() {
                         ) : (
                           <Camera className="w-12 h-12 text-muted-foreground" />
                         )}
-                        <button
-                          className="absolute inset-0 flex items-center justify-center"
-                          onClick={(e) => { e.stopPropagation(); setSelectedCameraId(camera.id); setPlayingId(camera.id); }}
-                          aria-label="Assistir"
-                        >
-                          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-black/60 text-white text-sm">
-                            <Play className="w-4 h-4" /> Assistir
-                          </span>
-                        </button>
+                        {!playAll && (
+                          <button
+                            className="absolute inset-0 flex items-center justify-center"
+                            onClick={(e) => { e.stopPropagation(); setSelectedCameraId(camera.id); setPlayingId(camera.id); }}
+                            aria-label="Assistir"
+                          >
+                            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-black/60 text-white text-sm">
+                              <Play className="w-4 h-4" /> Assistir
+                            </span>
+                          </button>
+                        )}
                       </>
                     )
                   ) : camera.streamType === 'santos-map' ? (
