@@ -8,7 +8,14 @@ import { extname } from 'node:path'
 import { Readable } from 'node:stream'
 
 const r = new Hono()
-r.use('*', cors({ origin: (o)=>!o || env.ALLOWED_ORIGINS.includes(o) }))
+r.use('*', cors({
+  origin: (origin) => {
+    const fallback = env.ALLOWED_ORIGINS[0] ?? 'http://localhost:5173'
+    if (!origin) return fallback
+    return env.ALLOWED_ORIGINS.includes(origin) ? origin : fallback
+  },
+  credentials: true,
+}))
 
 r.post('/init', async (c) => {
   const body = await c.req.json().catch(() => null) as {
