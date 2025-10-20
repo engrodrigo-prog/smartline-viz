@@ -4,7 +4,6 @@ import { toast } from "sonner";
 
 import ModuleLayout from "@/components/ModuleLayout";
 import FiltersBar from "@/components/FiltersBar";
-import CardKPI from "@/components/CardKPI";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
 import { useFilters } from "@/context/FiltersContext";
 import { eventos } from "@/lib/mockData";
+import type { FeatureCollection } from "geojson";
 import { useFeatureStatuses, useSaveFeatureStatus } from "@/hooks/useFeatureStatus";
 
 type TravessiaItem = (typeof eventos)[number];
@@ -51,6 +51,7 @@ const Travessias = () => {
   const [formStatus, setFormStatus] = useState<string>(STATUS_OPTIONS[0]);
   const [formNotes, setFormNotes] = useState<string>("");
   const [formCameraUrl, setFormCameraUrl] = useState<string>("");
+  const [focusFilter, setFocusFilter] = useState<{ id: string; label: string; predicate: (item: TravessiaItem) => boolean } | null>(null);
 
   const travessias = useMemo(() => eventos.filter((evento) => evento.tipo === "Travessias"), []);
   const allIds = useMemo(() => travessias.map((item) => stableId(item)), [travessias]);
@@ -85,6 +86,60 @@ const Travessias = () => {
 
     return data;
   }, [filters, statusFilters, travessias, statusMap]);
+
+  const applyFocus = (id: string, label: string, predicate: (item: TravessiaItem) => boolean, statuses?: string[]) => {
+    setFocusFilter({ id, label, predicate });
+    if (statuses) {
+      setStatusFilters(statuses);
+    } else {
+      setStatusFilters([]);
+    }
+    setActiveTab("mapa");
+  };
+
+  const clearFocus = () => {
+    setFocusFilter(null);
+    setStatusFilters([]);
+  };
+
+  const focusedData = useMemo(() => {
+    if (!focusFilter) return filteredData;
+    return filteredData.filter(focusFilter.predicate);
+  }, [filteredData, focusFilter]);
+
+  const points: FeatureCollection = useMemo(
+    () => ({
+      type: "FeatureCollection",
+      features: filteredData.map((item) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: item.coords ?? [-46.63, -23.55] },
+        properties: {
+          id: item.id,
+          status: statusMap.get(stableId(item))?.status ?? "Sem status",
+          color: (() => {
+            const status = statusMap.get(stableId(item))?.status;
+            if (status === "Regularizada") return "#22c55e";
+            if (status === "Judicializada") return "#ef4444";
+            if (status === "Notificada") return "#f97316";
+            return "#38bdf8";
+          })(),
+          isFocus: focusFilter ? focusFilter.predicate(item) : false,
+        },
+      })),
+    }),
+    [filteredData, focusFilter, statusMap]
+  );
+
+  const bounds = useMemo(() => {
+    const src = focusFilter ? focusedData : filteredData;
+    if (src.length === 0) return null;
+    const lngs = src.map((item) => (item.coords ? item.coords[0] : -46.63));
+    const lats = src.map((item) => (item.coords ? item.coords[1] : -23.55));
+    return [
+      [Math.min(...lngs), Math.min(...lats)],
+      [Math.max(...lngs), Math.max(...lats)],
+    ] as [[number, number], [number, number]];
+  }, [filteredData, focusedData, focusFilter]);
 
   const statusCounts = useMemo(() => {
     const now = Date.now();
@@ -181,18 +236,56 @@ const Travessias = () => {
 
         {/* KPIs - Status e Criticidade */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <CardKPI title="Total" value={statusCounts.total} icon={Cable} />
-          <CardKPI title="Concluídas" value={statusCounts.concluidas} icon={Cable} />
-          <CardKPI title="Em andamento" value={statusCounts.emAndamento} icon={Cable} />
-          <CardKPI title="Pendentes" value={statusCounts.pendentes} icon={Cable} />
-          <CardKPI title={`Em atraso (> ${statusCounts.prazoDias}d)`} value={statusCounts.atrasadas} icon={Cable} />
+          <button className={`tech-card p-6 text-left transition ${focusFilter?.id === 'total' ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-primary/40'}`} onClick={() => applyFocus('total', 'Todas as travessias', () => true)}>
+            <div className="text-sm text-muted-foreground mb-1">Travessias catalogadas</div>
+            <div className="text-3xl font-bold text-primary">{statusCounts.total}</div>
+          </button>
+          <button className={`tech-card p-6 text-left transition ${focusFilter?.id === 'concluidas' ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-primary/40'}`} onClick={() => applyFocus('concluidas', 'Regularizadas', (item) => statusMap.get(stableId(item))?.status === 'Regularizada', ['Regularizada'])}>
+            <div className="text-sm text-muted-foreground mb-1">Regularizadas</div>
+            <div className="text-3xl font-bold text-green-500">{statusCounts.concluidas}</div>
+          </button>
+          <button className={`tech-card p-6 text-left transition ${focusFilter?.id === 'andamento' ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-primary/40'}`} onClick={() => applyFocus('andamento', 'Em andamento', (item) => {
+            const s = statusMap.get(stableId(item))?.status;
+            return s === 'Notificada' || s === 'Judicializada';
+          }, ['Notificada', 'Judicializada'])}>
+            <div className="text-sm text-muted-foreground mb-1">Em andamento</div>
+            <div className="text-3xl font-bold text-amber-500">{statusCounts.emAndamento}</div>
+          </button>
+          <button className={`tech-card p-6 text-left transition ${focusFilter?.id === 'pendentes' ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-primary/40'}`} onClick={() => applyFocus('pendentes', 'Sem status', (item) => !statusMap.get(stableId(item))?.status, ['Sem status'])}>
+            <div className="text-sm text-muted-foreground mb-1">Sem status</div>
+            <div className="text-3xl font-bold text-sky-500">{statusCounts.pendentes}</div>
+          </button>
+          <button className={`tech-card p-6 text-left transition ${focusFilter?.id === 'atrasadas' ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-primary/40'}`} onClick={() => applyFocus('atrasadas', `Em atraso (> ${statusCounts.prazoDias}d)`, (item) => {
+            const s = statusMap.get(stableId(item))?.status;
+            const ts = new Date(item.data).getTime();
+            return s !== 'Regularizada' && (Date.now() - ts) / (1000 * 60 * 60 * 24) > statusCounts.prazoDias;
+          })}>
+            <div className="text-sm text-muted-foreground mb-1">Em atraso (&gt; {statusCounts.prazoDias}d)</div>
+            <div className="text-3xl font-bold text-destructive">{statusCounts.atrasadas}</div>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <CardKPI title="Críticos (Alta)" value={statusCounts.critAlta} icon={Cable} />
-          <CardKPI title="Média criticidade" value={statusCounts.critMedia} icon={Cable} />
-          <CardKPI title="Baixa criticidade" value={statusCounts.critBaixa} icon={Cable} />
+          <button className={`tech-card p-6 text-left transition ${focusFilter?.id === 'crit-alta' ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-primary/40'}`} onClick={() => applyFocus('crit-alta', 'Críticos (Alta)', (item) => item.criticidade === 'Alta')}>
+            <div className="text-sm text-muted-foreground mb-1">Críticos (Alta)</div>
+            <div className="text-3xl font-bold text-destructive">{statusCounts.critAlta}</div>
+          </button>
+          <button className={`tech-card p-6 text-left transition ${focusFilter?.id === 'crit-media' ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-primary/40'}`} onClick={() => applyFocus('crit-media', 'Média criticidade', (item) => item.criticidade === 'Média')}>
+            <div className="text-sm text-muted-foreground mb-1">Média criticidade</div>
+            <div className="text-3xl font-bold text-amber-500">{statusCounts.critMedia}</div>
+          </button>
+          <button className={`tech-card p-6 text-left transition ${focusFilter?.id === 'crit-baixa' ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-primary/40'}`} onClick={() => applyFocus('crit-baixa', 'Baixa criticidade', (item) => item.criticidade === 'Baixa')}>
+            <div className="text-sm text-muted-foreground mb-1">Baixa criticidade</div>
+            <div className="text-3xl font-bold text-green-500">{statusCounts.critBaixa}</div>
+          </button>
         </div>
+
+        {focusFilter && (
+          <div className="flex items-center justify-between px-4 py-2 border border-primary/20 bg-primary/5 rounded-lg text-xs">
+            <span className="text-primary font-semibold">Exibindo apenas: {focusFilter.label}</span>
+            <button className="underline-offset-2 hover:underline" onClick={clearFocus}>Limpar seleção</button>
+          </div>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="tech-card p-6">
           <TabsList className="grid w-full grid-cols-2 max-w-md">
@@ -201,7 +294,7 @@ const Travessias = () => {
           </TabsList>
 
           <TabsContent value="lista" className="mt-4 space-y-4">
-            {filteredData.map((item) => {
+            {focusedData.map((item) => {
               const id = stableId(item);
               const status = statusMap.get(id);
               return (
@@ -273,7 +366,9 @@ const Travessias = () => {
                 filterEmpresa={filters.empresa}
                 filterLinha={filters.linha}
                 showTravessias
-                initialZoom={filters.linha ? 13 : 7}
+                initialZoom={filters.linha ? 12 : 7}
+                customPoints={points}
+                fitBounds={bounds}
               />
             </div>
           </TabsContent>

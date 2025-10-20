@@ -3,13 +3,22 @@ import { eventos } from "@/lib/mockData";
 import { TreePine, MapPin } from "lucide-react";
 import FloatingFiltersBar from "@/components/FloatingFiltersBar";
 import ModuleLayout from "@/components/ModuleLayout";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import type { FeatureCollection } from "geojson";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
 
+type FocusFilter = {
+  id: string;
+  label: string;
+  predicate: (item: (typeof eventos)[number]) => boolean;
+};
+
 const Vegetacao = () => {
   const { filters } = useFilters();
+  const [activeTab, setActiveTab] = useState("lista");
+  const [focusFilter, setFocusFilter] = useState<FocusFilter | null>(null);
 
   const filteredData = useMemo(() => {
     let data = eventos.filter(e => e.tipo === 'Vegetação');
@@ -55,6 +64,60 @@ const Vegetacao = () => {
     critBaixa: filteredData.filter(e => e.criticidade === 'Baixa').length,
   };
 
+  const applyFocus = (id: string, label: string, predicate: FocusFilter["predicate"]) => {
+    setFocusFilter({ id, label, predicate });
+    setActiveTab("mapa");
+  };
+
+  const clearFocus = () => setFocusFilter(null);
+
+  const focusedData = useMemo(() => {
+    if (!focusFilter) return filteredData;
+    return filteredData.filter(focusFilter.predicate);
+  }, [filteredData, focusFilter]);
+
+  const points: FeatureCollection = useMemo(() => {
+    return {
+      type: "FeatureCollection",
+      features: filteredData.map((item) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: item.coords },
+        properties: {
+          id: item.id,
+          status: item.status,
+          criticidade: item.criticidade,
+          color:
+            item.status === "OK"
+              ? "#22c55e"
+              : item.status === "Crítico"
+                ? "#ef4444"
+                : item.status === "Alerta"
+                  ? "#f97316"
+                  : "#38bdf8",
+          isFocus: focusFilter ? focusFilter.predicate(item) : false,
+        },
+      })),
+    };
+  }, [filteredData, focusFilter]);
+
+  const bounds = useMemo(() => {
+    const source = focusFilter ? focusedData : filteredData;
+    if (source.length === 0) return null;
+    const lngs = source.map((item) => item.coords[0]);
+    const lats = source.map((item) => item.coords[1]);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    if (!Number.isFinite(minLng) || !Number.isFinite(minLat) || !Number.isFinite(maxLng) || !Number.isFinite(maxLat)) {
+      return null;
+    }
+    return [
+      [minLng, minLat],
+      [maxLng, maxLat],
+    ] as [[number, number], [number, number]];
+  }, [filteredData, focusedData, focusFilter]);
+
   return (
     <ModuleLayout title="Gestão de Vegetação" icon={TreePine}>
       <div className="p-6 space-y-6">
@@ -63,45 +126,82 @@ const Vegetacao = () => {
 
         {/* KPIs - Status e Criticidade */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="tech-card p-6">
+          <button
+            className={`tech-card p-6 text-left transition ${focusFilter?.id === "total" ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/40"}`}
+            onClick={() => applyFocus("total", "Todos", () => true)}
+          >
             <div className="text-sm text-muted-foreground mb-1">Total</div>
             <div className="text-3xl font-bold text-primary">{kpis.total}</div>
-          </div>
-          <div className="tech-card p-6">
+          </button>
+          <button
+            className={`tech-card p-6 text-left transition ${focusFilter?.id === "concluidos" ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/40"}`}
+            onClick={() => applyFocus("concluidos", "Concluídos", (item) => item.status === "OK")}
+          >
             <div className="text-sm text-muted-foreground mb-1">Concluídos</div>
             <div className="text-3xl font-bold text-green-500">{kpis.concluidos}</div>
-          </div>
-          <div className="tech-card p-6">
+          </button>
+          <button
+            className={`tech-card p-6 text-left transition ${focusFilter?.id === "andamento" ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/40"}`}
+            onClick={() => applyFocus("andamento", "Em andamento", (item) => item.status === "Alerta" || item.status === "Crítico")}
+          >
             <div className="text-sm text-muted-foreground mb-1">Em andamento</div>
             <div className="text-3xl font-bold text-amber-500">{kpis.emAndamento}</div>
-          </div>
-          <div className="tech-card p-6">
+          </button>
+          <button
+            className={`tech-card p-6 text-left transition ${focusFilter?.id === "pendentes" ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/40"}`}
+            onClick={() => applyFocus("pendentes", "Pendentes", (item) => item.status === "Pendente")}
+          >
             <div className="text-sm text-muted-foreground mb-1">Pendentes</div>
             <div className="text-3xl font-bold text-blue-500">{kpis.pendentes}</div>
-          </div>
-          <div className="tech-card p-6">
+          </button>
+          <button
+            className={`tech-card p-6 text-left transition ${focusFilter?.id === "atrasados" ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/40"}`}
+            onClick={() => applyFocus("atrasados", "Em atraso", (item) => {
+              const ts = new Date(item.data).getTime();
+              const deltaDias = (now - ts) / (1000 * 60 * 60 * 24);
+              return item.status !== "OK" && deltaDias > prazoDias;
+            })}
+          >
             <div className="text-sm text-muted-foreground mb-1">Em atraso (&gt; {prazoDias}d)</div>
             <div className="text-3xl font-bold text-destructive">{kpis.atrasados}</div>
-          </div>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="tech-card p-6">
+          <button
+            className={`tech-card p-6 text-left transition ${focusFilter?.id === "crit-alta" ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/40"}`}
+            onClick={() => applyFocus("crit-alta", "Críticos (Alta)", (item) => item.criticidade === "Alta")}
+          >
             <div className="text-sm text-muted-foreground mb-1">Críticos (Alta)</div>
             <div className="text-3xl font-bold text-destructive">{kpis.critAlta}</div>
-          </div>
-          <div className="tech-card p-6">
+          </button>
+          <button
+            className={`tech-card p-6 text-left transition ${focusFilter?.id === "crit-media" ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/40"}`}
+            onClick={() => applyFocus("crit-media", "Média criticidade", (item) => item.criticidade === "Média")}
+          >
             <div className="text-sm text-muted-foreground mb-1">Média criticidade</div>
             <div className="text-3xl font-bold text-amber-500">{kpis.critMedia}</div>
-          </div>
-          <div className="tech-card p-6">
+          </button>
+          <button
+            className={`tech-card p-6 text-left transition ${focusFilter?.id === "crit-baixa" ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/40"}`}
+            onClick={() => applyFocus("crit-baixa", "Baixa criticidade", (item) => item.criticidade === "Baixa")}
+          >
             <div className="text-sm text-muted-foreground mb-1">Baixa criticidade</div>
             <div className="text-3xl font-bold text-green-500">{kpis.critBaixa}</div>
-          </div>
+          </button>
         </div>
 
+        {focusFilter && (
+          <div className="flex items-center justify-between px-4 py-2 border border-primary/20 bg-primary/5 rounded-lg">
+            <span className="text-xs text-primary font-medium">Exibindo apenas: {focusFilter.label}</span>
+            <button className="text-xs underline-offset-2 hover:underline" onClick={clearFocus}>
+              Limpar seleção
+            </button>
+          </div>
+        )}
+
         {/* Lista */}
-        <Tabs defaultValue="lista">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="lista">Lista</TabsTrigger>
             <TabsTrigger value="mapa">Mapa</TabsTrigger>
@@ -111,7 +211,7 @@ const Vegetacao = () => {
             <div className="tech-card p-6">
               <h2 className="text-xl font-semibold mb-4">Interferências de Vegetação</h2>
               <div className="space-y-3">
-                {filteredData.slice(0, 20).map(item => (
+                {focusedData.slice(0, 30).map(item => (
                   <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-4">
                       <TreePine className="w-5 h-5 text-primary" />
@@ -144,7 +244,9 @@ const Vegetacao = () => {
               showVegetacao={true}
               showInfrastructure={true}
               initialCenter={[-46.63, -23.55]}
-              initialZoom={filters.linha ? 13 : 7}
+              initialZoom={filters.linha ? 12 : 7}
+              customPoints={points}
+              fitBounds={bounds}
             />
           </TabsContent>
         </Tabs>

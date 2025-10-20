@@ -12,7 +12,7 @@ import {
   type BasemapId,
 } from "@/lib/mapConfig";
 import { BasemapSelector } from "./BasemapSelector";
-import type { FeatureCollection } from "geojson";
+import type { FeatureCollection, Geometry } from "geojson";
 
 interface MapLibreUnifiedProps {
   filterRegiao?: string;
@@ -39,6 +39,8 @@ interface MapLibreUnifiedProps {
   layerOrder?: string[];
   onFeatureClick?: (feature: any) => void;
   onMapLoad?: (map: maplibregl.Map) => void;
+  customPoints?: FeatureCollection<Geometry, { color?: string; isFocus?: boolean; size?: number }>;
+  fitBounds?: maplibregl.LngLatBoundsLike | null;
 }
 
 export const MapLibreUnified = ({
@@ -66,6 +68,8 @@ export const MapLibreUnified = ({
   layerOrder,
   onFeatureClick,
   onMapLoad,
+  customPoints,
+  fitBounds,
 }: MapLibreUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -163,6 +167,71 @@ export const MapLibreUnified = ({
       map.removeSource(sourceId);
     }
   }, []);
+
+  // Custom points layer for case analytics overlays
+  useEffect(() => {
+    const mapInstance = mapRef.current;
+    if (!mapInstance) return;
+
+    const sourceId = "custom-points";
+    const layerId = "custom-points";
+
+    if (!customPoints || customPoints.features.length === 0) {
+      removeLayerAndSource(mapInstance, layerId, sourceId);
+      return;
+    }
+
+    const data: FeatureCollection = {
+      type: "FeatureCollection",
+      features: customPoints.features.map((feature) => ({
+        type: "Feature",
+        geometry: feature.geometry,
+        properties: {
+          ...(feature.properties ?? {}),
+          color: feature.properties?.color ?? "#38bdf8",
+          isFocus: Boolean(feature.properties?.isFocus),
+          size: feature.properties?.size ?? 8,
+        },
+      })),
+    };
+
+    const addOrUpdateLayer = () => {
+      if (mapInstance.getSource(sourceId)) {
+        (mapInstance.getSource(sourceId) as maplibregl.GeoJSONSource).setData(data);
+        return;
+      }
+
+      mapInstance.addSource(sourceId, { type: "geojson", data });
+      mapInstance.addLayer({
+        id: layerId,
+        type: "circle",
+        source: sourceId,
+        paint: {
+          "circle-radius": [
+            "case",
+            ["boolean", ["get", "isFocus"], false],
+            11,
+            ["coalesce", ["get", "size"], 8],
+          ],
+          "circle-color": ["coalesce", ["get", "color"], "#38bdf8"],
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#0f172a",
+          "circle-opacity": [
+            "case",
+            ["boolean", ["get", "isFocus"], false],
+            0.95,
+            0.7,
+          ],
+        },
+      });
+    };
+
+    if (mapInstance.isStyleLoaded()) {
+      addOrUpdateLayer();
+    } else {
+      mapInstance.once("style.load", addOrUpdateLayer);
+    }
+  }, [customPoints, removeLayerAndSource]);
 
   // Erosion occurrences layer
   useEffect(() => {
@@ -454,6 +523,21 @@ export const MapLibreUnified = ({
       }
     });
   }, [layerOrder]);
+
+  // Fit bounds when provided
+  useEffect(() => {
+    const mapInstance = mapRef.current;
+    if (!mapInstance || !fitBounds) return;
+    try {
+      mapInstance.fitBounds(fitBounds, {
+        padding: { top: 64, bottom: 64, left: 80, right: 80 },
+        duration: 900,
+        maxZoom: 14,
+      });
+    } catch (error) {
+      console.warn("fitBounds error", error);
+    }
+  }, [fitBounds]);
 
   return (
     <div className="relative w-full h-full">
