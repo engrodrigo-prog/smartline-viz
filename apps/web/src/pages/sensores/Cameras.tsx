@@ -137,6 +137,8 @@ export default function Cameras() {
   const [viewMode, setViewMode] = useState<'live' | 'historic'>('live');
   const [sourceFilter, setSourceFilter] = useState<'Todos' | CameraSource>('Todos');
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(6);
 
   useEffect(() => {
     fetchCameras();
@@ -205,8 +207,10 @@ export default function Cameras() {
   useEffect(() => {
     if (!selectedCameraId && cameras.length > 0) {
       setSelectedCameraId(cameras[0].id);
+      setPlayingId(null);
     } else if (selectedCameraId && !cameras.find((cam) => cam.id === selectedCameraId)) {
       setSelectedCameraId(cameras[0]?.id ?? null);
+      setPlayingId(null);
     }
   }, [cameras, selectedCameraId]);
 
@@ -289,7 +293,6 @@ export default function Cameras() {
           </CardHeader>
           <CardContent>
             <MapLibreViewer
-              key={selectedCameraId ?? 'map'}
               data={cameraFeatures}
               height="360px"
               onFeatureClick={(feature) => setSelectedCameraId(String(feature.id))}
@@ -304,7 +307,7 @@ export default function Cameras() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {cameras.map(camera => {
+          {cameras.slice(0, visibleCount).map(camera => {
             const isSelected = camera.id === selectedCameraId;
             return (
               <Card
@@ -328,21 +331,39 @@ export default function Cameras() {
                   <Badge variant="secondary" className="w-fit mt-2">{camera.source}</Badge>
                 </CardHeader>
                 <CardContent>
-                <div className="aspect-video bg-secondary rounded-lg mb-3 flex items-center justify-center">
+                <div className="aspect-video bg-secondary rounded-lg mb-3 flex items-center justify-center relative overflow-hidden">
                   {camera.streamType === 'youtube' && camera.stream_url ? (
-                    <iframe
-                      src={camera.stream_url}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full rounded-lg border border-border"
-                      title={camera.name}
-                    />
-                  ) : camera.streamType === 'santos-map' && camera.stream_url ? (
-                    <iframe
-                      src={camera.stream_url}
-                      className="w-full h-full rounded-lg border border-border"
-                      title={`Mapa Santos Mapeada - ${camera.name}`}
-                    />
+                    playingId === camera.id && isSelected ? (
+                      <iframe
+                        src={camera.stream_url.replace('autoplay=1', 'autoplay=1')}
+                        loading="lazy"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full rounded-lg border border-border"
+                        title={camera.name}
+                      />
+                    ) : (
+                      <>
+                        {camera.thumbnail_url ? (
+                          <img src={camera.thumbnail_url} alt={camera.name} className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          <Camera className="w-12 h-12 text-muted-foreground" />
+                        )}
+                        <button
+                          className="absolute inset-0 flex items-center justify-center"
+                          onClick={(e) => { e.stopPropagation(); setSelectedCameraId(camera.id); setPlayingId(camera.id); }}
+                          aria-label="Assistir"
+                        >
+                          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-black/60 text-white text-sm">
+                            <Play className="w-4 h-4" /> Assistir
+                          </span>
+                        </button>
+                      </>
+                    )
+                  ) : camera.streamType === 'santos-map' ? (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground px-3 text-center">
+                      Acesso via painel oficial Santos Mapeada
+                    </div>
                   ) : camera.thumbnail_url ? (
                     <img src={camera.thumbnail_url} alt={camera.name} className="w-full h-full object-cover rounded-lg" />
                   ) : (
@@ -357,7 +378,7 @@ export default function Cameras() {
                   </span>
                 </div>
                 </CardContent>
-                {camera.streamType === 'external-link' && camera.external_url && (
+                {(camera.streamType === 'external-link' && camera.external_url) && (
                   <CardFooter className="pt-0">
                     <Button size="sm" variant="outline" asChild>
                       <a href={camera.external_url} target="_blank" rel="noreferrer">
@@ -367,9 +388,27 @@ export default function Cameras() {
                     </Button>
                   </CardFooter>
                 )}
+                {camera.streamType === 'santos-map' && camera.stream_url && (
+                  <CardFooter className="pt-0">
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={camera.stream_url} target="_blank" rel="noreferrer">
+                        <ExternalLink className="w-3 h-3 mr-2" />
+                        Abrir painel Santos Mapeada
+                      </a>
+                    </Button>
+                  </CardFooter>
+                )}
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {cameras.length > visibleCount && (
+        <div className="flex justify-center mt-6">
+          <Button variant="secondary" onClick={() => setVisibleCount((c) => c + 6)}>
+            Carregar mais
+          </Button>
         </div>
       )}
     </AppLayout>
