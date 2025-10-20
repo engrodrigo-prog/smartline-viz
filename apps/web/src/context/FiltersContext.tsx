@@ -23,6 +23,8 @@ export type FiltersState = {
 type FiltersContextType = {
   filters: FiltersState;
   setFilters: (f: Partial<FiltersState>) => void;
+  resetFilters: () => void;
+  clearField: (k: keyof FiltersState) => void;
 };
 
 const FiltersContext = createContext<FiltersContextType>(null!);
@@ -39,8 +41,20 @@ export const FiltersProvider: React.FC<{ children: ReactNode }> = ({ children })
     localStorage.setItem('smartline_filters', JSON.stringify(next));
   };
 
+  const resetFilters = () => {
+    _setFilters({});
+    localStorage.setItem('smartline_filters', JSON.stringify({}));
+  };
+
+  const clearField = (k: keyof FiltersState) => {
+    const next = { ...filters } as any;
+    delete next[k];
+    _setFilters(next);
+    localStorage.setItem('smartline_filters', JSON.stringify(next));
+  };
+
   return (
-    <FiltersContext.Provider value={{ filters, setFilters }}>
+    <FiltersContext.Provider value={{ filters, setFilters, resetFilters, clearField }}>
       {children}
     </FiltersContext.Provider>
   );

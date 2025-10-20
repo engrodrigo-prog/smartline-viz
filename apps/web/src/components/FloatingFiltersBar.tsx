@@ -12,7 +12,7 @@ interface FloatingFiltersBarProps {
 }
 
 const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = false }: FloatingFiltersBarProps) => {
-  const { filters, setFilters } = useFilters();
+  const { filters, setFilters, resetFilters } = useFilters();
   const [isPinned, setIsPinned] = useState(() => {
     const saved = localStorage.getItem('filters_pinned');
     return saved === 'true';
@@ -68,20 +68,30 @@ const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = false }: FloatingF
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold">Filtros</h3>
-              {!alwaysVisible && (
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handlePinToggle}
-                  className="h-8 w-8"
+                  variant="outline"
+                  size="sm"
+                  onClick={resetFilters}
+                  className="h-8"
                 >
-                  {isPinned ? (
-                    <Pin className="h-4 w-4 text-primary" />
-                  ) : (
-                    <PinOff className="h-4 w-4" />
-                  )}
+                  Limpar tudo
                 </Button>
-              )}
+                {!alwaysVisible && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePinToggle}
+                    className="h-8 w-8"
+                  >
+                    {isPinned ? (
+                      <Pin className="h-4 w-4 text-primary" />
+                    ) : (
+                      <PinOff className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
