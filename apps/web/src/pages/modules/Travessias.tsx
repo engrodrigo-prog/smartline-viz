@@ -87,21 +87,39 @@ const Travessias = () => {
   }, [filters, statusFilters, travessias, statusMap]);
 
   const statusCounts = useMemo(() => {
-    const base = {
-      total: travessias.length,
-      comStatus: 0,
-      regularizadas: 0,
-      judicializadas: 0,
-      notificadas: 0
-    };
-    statusList.forEach((status) => {
-      base.comStatus += 1;
-      if (status.status === "Regularizada") base.regularizadas += 1;
-      if (status.status === "Judicializada") base.judicializadas += 1;
-      if (status.status === "Notificada") base.notificadas += 1;
+    const now = Date.now();
+    const prazoDias = 30;
+    let concluidas = 0, emAndamento = 0, pendentes = 0, atrasadas = 0;
+    let critAlta = 0, critMedia = 0, critBaixa = 0;
+
+    filteredData.forEach((item) => {
+      const id = stableId(item);
+      const s = statusMap.get(id)?.status;
+      if (s === 'Regularizada') concluidas += 1;
+      else if (s === 'Notificada' || s === 'Judicializada') emAndamento += 1;
+      else pendentes += 1; // Sem status
+
+      const ts = new Date(item.data).getTime();
+      const delta = (now - ts) / (1000 * 60 * 60 * 24);
+      if (s !== 'Regularizada' && delta > prazoDias) atrasadas += 1;
+
+      if (item.criticidade === 'Alta') critAlta += 1;
+      else if (item.criticidade === 'Média') critMedia += 1;
+      else critBaixa += 1;
     });
-    return base;
-  }, [statusList, travessias.length]);
+
+    return {
+      total: filteredData.length,
+      concluidas,
+      emAndamento,
+      pendentes,
+      atrasadas,
+      critAlta,
+      critMedia,
+      critBaixa,
+      prazoDias,
+    };
+  }, [filteredData, statusMap]);
 
   const openStatusDialog = (item: TravessiaItem) => {
     const id = stableId(item);
@@ -161,11 +179,19 @@ const Travessias = () => {
           </div>
         </FiltersBar>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <CardKPI title="Travessias catalogadas" value={statusCounts.total} icon={Cable} />
-          <CardKPI title="Com status registrado" value={statusCounts.comStatus} icon={Cable} />
-          <CardKPI title="Regularizadas" value={statusCounts.regularizadas} icon={Cable} />
-          <CardKPI title="Judicializadas" value={statusCounts.judicializadas} icon={Cable} />
+        {/* KPIs - Status e Criticidade */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <CardKPI title="Total" value={statusCounts.total} icon={Cable} />
+          <CardKPI title="Concluídas" value={statusCounts.concluidas} icon={Cable} />
+          <CardKPI title="Em andamento" value={statusCounts.emAndamento} icon={Cable} />
+          <CardKPI title="Pendentes" value={statusCounts.pendentes} icon={Cable} />
+          <CardKPI title={`Em atraso (> ${statusCounts.prazoDias}d)`} value={statusCounts.atrasadas} icon={Cable} />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <CardKPI title="Críticos (Alta)" value={statusCounts.critAlta} icon={Cable} />
+          <CardKPI title="Média criticidade" value={statusCounts.critMedia} icon={Cable} />
+          <CardKPI title="Baixa criticidade" value={statusCounts.critBaixa} icon={Cable} />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="tech-card p-6">

@@ -23,11 +23,23 @@ const Estruturas = () => {
     return data;
   }, [filters]);
 
+  const now = Date.now();
+  const prazoDias = 14;
+  const emAtraso = filteredData.filter(e => {
+    const ts = new Date(e.data).getTime();
+    const deltaDias = (now - ts) / (1000 * 60 * 60 * 24);
+    return e.status !== 'OK' && deltaDias > prazoDias;
+  }).length;
+
   const kpis = {
-    totalTorres: filteredData.length,
-    comCorrosao: Math.floor(filteredData.length * 0.35),
-    furtos: Math.floor(filteredData.length * 0.12),
-    integridadeMedia: '87%',
+    total: filteredData.length,
+    concluidos: filteredData.filter(e => e.status === 'OK').length,
+    emAndamento: filteredData.filter(e => e.status === 'Alerta' || e.status === 'Crítico').length,
+    pendentes: filteredData.filter(e => e.status === 'Pendente').length,
+    atrasados: emAtraso,
+    critAlta: filteredData.filter(e => e.criticidade === 'Alta').length,
+    critMedia: filteredData.filter(e => e.criticidade === 'Média').length,
+    critBaixa: filteredData.filter(e => e.criticidade === 'Baixa').length,
   };
 
   return (
@@ -36,23 +48,42 @@ const Estruturas = () => {
 
       <FloatingFiltersBar />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* KPIs - Status e Criticidade */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="tech-card p-6">
-          <div className="text-sm text-muted-foreground mb-1">Total de Torres</div>
-          <div className="text-3xl font-bold text-primary">{kpis.totalTorres}</div>
+          <div className="text-sm text-muted-foreground mb-1">Total</div>
+          <div className="text-3xl font-bold text-primary">{kpis.total}</div>
         </div>
         <div className="tech-card p-6">
-          <div className="text-sm text-muted-foreground mb-1">Torres com Corrosão</div>
-          <div className="text-3xl font-bold text-destructive">{kpis.comCorrosao}</div>
+          <div className="text-sm text-muted-foreground mb-1">Concluídos</div>
+          <div className="text-3xl font-bold text-green-500">{kpis.concluidos}</div>
         </div>
         <div className="tech-card p-6">
-          <div className="text-sm text-muted-foreground mb-1">Ocorrências de Furto</div>
-          <div className="text-3xl font-bold text-orange-500">{kpis.furtos}</div>
+          <div className="text-sm text-muted-foreground mb-1">Em andamento</div>
+          <div className="text-3xl font-bold text-amber-500">{kpis.emAndamento}</div>
         </div>
         <div className="tech-card p-6">
-          <div className="text-sm text-muted-foreground mb-1">Integridade Média</div>
-          <div className="text-3xl font-bold text-green-500">{kpis.integridadeMedia}</div>
+          <div className="text-sm text-muted-foreground mb-1">Pendentes</div>
+          <div className="text-3xl font-bold text-blue-500">{kpis.pendentes}</div>
+        </div>
+        <div className="tech-card p-6">
+          <div className="text-sm text-muted-foreground mb-1">Em atraso (&gt; {prazoDias}d)</div>
+          <div className="text-3xl font-bold text-destructive">{kpis.atrasados}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="tech-card p-6">
+          <div className="text-sm text-muted-foreground mb-1">Críticos (Alta)</div>
+          <div className="text-3xl font-bold text-destructive">{kpis.critAlta}</div>
+        </div>
+        <div className="tech-card p-6">
+          <div className="text-sm text-muted-foreground mb-1">Média criticidade</div>
+          <div className="text-3xl font-bold text-amber-500">{kpis.critMedia}</div>
+        </div>
+        <div className="tech-card p-6">
+          <div className="text-sm text-muted-foreground mb-1">Baixa criticidade</div>
+          <div className="text-3xl font-bold text-green-500">{kpis.critBaixa}</div>
         </div>
       </div>
 

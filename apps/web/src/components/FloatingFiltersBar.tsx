@@ -12,7 +12,7 @@ interface FloatingFiltersBarProps {
 }
 
 const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = false }: FloatingFiltersBarProps) => {
-  const { filters, setFilters, resetFilters } = useFilters();
+  const { filters, setFilters, resetFilters, clearField } = useFilters();
   const [isPinned, setIsPinned] = useState(() => {
     const saved = localStorage.getItem('filters_pinned');
     return saved === 'true';
@@ -96,7 +96,12 @@ const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = false }: FloatingF
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Empresa</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-muted-foreground">Empresa</label>
+                  {filters.empresa && (
+                    <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('empresa')}>limpar</button>
+                  )}
+                </div>
                 <select
                   value={filters.empresa || ''}
                   onChange={e => setFilters({ empresa: e.target.value as any || undefined })}
@@ -110,7 +115,12 @@ const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = false }: FloatingF
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Região</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-muted-foreground">Região</label>
+                  {filters.regiao && (
+                    <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('regiao')}>limpar</button>
+                  )}
+                </div>
                 <select
                   value={filters.regiao || ''}
                   onChange={e => setFilters({ regiao: e.target.value || undefined })}
@@ -125,7 +135,12 @@ const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = false }: FloatingF
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Linha</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-muted-foreground">Linha</label>
+                  {filters.linha && (
+                    <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('linha')}>limpar</button>
+                  )}
+                </div>
                 <select
                   value={filters.linha || ''}
                   onChange={e => setFilters({ linha: e.target.value || undefined })}
@@ -140,7 +155,12 @@ const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = false }: FloatingF
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Data Início</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-muted-foreground">Data Início</label>
+                  {filters.dataInicio && (
+                    <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('dataInicio')}>limpar</button>
+                  )}
+                </div>
                 <Input
                   type="date"
                   value={filters.dataInicio || ''}
@@ -150,7 +170,12 @@ const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = false }: FloatingF
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Data Fim</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-muted-foreground">Data Fim</label>
+                  {filters.dataFim && (
+                    <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('dataFim')}>limpar</button>
+                  )}
+                </div>
                 <Input
                   type="date"
                   value={filters.dataFim || ''}
@@ -160,7 +185,12 @@ const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = false }: FloatingF
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Buscar</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-muted-foreground">Buscar</label>
+                  {filters.search && (
+                    <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('search')}>limpar</button>
+                  )}
+                </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input

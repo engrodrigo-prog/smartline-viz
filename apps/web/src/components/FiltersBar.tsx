@@ -14,7 +14,7 @@ interface FiltersBarProps {
 }
 
 const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarProps) => {
-  const { filters, setFilters } = useFilters();
+  const { filters, setFilters, resetFilters, clearField } = useFilters();
   const [ramais, setRamais] = useState<string[]>([]);
   const [availableRegioes, setAvailableRegioes] = useState<string[]>([]);
   const [availableLinhas, setAvailableLinhas] = useState<string[]>([]);
@@ -69,7 +69,12 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {/* Empresa */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Empresa</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Empresa</label>
+              {filters.empresa && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('empresa')}>limpar</button>
+              )}
+            </div>
             <select 
               value={filters.empresa || ''} 
               onChange={(e) => setFilters({ ...filters, empresa: e.target.value as any, regiao: undefined, linha: undefined })}
@@ -84,7 +89,12 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
 
           {/* Região */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Região</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Região</label>
+              {filters.regiao && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('regiao')}>limpar</button>
+              )}
+            </div>
             <select 
               value={filters.regiao || ''} 
               onChange={(e) => setFilters({ ...filters, regiao: e.target.value, linha: undefined })}
@@ -100,7 +110,12 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
 
           {/* Linha */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Linha</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Linha</label>
+              {filters.linha && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('linha')}>limpar</button>
+              )}
+            </div>
             <select 
               value={filters.linha || ''} 
               onChange={(e) => setFilters({ ...filters, linha: e.target.value })}
@@ -116,7 +131,12 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
 
           {/* Material */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Material</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Material</label>
+              {filters.tipoMaterial && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('tipoMaterial')}>limpar</button>
+              )}
+            </div>
             <select 
               value={filters.tipoMaterial || ''} 
               onChange={(e) => setFilters({ ...filters, tipoMaterial: e.target.value })}
@@ -131,7 +151,12 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
 
           {/* Tensão */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Tensão</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Tensão</label>
+              {filters.tensaoKv && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('tensaoKv')}>limpar</button>
+              )}
+            </div>
             <select 
               value={filters.tensaoKv || ''} 
               onChange={(e) => setFilters({ ...filters, tensaoKv: e.target.value })}
@@ -146,7 +171,12 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
 
           {/* Tipo */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Tipo</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Tipo</label>
+              {filters.tipo && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('tipo')}>limpar</button>
+              )}
+            </div>
             <select 
               value={filters.tipo || ''} 
               onChange={(e) => setFilters({ ...filters, tipo: e.target.value as any })}
@@ -168,7 +198,12 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
         {/* Data Range and Search */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">Data Início</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Data Início</label>
+              {filters.dataInicio && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('dataInicio')}>limpar</button>
+              )}
+            </div>
             <Input 
               type="date" 
               value={filters.dataInicio || ''}
@@ -177,7 +212,12 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
             />
           </div>
           <div>
-            <label className="text-sm font-medium mb-2 block">Data Fim</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Data Fim</label>
+              {filters.dataFim && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('dataFim')}>limpar</button>
+              )}
+            </div>
             <Input 
               type="date" 
               value={filters.dataFim || ''}
@@ -186,7 +226,12 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
             />
           </div>
           <div>
-            <label className="text-sm font-medium mb-2 block">Ordenar por</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Ordenar por</label>
+              {filters.orderBy && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('orderBy')}>limpar</button>
+              )}
+            </div>
             <select 
               value={filters.orderBy || ''} 
               onChange={(e) => setFilters({ orderBy: e.target.value as any })}
@@ -199,7 +244,12 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
             </select>
           </div>
           <div>
-            <label className="text-sm font-medium mb-2 block">Busca</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Busca</label>
+              {filters.search && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('search')}>limpar</button>
+              )}
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input 
@@ -238,20 +288,25 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Filtros</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => {
-                  const state = !isPinned;
-                  setIsPinned(state);
-                  if (typeof window !== "undefined") {
-                    localStorage.setItem("filters_bar_pinned", String(state));
-                  }
-                }}
-              >
-                {isPinned ? <Pin className="h-4 w-4 text-primary" /> : <PinOff className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-8" onClick={resetFilters}>
+                  Limpar tudo
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => {
+                    const state = !isPinned;
+                    setIsPinned(state);
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("filters_bar_pinned", String(state));
+                    }
+                  }}
+                >
+                  {isPinned ? <Pin className="h-4 w-4 text-primary" /> : <PinOff className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
             {content}
           </motion.div>
