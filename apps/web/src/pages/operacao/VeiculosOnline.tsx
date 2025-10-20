@@ -29,26 +29,30 @@ export default function VeiculosOnline() {
 
   useEffect(() => {
     fetchVehicles();
-    
+
+    if (!supabase) return;
     const channel = supabase
       .channel('vehicles-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'vehicles'
-      }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
         fetchVehicles();
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      try { supabase.removeChannel(channel); } catch {}
     };
   }, [filters]);
 
   const fetchVehicles = async () => {
     setLoading(true);
-    
+
+    if (!supabase) {
+      console.warn("[VeiculosOnline] Supabase ausente - modo DEMO.");
+      setVehicles([]);
+      setLoading(false);
+      return;
+    }
+
     let query = supabase
       .from('vehicles')
       .select('*, assigned_team:teams(*)');
