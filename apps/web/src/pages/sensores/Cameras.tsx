@@ -24,7 +24,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import MapLibreViewer from '@/components/MapLibreViewer';
 
-type CameraSource = 'YouTube Demo' | 'Santos Mapeada' | 'Ecovias';
+type CameraSource = 'YouTube Cidades' | 'YouTube Demo' | 'Santos Mapeada' | 'Ecovias';
 type StreamType = 'youtube' | 'santos-map' | 'external-link';
 
 interface CameraItem {
@@ -43,6 +43,45 @@ interface CameraItem {
   thumbnail_url?: string;
   description?: string;
 }
+
+const YT_FALLBACK_THUMB =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'%3E%3Crect width='640' height='360' fill='%231e293b'/%3E%3Cpath d='M271 116v128l110-64z' fill='%23f43f5e'/%3E%3Ctext x='320' y='320' text-anchor='middle' fill='%23e2e8f0' font-family='Arial' font-size='32'%3Estream indispon%C3%ADvel%3C/text%3E%3C/svg%3E";
+
+const extractYoutubeId = (url?: string) => {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes('youtube.com')) {
+      const parts = parsed.pathname.split('/');
+      const embedIdx = parts.indexOf('embed');
+      if (embedIdx > -1 && parts[embedIdx + 1]) {
+        return parts[embedIdx + 1];
+      }
+      if (parsed.searchParams.has('v')) {
+        return parsed.searchParams.get('v');
+      }
+    }
+    if (parsed.hostname === 'youtu.be') {
+      return parsed.pathname.replace('/', '');
+    }
+  } catch (error) {
+    console.warn('[cameras] Não foi possível extrair ID do YouTube', error);
+  }
+  return null;
+};
+
+const resolveThumbnail = (camera: CameraItem) => {
+  if (camera.streamType === 'youtube') {
+    const id = extractYoutubeId(camera.stream_url);
+    if (id) {
+      return `https://img.youtube.com/vi/${id}/0.jpg`;
+    }
+  }
+  if (camera.thumbnail_url) {
+    return camera.thumbnail_url;
+  }
+  return YT_FALLBACK_THUMB;
+};
 
 const cameraCatalog: CameraItem[] = [
   {
@@ -414,6 +453,13 @@ export default function Cameras() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {cameras.slice(0, visibleCount).map(camera => {
             const isSelected = camera.id === selectedCameraId;
+            const thumbnail = resolveThumbnail(camera);
+            const handleThumbError = (event: SyntheticEvent<HTMLImageElement>) => {
+              const img = event.currentTarget as HTMLImageElement;
+              if (img.src !== YT_FALLBACK_THUMB) {
+                img.src = YT_FALLBACK_THUMB;
+              }
+            };
             return (
               <Card
                 key={camera.id}
@@ -449,11 +495,12 @@ export default function Cameras() {
                       />
                     ) : (
                       <>
-                        {camera.thumbnail_url ? (
-                          <img src={camera.thumbnail_url} alt={camera.name} className="w-full h-full object-cover rounded-lg" />
-                        ) : (
-                          <Camera className="w-12 h-12 text-muted-foreground" />
-                        )}
+                        <img
+                          src={thumbnail}
+                          alt={camera.name}
+                          className="w-full h-full object-cover rounded-lg"
+                          onError={handleThumbError}
+                        />
                         {!playAll && (
                           <button
                             className="absolute inset-0 flex items-center justify-center"
@@ -471,10 +518,13 @@ export default function Cameras() {
                     <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground px-3 text-center">
                       Acesso via painel oficial Santos Mapeada
                     </div>
-                  ) : camera.thumbnail_url ? (
-                    <img src={camera.thumbnail_url} alt={camera.name} className="w-full h-full object-cover rounded-lg" />
                   ) : (
-                    <Camera className="w-12 h-12 text-muted-foreground" />
+                    <img
+                      src={thumbnail}
+                      alt={camera.name}
+                      className="w-full h-full object-cover rounded-lg"
+                      onError={handleThumbError}
+                    />
                   )}
                 </div>
                 

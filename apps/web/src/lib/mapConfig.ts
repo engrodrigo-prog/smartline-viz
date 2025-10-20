@@ -219,41 +219,70 @@ const disableTerrain = (map: maplibregl.Map) => {
 };
 
 const applyTerrainAndBuildings = (map: maplibregl.Map, token: string | undefined) => {
-  if (!token) return;
-
-  if (!map.getSource(MAPBOX_TERRAIN_SOURCE)) {
-    map.addSource(MAPBOX_TERRAIN_SOURCE, {
-      type: "raster-dem",
-      tiles: [`${MAPBOX_TERRAIN_URL}${token}`],
-      tileSize: 512,
-      maxzoom: 14,
-    });
+  if (!token || (map as any).__terrainUnavailable) {
+    return;
   }
 
-  map.setTerrain({ source: MAPBOX_TERRAIN_SOURCE, exaggeration: 1.4 });
+  const handleTerrainError = (event: any) => {
+    const message = String(event?.error?.message ?? "");
+    const resourceUrl = (event?.error as any)?.resource?.url ?? "";
+    if (message.includes("mapbox-terrain-dem-v1") || resourceUrl.includes("mapbox-terrain-dem-v1")) {
+      console.warn("[map] Mapbox terrain DEM indisponível. Desativando terreno para este mapa.");
+      (map as any).__terrainUnavailable = true;
+      disableTerrain(map);
+      try {
+        map.off("error", handleTerrainError);
+      } catch {/* ignore */}
+    }
+  };
 
-  if (map.getSource("composite") && !map.getLayer("3d-buildings")) {
-    const labelLayerId =
-      map
-        .getStyle()
-        ?.layers?.find((layer) => layer.type === "symbol" && layer.layout && "text-field" in layer.layout)?.id ?? undefined;
+  map.on("error", handleTerrainError);
 
-    map.addLayer(
-      {
-        id: "3d-buildings",
-        source: "composite",
-        "source-layer": "building",
-        type: "fill-extrusion",
-        minzoom: 15,
-        paint: {
-          "fill-extrusion-color": "#aaa",
-          "fill-extrusion-height": ["get", "height"],
-          "fill-extrusion-base": ["get", "min_height"],
-          "fill-extrusion-opacity": 0.6,
+  try {
+    if (!map.getSource(MAPBOX_TERRAIN_SOURCE)) {
+      map.addSource(MAPBOX_TERRAIN_SOURCE, {
+        type: "raster-dem",
+        tiles: [`${MAPBOX_TERRAIN_URL}${token}`],
+        tileSize: 512,
+        maxzoom: 14,
+      });
+    }
+
+    map.setTerrain({ source: MAPBOX_TERRAIN_SOURCE, exaggeration: 1.4 });
+
+    if (map.getSource("composite") && !map.getLayer("3d-buildings")) {
+      const labelLayerId =
+        map
+          .getStyle()
+          ?.layers?.find((layer) => layer.type === "symbol" && layer.layout && "text-field" in layer.layout)?.id ?? undefined;
+
+      map.addLayer(
+        {
+          id: "3d-buildings",
+          source: "composite",
+          "source-layer": "building",
+          type: "fill-extrusion",
+          minzoom: 15,
+          paint: {
+            "fill-extrusion-color": "#aaa",
+            "fill-extrusion-height": ["get", "height"],
+            "fill-extrusion-base": ["get", "min_height"],
+            "fill-extrusion-opacity": 0.6,
+          },
         },
-      },
-      labelLayerId,
-    );
+        labelLayerId,
+      );
+    }
+  } catch (error) {
+    console.warn("[map] Falha ao aplicar terreno Mapbox, desativando.", error);
+    (map as any).__terrainUnavailable = true;
+    disableTerrain(map);
+  } finally {
+    map.once("styledata", () => {
+      try {
+        map.off("error", handleTerrainError);
+      } catch {/* ignore */}
+    });
   }
 };
 
