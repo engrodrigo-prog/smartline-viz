@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { postJSON } from "@/services/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -18,7 +19,8 @@ const Login = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if already logged in
+    // Check if already logged in (when Supabase is configured)
+    if (!supabase) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/dashboard");
@@ -31,39 +33,37 @@ const Login = () => {
     setLoading(true);
 
     try {
+      if (!supabase) {
+        // Demo mode without Supabase: fallback to API demo login and localStorage
+        const display_name = (fullName || email || "Convidado").trim();
+        const { user } = await postJSON<{ user: { id: string; display_name: string; email?: string; issued_at: string } }>(
+          "/auth/demo/login",
+          { display_name, email: email || undefined }
+        );
+        try { localStorage.setItem("smartline-demo-user", JSON.stringify(user)); } catch {}
+        toast({ title: "Sessão demo ativa", description: `Bem-vindo(a), ${user.display_name}!` });
+        navigate("/dashboard");
+        return;
+      }
+
       if (isSignUp) {
         // Sign up new user
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: {
-              full_name: fullName,
-            },
+            data: { full_name: fullName },
             emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
-
         if (error) throw error;
-
-        toast({
-          title: "Conta criada!",
-          description: "Você foi autenticado e pode acessar o sistema.",
-        });
+        toast({ title: "Conta criada!", description: "Você foi autenticado e pode acessar o sistema." });
         navigate("/dashboard");
       } else {
         // Sign in existing user
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
-        toast({
-          title: "Login realizado!",
-          description: "Redirecionando para o dashboard...",
-        });
+        toast({ title: "Login realizado!", description: "Redirecionando para o dashboard..." });
         navigate("/dashboard");
       }
     } catch (error: any) {
@@ -145,6 +145,12 @@ const Login = () => {
               {loading ? "Processando..." : isSignUp ? "Criar Conta" : "Entrar"}
             </Button>
           </form>
+
+          {!supabase && (
+            <p className="text-xs text-amber-400 mt-3 text-center">
+              Supabase não configurado — usando modo DEMO. O login usa endpoints locais e não requer cadastro.
+            </p>
+          )}
 
           <div className="mt-6 pt-6 border-t border-border/50 text-center">
             <button
