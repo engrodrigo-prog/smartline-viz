@@ -9,41 +9,38 @@ interface FileTypeCardProps {
 
 export function FileTypeCard({ fileType, onClick }: FileTypeCardProps) {
   const Icon = fileType.icon;
-  
+
   return (
-    <Card 
-      className="p-6 cursor-pointer hover:border-primary hover:shadow-lg transition-all group"
+    <Card
+      className="p-6 h-full cursor-pointer hover:border-primary hover:shadow-lg transition-all group"
       onClick={() => onClick(fileType)}
     >
-      <div className="flex items-start gap-4">
-        {/* Icon Badge */}
-        <div className="p-3 bg-primary/10 rounded-xl group-hover:bg-primary/20 transition-colors">
-          <Icon className="w-6 h-6 text-primary" />
-        </div>
-        
-        {/* Content */}
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <h3 className="font-semibold text-lg">{fileType.label}</h3>
+      <div className="flex flex-col h-full">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-3 bg-primary/10 rounded-2xl group-hover:bg-primary/20 transition-colors">
+            <Icon className="w-6 h-6 text-primary" />
+          </div>
+          <div className="flex flex-col">
+            <h3 className="font-semibold text-base leading-tight">{fileType.label}</h3>
             {fileType.subtitle && (
-              <span className="text-xs text-muted-foreground bg-secondary/30 px-2 py-0.5 rounded">
+              <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
                 {fileType.subtitle}
               </span>
             )}
           </div>
-          
-          <p className="text-sm text-muted-foreground mb-3">
-            {fileType.description}
-          </p>
-          
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <FileIcon className="w-3 h-3" />
-            <span>{fileType.acceptedFormats.join(', ')}</span>
-          </div>
         </div>
-        
-        {/* Arrow */}
-        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+
+        <p className="text-sm text-muted-foreground flex-1">
+          {fileType.description}
+        </p>
+
+        <div className="mt-4 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <FileIcon className="w-3 h-3" />
+            {fileType.acceptedFormats.join(", ")}
+          </span>
+          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+        </div>
       </div>
     </Card>
   );

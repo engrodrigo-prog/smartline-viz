@@ -1,0 +1,34 @@
+# >>> SMARTLINE-EROSION: config
+# SmartLine™ Erosion Risk – automation config
+project:
+  name: smartline-erosion
+  srs_publish: EPSG:3857   # publicação COG/visualização; cálculo no SRS do DTM
+  tile_resolution_m: 10
+
+inputs:
+  dtm_glob: "data/sample/*_DTM.tif"
+  soil_polygons: "data/sample/soil_polygons.geojson"   # precisa ter campo K
+  corridor_buffer_m_left: 30
+  corridor_buffer_m_right: 30
+
+rain:
+  use_inmet: true          # observado (estações)
+  use_imerg_nrt: true      # grade 30 min (NRT)
+  use_gfs: true            # previsão (0–120 h)
+  use_ecmwf: false
+  bbox_padding_km: 20
+
+risk:
+  weights:
+    base_rusle: 0.5
+    hydro_dynamics: 0.3   # SPI+TWI
+    trigger_event: 0.2    # I30/proxy, excedentes
+  ls_cap: 300
+  twi_cap: 20
+  spi_cap: 20
+  ls_m: 0.5
+  ls_n: 1.3
+
+outputs:
+  dir: "outputs"
+# <<< SMARTLINE-EROSION: config

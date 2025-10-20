@@ -1,12 +1,6 @@
 import { serve } from "@hono/node-server";
-import { app } from "./app";
-import { env } from "./env";
+import app from "./app.js";
+import { env } from "./env.js";
 
-const port = env.port;
-
-serve({
-  fetch: app.fetch,
-  port
-});
-
-console.log(`🚀 API ready on http://localhost:${port}`);
+serve({ fetch: app.fetch, port: env.PORT });
+console.log(`[api] listening on http://localhost:${env.PORT}`);

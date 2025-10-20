@@ -11,6 +11,24 @@ import DetailDrawer from "@/components/DetailDrawer";
 import CardKPI from "@/components/CardKPI";
 import StatusBadge from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+
+type SoilSample = {
+  id: string;
+  latitude: number;
+  longitude: number;
+  depth: number;
+  soilType: string;
+  cohesion: number;
+  permeability: number;
+  moisture: number;
+  notes?: string;
+};
 
 const Erosao = () => {
   const { filters } = useFilters();
@@ -18,6 +36,62 @@ const Erosao = () => {
   const [tipoFilter, setTipoFilter] = useState<string>('');
   const [gravidadeFilter, setGravidadeFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [soilSamples, setSoilSamples] = useState<SoilSample[]>([]);
+  const [soilForm, setSoilForm] = useState({
+    latitude: '',
+    longitude: '',
+    depth: '',
+    soilType: '',
+    cohesion: '',
+    permeability: '',
+    moisture: '',
+    notes: ''
+  });
+  const [showSoilLayer, setShowSoilLayer] = useState(true);
+  const [erosionLayerTop, setErosionLayerTop] = useState(true);
+  const [soilLayerPosition, setSoilLayerPosition] = useState<'top' | 'middle' | 'bottom'>('top');
+
+  const handleSoilInputChange = (field: keyof typeof soilForm, value: string) => {
+    setSoilForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddSoilSample = () => {
+    const lat = Number(soilForm.latitude);
+    const lon = Number(soilForm.longitude);
+    const depth = Number(soilForm.depth);
+    const cohesion = Number(soilForm.cohesion);
+    const permeability = Number(soilForm.permeability);
+    const moisture = Number(soilForm.moisture);
+
+    if (Number.isNaN(lat) || Number.isNaN(lon)) {
+      toast.error("Informe coordenadas válidas (lat/lon)");
+      return;
+    }
+    if (!soilForm.soilType.trim()) {
+      toast.error("Informe o tipo de solo");
+      return;
+    }
+
+    const sample: SoilSample = {
+      id: crypto.randomUUID(),
+      latitude: lat,
+      longitude: lon,
+      depth: Number.isNaN(depth) ? 0 : depth,
+      soilType: soilForm.soilType.trim(),
+      cohesion: Number.isNaN(cohesion) ? 0 : cohesion,
+      permeability: Number.isNaN(permeability) ? 0 : permeability,
+      moisture: Number.isNaN(moisture) ? 0 : moisture,
+      notes: soilForm.notes?.trim() || undefined,
+    };
+
+    setSoilSamples((prev) => [...prev, sample]);
+    setSoilForm({ latitude: '', longitude: '', depth: '', soilType: '', cohesion: '', permeability: '', moisture: '', notes: '' });
+    toast.success("Amostra de solo adicionada");
+  };
+
+  const handleRemoveSoilSample = (id: string) => {
+    setSoilSamples((prev) => prev.filter((sample) => sample.id !== id));
+  };
   
   const filteredData = useMemo(() => {
     let data = erosoes;
@@ -41,6 +115,68 @@ const Erosao = () => {
     torresRisco: new Set(filteredData.flatMap(e => e.torres_proximas)).size,
     emIntervencao: filteredData.filter(e => e.status === 'Em Intervenção').length,
   }), [filteredData]);
+
+  const erosionGeoJson = useMemo(() => ({
+    type: "FeatureCollection",
+    features: filteredData.map((e) => ({
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [e.coords[1], e.coords[0]],
+      },
+      properties: {
+        id: e.id,
+        name: e.nome,
+        severity: e.gravidadeErosao,
+        status: e.status,
+        area: e.areaAfetada,
+        proximity: e.proximidadeEstrutura,
+      },
+    })),
+  }), [filteredData]);
+
+  const soilGeoJson = useMemo(() => ({
+    type: "FeatureCollection",
+    features: soilSamples.map((sample) => ({
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [sample.longitude, sample.latitude],
+      },
+      properties: {
+        soilType: sample.soilType,
+        depth: sample.depth,
+        cohesion: sample.cohesion,
+        permeability: sample.permeability,
+        moisture: sample.moisture,
+        notes: sample.notes,
+      },
+    })),
+  }), [soilSamples]);
+
+  const layerOrder = useMemo(() => {
+    const base = erosionLayerTop
+      ? ["infrastructure-layer", "erosao-points"]
+      : ["erosao-points", "infrastructure-layer"];
+
+    if (!showSoilLayer || soilSamples.length === 0) {
+      return base;
+    }
+
+    if (soilLayerPosition === "bottom") {
+      return ["soil-samples", ...base];
+    }
+
+    if (soilLayerPosition === "middle") {
+      const [first, second] = base;
+      if (!second) {
+        return [...base, "soil-samples"];
+      }
+      return [first, "soil-samples", second];
+    }
+
+    return [...base, "soil-samples"];
+  }, [erosionLayerTop, showSoilLayer, soilLayerPosition, soilSamples]);
 
   const columns = [
     { key: 'nome', label: 'Nome' },
@@ -138,6 +274,182 @@ const Erosao = () => {
             </div>
           </div>
         </FiltersBar>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 space-y-4 border border-border rounded-lg bg-card/60 p-4">
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados detalhados de solo</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Registre amostras de solo para complementar o diagnóstico das erosões e gerar camadas específicas no mapa.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="soil-lat">Latitude *</Label>
+                <Input
+                  id="soil-lat"
+                  type="number"
+                  step="0.0001"
+                  value={soilForm.latitude}
+                  onChange={(e) => handleSoilInputChange('latitude', e.target.value)}
+                  placeholder="-23.5500"
+                />
+              </div>
+              <div>
+                <Label htmlFor="soil-lon">Longitude *</Label>
+                <Input
+                  id="soil-lon"
+                  type="number"
+                  step="0.0001"
+                  value={soilForm.longitude}
+                  onChange={(e) => handleSoilInputChange('longitude', e.target.value)}
+                  placeholder="-46.6300"
+                />
+              </div>
+              <div>
+                <Label htmlFor="soil-type">Tipo de Solo *</Label>
+                <Input
+                  id="soil-type"
+                  value={soilForm.soilType}
+                  onChange={(e) => handleSoilInputChange('soilType', e.target.value)}
+                  placeholder="Argiloso, arenoso, etc."
+                />
+              </div>
+              <div>
+                <Label htmlFor="soil-depth">Profundidade (m)</Label>
+                <Input
+                  id="soil-depth"
+                  type="number"
+                  step="0.1"
+                  value={soilForm.depth}
+                  onChange={(e) => handleSoilInputChange('depth', e.target.value)}
+                  placeholder="2.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="soil-cohesion">Coesão (kPa)</Label>
+                <Input
+                  id="soil-cohesion"
+                  type="number"
+                  step="0.1"
+                  value={soilForm.cohesion}
+                  onChange={(e) => handleSoilInputChange('cohesion', e.target.value)}
+                  placeholder="45"
+                />
+              </div>
+              <div>
+                <Label htmlFor="soil-permeability">Permeabilidade (cm/s)</Label>
+                <Input
+                  id="soil-permeability"
+                  type="number"
+                  step="0.0001"
+                  value={soilForm.permeability}
+                  onChange={(e) => handleSoilInputChange('permeability', e.target.value)}
+                  placeholder="0.001"
+                />
+              </div>
+              <div>
+                <Label htmlFor="soil-moisture">Umidade (%)</Label>
+                <Input
+                  id="soil-moisture"
+                  type="number"
+                  step="0.1"
+                  value={soilForm.moisture}
+                  onChange={(e) => handleSoilInputChange('moisture', e.target.value)}
+                  placeholder="18"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="soil-notes">Observações</Label>
+                <Textarea
+                  id="soil-notes"
+                  value={soilForm.notes}
+                  onChange={(e) => handleSoilInputChange('notes', e.target.value)}
+                  placeholder="Condições adicionais do ponto, presença de lençol freático, etc."
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button size="sm" onClick={handleAddSoilSample}>Adicionar amostra</Button>
+            </div>
+            {soilSamples.length > 0 ? (
+              <div className="space-y-2 max-h-48 overflow-auto border border-dashed border-border rounded-md p-3 bg-background/80">
+                {soilSamples.map((sample) => (
+                  <div key={sample.id} className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-0 last:pb-0">
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div className="font-semibold text-foreground">{sample.soilType}</div>
+                      <div>Lat/Lon: {sample.latitude.toFixed(4)}, {sample.longitude.toFixed(4)}</div>
+                      <div>Profundidade: {sample.depth} m • Coesão: {sample.cohesion} kPa • Umidade: {sample.moisture}%</div>
+                      <div>Permeabilidade: {sample.permeability} cm/s</div>
+                      {sample.notes && <div className="italic">{sample.notes}</div>}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleRemoveSoilSample(sample.id)}>Remover</Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Nenhuma amostra cadastrada até o momento.</p>
+            )}
+          </div>
+
+          <div className="space-y-4 border border-border rounded-lg bg-card/60 p-4">
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Camadas do mapa</h3>
+              <p className="text-xs text-muted-foreground mt-1">Controle a sobreposição entre infraestrutura, pontos de erosão e dados de solo.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={erosionLayerTop ? "default" : "outline"}
+                size="sm"
+                onClick={() => setErosionLayerTop(true)}
+              >
+                Erosão sobre Infraestrutura
+              </Button>
+              <Button
+                variant={!erosionLayerTop ? "default" : "outline"}
+                size="sm"
+                onClick={() => setErosionLayerTop(false)}
+              >
+                Infraestrutura sobre Erosão
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch id="soil-layer-toggle" checked={showSoilLayer} onCheckedChange={setShowSoilLayer} />
+              <Label htmlFor="soil-layer-toggle" className="text-sm">Exibir camada de amostras de solo</Label>
+            </div>
+            {showSoilLayer && soilSamples.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Ordem da camada de solo
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={soilLayerPosition === "top" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSoilLayerPosition("top")}
+                  >
+                    Sobre todas
+                  </Button>
+                  <Button
+                    variant={soilLayerPosition === "middle" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSoilLayerPosition("middle")}
+                  >
+                    Entre camadas
+                  </Button>
+                  <Button
+                    variant={soilLayerPosition === "bottom" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSoilLayerPosition("bottom")}
+                  >
+                    Abaixo de todas
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <CardKPI title="Total de Erosões" value={kpis.total} icon={Mountain} />
@@ -173,6 +485,9 @@ const Erosao = () => {
                 showInfrastructure={true}
                 initialCenter={[-46.63, -23.55]}
                 initialZoom={filters.linha ? 13 : 7}
+                erosionData={erosionGeoJson}
+                soilData={showSoilLayer ? soilGeoJson : null}
+                layerOrder={layerOrder}
               />
             </div>
           </TabsContent>

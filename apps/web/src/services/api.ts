@@ -1,64 +1,63 @@
-export interface ApiErrorCause extends Error {
-  status: number;
-  body?: unknown;
+import { ENV } from '../config/env'
+
+interface RequestOptions extends RequestInit {
+  timeoutMs?: number
 }
 
-export class ApiError extends Error implements ApiErrorCause {
-  status: number;
-  body?: unknown;
+const DEFAULT_TIMEOUT = 10000
 
-  constructor(message: string, status: number, body?: unknown) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.body = body;
-  }
-}
+async function requestJSON<T = unknown>(path: string, init: RequestOptions = {}): Promise<T> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), init.timeoutMs ?? DEFAULT_TIMEOUT)
+  const base = ENV.API_BASE_URL?.replace(/\/+$/, '') || ''
+  const url = `${base}${path.startsWith('/') ? path : `/${path}`}`
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8787";
-
-type RequestOptions = RequestInit & { parseJson?: boolean };
-
-const request = async <T = unknown>(path: string, options: RequestOptions = {}) => {
-  const { parseJson = true, headers, ...rest } = options;
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...headers
-    },
-    ...rest
-  });
-
-  if (!response.ok) {
-    let body: unknown = undefined;
-    try {
-      body = await response.json();
-    } catch (error) {
-      body = await response.text().catch(() => undefined);
+  try {
+    const headers = new Headers(init.headers)
+    if (init.body && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json')
     }
-    throw new ApiError(response.statusText || "Request failed", response.status, body);
-  }
+    if (!headers.has('Accept')) {
+      headers.set('Accept', 'application/json')
+    }
 
-  if (!parseJson) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
-};
-
-export const api = {
-  get: <T = unknown>(path: string) => request<T>(path),
-  post: <T = unknown>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: "POST",
-      body: body ? JSON.stringify(body) : undefined
-    }),
-  delete: <T = unknown>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: "DELETE",
-      body: body ? JSON.stringify(body) : undefined
+    const response = await fetch(url, {
+      ...init,
+      headers,
+      signal: controller.signal,
     })
-};
 
-export { API_BASE_URL };
+    if (!response.ok) {
+      const err = await response.text().catch(() => response.statusText)
+      throw new Error(`${response.status} ${response.statusText} → ${err}`)
+    }
+
+    return (await response.json()) as T
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+export const getJSON = <T = unknown>(path: string, init?: RequestOptions) =>
+  requestJSON<T>(path, { ...(init || {}), method: init?.method ?? 'GET' })
+
+export const postJSON = <T = unknown>(path: string, body?: unknown, init?: RequestOptions) =>
+  requestJSON<T>(path, {
+    ...(init || {}),
+    method: 'POST',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+
+export const putJSON = <T = unknown>(path: string, body?: unknown, init?: RequestOptions) =>
+  requestJSON<T>(path, {
+    ...(init || {}),
+    method: 'PUT',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+
+export const deleteJSON = <T = unknown>(path: string, body?: unknown, init?: RequestOptions) =>
+  requestJSON<T>(path, {
+    ...(init || {}),
+    method: 'DELETE',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })

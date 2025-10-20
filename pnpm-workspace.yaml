@@ -1,4 +1,8 @@
 packages:
-  - "apps/*"
-  - "packages/*"
-  - "workers/*"
+  - apps/*
+  - packages/*
+  - workers/*
+
+onlyBuiltDependencies:
+  - '@swc/core'
+  - esbuild

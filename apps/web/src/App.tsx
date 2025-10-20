@@ -35,6 +35,12 @@ import Cameras from "./pages/sensores/Cameras";
 import SensorDashboard from "./pages/sensores/SensorDashboard";
 import Alertas from "./pages/sensores/Alertas";
 import WeatherPanel from "./modules/Ambiental/Meteorologia/WeatherPanel";
+import UploadMidiaPage from "./pages/upload/Midia";
+import InspecaoTermografica from "./pages/modules/estrutura/InspecaoTermografica";
+import Demandas from "./pages/operacao/Demandas";
+import MissoesPage from "./pages/missoes";
+import PerfilLinha from "./pages/modules/estrutura/PerfilLinha";
+import ComparativoExecucao from "./pages/analytics/ComparativoExecucao";
 
 const queryClient = new QueryClient();
 
@@ -43,7 +49,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <FiltersProvider>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -63,6 +69,7 @@ const App = () => (
           <Route path="/upload/bases" element={<ProtectedRoute><UploadBases /></ProtectedRoute>} />
           <Route path="/upload/tracados" element={<ProtectedRoute><UploadTracados /></ProtectedRoute>} />
           <Route path="/upload/kml" element={<ProtectedRoute><UploadKml /></ProtectedRoute>} />
+          <Route path="/upload/midia" element={<ProtectedRoute><UploadMidiaPage /></ProtectedRoute>} />
           
           {/* Ambiental */}
           <Route path="/ambiental/alagadas" element={<ProtectedRoute><AreasAlagadas /></ProtectedRoute>} />
@@ -79,8 +86,10 @@ const App = () => (
           <Route path="/estrutura/estruturas" element={<ProtectedRoute><Estruturas /></ProtectedRoute>} />
           <Route path="/estrutura/emendas" element={<ProtectedRoute><Emendas /></ProtectedRoute>} />
           <Route path="/estrutura/travessias" element={<ProtectedRoute><Travessias /></ProtectedRoute>} />
+          <Route path="/estrutura/perfil-linha" element={<ProtectedRoute><PerfilLinha /></ProtectedRoute>} />
           <Route path="/estrutura/compliance" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/estrutura/corrosao" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/modules/estrutura/inspecao-termografica" element={<ProtectedRoute><InspecaoTermografica /></ProtectedRoute>} />
           
           {/* Sensores */}
           <Route path="/sensores/painel" element={<ProtectedRoute><PainelSensores /></ProtectedRoute>} />
@@ -89,13 +98,15 @@ const App = () => (
           <Route path="/sensores/alertas" element={<ProtectedRoute><Alertas /></ProtectedRoute>} />
           
           {/* Operação */}
-          <Route path="/operacao/missoes" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/operacao/missoes" element={<ProtectedRoute><MissoesPage /></ProtectedRoute>} />
+          <Route path="/operacao/demandas" element={<ProtectedRoute><Demandas /></ProtectedRoute>} />
           <Route path="/operacao/eventos" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/operacao/veiculos" element={<ProtectedRoute><VeiculosOnline /></ProtectedRoute>} />
           <Route path="/operacao/compliance" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/operacao/relatorios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
           {/* Análises Avançadas */}
+          <Route path="/analytics/comparativo" element={<ProtectedRoute><ComparativoExecucao /></ProtectedRoute>} />
           <Route path="/analises/gemeo-digital" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/fiscalizacao/obras" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/auditorias/qualidade" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />

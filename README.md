@@ -39,3 +39,31 @@ Para usar, abra o projeto no VS Code e selecione **“Reopen in Container”**. 
 
 - Prefira pnpm scripts com `pnpm -C <path>` para rodar comandos nas aplicações.
 - Mantenha secrets fora do repositório (usar `.env`, `.env.example`).
+
+### Como rodar (macOS)
+1. Habilite o pnpm via Corepack e selecione a versão desejada (`corepack enable && corepack prepare pnpm@10.18.3 --activate`).
+2. Execute `pnpm install` na raiz do monorepo.
+3. Preencha `apps/web/.env` (chaves `VITE_MAPBOX_TOKEN`, `VITE_JOTFORM_URL`) e `apps/api/.env`.
+4. Em terminais separados, rode `pnpm dev:web` e `pnpm dev:api`. A API expõe o health check em `http://localhost:8080/health`.
+# >>> SMARTLINE-EROSION: readme
+## SmartLine™ – Erosion Risk Automation (Starter Kit)
+Fluxo:
+1) Ingerir chuva observada (INMET + IMERG NRT) e prevista (GFS/ECMWF).
+2) Processar DTM por linha/corredor (Fill/Breach, Slope, TWI, SPI, LS canônico).
+3) Calcular A_RUSLE e compor risco (0–100).
+4) Publicar COGs p/ SmartLine-Viz (raster source).
+### Instalação
+```bash
+python -m venv .venv && source .venv/bin/activate      # Win: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+### Execução (exemplos)
+```bash
+python ingest/gpm_imerg_nrt.py --line-geojson data/sample/line.geojson --hours 24
+python ingest/gfs_nomads.py --bbox -47.2 -23.2 -46.9 -22.9 --lead-hours 120
+python process/dtm_derivatives.py --dtm data/sample/XX_DTM.tif --ls-m 0.5 --ls-n 1.3 --fa-type cells
+python process/risk_index.py --dtm data/sample/XX_DTM.tif --soil data/sample/soil_polygons.geojson --ndvi-c 1.0
+python scripts/build_cogs.py outputs/*.tif
+```
+# <<< SMARTLINE-EROSION: readme

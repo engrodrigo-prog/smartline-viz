@@ -1,0 +1,14 @@
+# >>> SMARTLINE-EROSION: requirements
+rasterio
+numpy
+pandas
+xarray
+rioxarray
+requests
+tqdm
+whitebox
+shapely
+pyproj
+geopandas
+python-dateutil
+# <<< SMARTLINE-EROSION: requirements

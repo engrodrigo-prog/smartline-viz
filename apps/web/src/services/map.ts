@@ -13,7 +13,6 @@ const MAPBOX_TERRAIN_SOURCE = "mapbox-dem";
 
 const buildRasterStyle = (basemap: BasemapOption): mapboxgl.Style => ({
   version: 8,
-  name: basemap.name,
   sources: {
     [basemap.id]: {
       type: "raster",
@@ -91,8 +90,8 @@ export const resetTerrain = (map: mapboxgl.Map) => {
     // ignore
   }
 
-  if (map.getLayer(\"3d-buildings\")) {
-    map.removeLayer(\"3d-buildings\");
+  if (map.getLayer("3d-buildings")) {
+    map.removeLayer("3d-buildings");
   }
 
   if (map.getSource(MAPBOX_TERRAIN_SOURCE)) {

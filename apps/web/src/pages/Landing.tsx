@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import LandingHeader from "@/components/LandingHeader";
@@ -28,7 +29,14 @@ import {
   ShieldCheck,
   DollarSign,
   CheckCircle2,
+  ArrowRight,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useFirmsData } from "@/hooks/useFirmsData";
+import { useMediaSearch } from "@/hooks/useMedia";
+import { useDemandasAnalytics } from "@/hooks/useDemandas";
+import { useMissoes } from "@/hooks/useMissoes";
 import logoSmartline from "@/assets/logo-smartline.png";
 import bgHero from "@/assets/bg-hero.png";
 import bannerIA from "@/assets/banner-ia.png";
@@ -39,6 +47,87 @@ import teamAnalysis from "@/assets/team-analysis.png";
 import controlRoom from "@/assets/control-room.png";
 
 const Landing = () => {
+  const firmsQuery = useFirmsData({ count: 1000 });
+  const mediaQuery = useMediaSearch({});
+  const analyticsQuery = useDemandasAnalytics();
+  const missoesQuery = useMissoes();
+
+  const automationCards = useMemo(() => {
+    const cards: {
+      title: string;
+      description: string;
+      status: "ok" | "running" | "error";
+      timestamp?: string;
+      cta: { href: string; label: string };
+    }[] = [];
+
+    cards.push({
+      title: "FIRMS (última sincronização)",
+      description: "Hotspots NASA/VIIRS integrados ao módulo de ambiental para resposta rápida a queimadas.",
+      status: firmsQuery.isError
+        ? "error"
+        : firmsQuery.isFetching
+          ? "running"
+          : firmsQuery.data
+            ? "ok"
+            : "error",
+      timestamp: firmsQuery.data?.meta?.lastFetchedAt,
+      cta: { href: "/ambiental/queimadas", label: "Ver Queimadas" }
+    });
+
+    cards.push({
+      title: "Processamento de Vídeos/Frames",
+      description: "Worker Python extrai frames georreferenciados, EXIF e temas para inspeções visual e térmica.",
+      status: mediaQuery.isPending ? "running" : mediaQuery.isError ? "error" : "ok",
+      timestamp: mediaQuery.data?.items?.[0]?.uploadedAt,
+      cta: { href: "/upload", label: "Abrir Upload Unificado" }
+    });
+
+    cards.push({
+      title: "Indexação Nuvens LAS/LAZ",
+      description: "Pipeline PDAL/LASPy gera plan_points.geojson e perfil longitudinal para engenharia.",
+      status: "ok",
+      timestamp: analyticsQuery.data?.atualizadoEm,
+      cta: { href: "/estrutura/perfil-linha", label: "Ver Perfil da Linha" }
+    });
+
+    cards.push({
+      title: "Análises Operacionais",
+      description: "Comparativo Próprio vs Terceiros com SLA, custo por km, retrabalho e reincidências.",
+      status: analyticsQuery.isSuccess ? "ok" : analyticsQuery.isPending ? "running" : "error",
+      timestamp: analyticsQuery.data?.atualizadoEm,
+      cta: { href: "/analytics/comparativo", label: "Abrir Analytics" }
+    });
+
+    cards.push({
+      title: "Missões (exportadas/enviadas)",
+      description: "Biblioteca de planos LiDAR, circulares e inspeções finas com exportação DJI, Autel e Ardupilot.",
+      status: missoesQuery.isSuccess ? "ok" : missoesQuery.isPending ? "running" : "error",
+      timestamp: missoesQuery.data?.items?.[0]?.atualizadoEm,
+      cta: { href: "/operacao/missoes", label: "Gerenciar Missões" }
+    });
+
+    return cards;
+  }, [analyticsQuery.data, analyticsQuery.isPending, analyticsQuery.isSuccess, firmsQuery.data, firmsQuery.isError, firmsQuery.isFetching, mediaQuery.data, mediaQuery.isError, mediaQuery.isPending, missoesQuery.data, missoesQuery.isPending, missoesQuery.isSuccess]);
+
+  const statusBadge = (status: "ok" | "running" | "error", timestamp?: string) => {
+    const label =
+      status === "ok" ? "OK" : status === "running" ? "Em execução" : "Verificar configuração";
+    const variant = status === "ok" ? "secondary" : status === "running" ? "outline" : "destructive";
+    return (
+      <div className="flex flex-col gap-1">
+        <Badge variant={variant} className="w-fit">
+          {label}
+        </Badge>
+        {timestamp ? (
+          <span className="text-xs text-muted-foreground">
+            Atualizado {new Date(timestamp).toLocaleString("pt-BR")}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
+
   const features = [
     {
       icon: Activity,
@@ -141,6 +230,56 @@ const Landing = () => {
                 </div>
               ))}
             </motion.div>
+          </div>
+        </section>
+
+        {/* Automations & Jobs Section */}
+        <section className="py-16 px-6">
+          <div className="container mx-auto max-w-6xl">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"
+            >
+              <div>
+                <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
+                  <Clock className="w-7 h-7 text-primary" /> Automations & Jobs
+                </h2>
+                <p className="text-muted-foreground max-w-2xl">
+                  Monitoramento em tempo real das rotinas críticas: ingestão FIRMS, processamento de mídias, indexação de
+                  nuvens e análises operacionais. Acione manualmente ou acompanhe logs ao vivo neste painel.
+                </p>
+              </div>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {automationCards.map((card) => (
+                <motion.div
+                  key={card.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4 }}
+                  className="tech-card p-6 space-y-4 border border-white/10"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{card.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{card.description}</p>
+                    </div>
+                    {statusBadge(card.status, card.timestamp)}
+                  </div>
+                  <Button variant="outline" asChild className="w-full justify-between">
+                    <Link to={card.cta.href}>
+                      {card.cta.label}
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </Button>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </section>
 

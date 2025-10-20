@@ -1,0 +1,6 @@
+laspy==2.5.3
+numpy==1.26.4
+shapely==2.0.4
+pyproj==3.6.1
+pdal==3.3.0
+tqdm==4.66.4

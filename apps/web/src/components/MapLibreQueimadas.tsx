@@ -3,11 +3,33 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Loader2 } from 'lucide-react';
 import { initializeESRIMap } from '@/lib/mapConfig';
+import type { Feature } from 'geojson';
 
 interface MapLibreQueimadasProps {
   geojson: GeoJSON.FeatureCollection;
-  onFeatureClick?: (feature: any) => void;
+  onFeatureClick?: (feature: Feature) => void;
 }
+
+const riskColorExpression = [
+  "interpolate",
+  ["linear"],
+  ["coalesce", ["get", "risk_max"], 0],
+  0, "#16a34a",
+  25, "#84cc16",
+  50, "#facc15",
+  75, "#f97316",
+  90, "#ef4444",
+  100, "#b91c1c"
+];
+
+const riskRadiusExpression = [
+  "interpolate",
+  ["linear"],
+  ["sqrt", ["coalesce", ["get", "frp"], 0]],
+  0, 6,
+  4, 10,
+  8, 14
+];
 
 export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadasProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -30,106 +52,32 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadas
 
         map.current.addSource('queimadas', {
           type: 'geojson',
-          data: geojson,
-          cluster: true,
-          clusterMaxZoom: 14,
-          clusterRadius: 50
+          data: geojson
         });
 
         map.current.addLayer({
-          id: 'clusters',
+          id: 'risk-points',
           type: 'circle',
           source: 'queimadas',
-          filter: ['has', 'point_count'],
           paint: {
-            'circle-color': [
-              'step',
-              ['get', 'point_count'],
-              '#51bbd6', 10,
-              '#f1f075', 30,
-              '#f28cb1', 50,
-              '#ff0000'
-            ],
-            'circle-radius': [
-              'step',
-              ['get', 'point_count'],
-              20, 10,
-              30, 30,
-              40
-            ]
+            'circle-color': riskColorExpression as any,
+            'circle-radius': riskRadiusExpression as any,
+            'circle-stroke-width': 1.5,
+            'circle-stroke-color': '#0f172a'
           }
         });
 
-        map.current.addLayer({
-          id: 'cluster-count',
-          type: 'symbol',
-          source: 'queimadas',
-          filter: ['has', 'point_count'],
-          layout: {
-            'text-field': ['get', 'point_count_abbreviated'],
-            'text-size': 12
-          },
-          paint: {
-            'text-color': '#ffffff'
-          }
-        });
-
-        map.current.addLayer({
-          id: 'unclustered-point',
-          type: 'circle',
-          source: 'queimadas',
-          filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-color': [
-              'case',
-              ['>=', ['get', 'confianca'], 80], '#ff0000',
-              ['>=', ['get', 'confianca'], 50], '#ff9900',
-              '#ffff00'
-            ],
-            'circle-radius': 8,
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#fff'
-          }
-        });
-
-        map.current.on('click', 'unclustered-point', (e) => {
+        map.current.on('click', 'risk-points', (e) => {
           if (e.features && e.features[0] && onFeatureClick) {
-            onFeatureClick(e.features[0].properties);
+            onFeatureClick(e.features[0] as Feature);
           }
         });
 
-        map.current.on('mouseenter', 'unclustered-point', () => {
+        map.current.on('mouseenter', 'risk-points', () => {
           if (map.current) map.current.getCanvas().style.cursor = 'pointer';
         });
         
-        map.current.on('mouseleave', 'unclustered-point', () => {
-          if (map.current) map.current.getCanvas().style.cursor = '';
-        });
-
-        map.current.on('click', 'clusters', async (e) => {
-          if (!map.current) return;
-          const features = map.current.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-          const clusterId = features[0]?.properties?.cluster_id;
-          
-          if (clusterId && features[0].geometry.type === 'Point') {
-            try {
-              const source = map.current.getSource('queimadas') as maplibregl.GeoJSONSource;
-              const zoom = await source.getClusterExpansionZoom(clusterId);
-              map.current.easeTo({
-                center: features[0].geometry.coordinates as [number, number],
-                zoom: zoom
-              });
-            } catch (err) {
-              console.error('Error expanding cluster:', err);
-            }
-          }
-        });
-
-        map.current.on('mouseenter', 'clusters', () => {
-          if (map.current) map.current.getCanvas().style.cursor = 'pointer';
-        });
-        
-        map.current.on('mouseleave', 'clusters', () => {
+        map.current.on('mouseleave', 'risk-points', () => {
           if (map.current) map.current.getCanvas().style.cursor = '';
         });
       });

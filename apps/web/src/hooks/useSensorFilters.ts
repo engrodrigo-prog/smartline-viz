@@ -21,6 +21,15 @@ export function useSensorFilters() {
   
   useEffect(() => {
     const fetchOptions = async () => {
+      if (!supabase) {
+        setRegions(['Santos/SP', 'Praia Grande/SP', 'São Vicente/SP', 'Guarujá/SP']);
+        setLines([
+          { id: 'LT-Santos', name: 'LT-Santos' },
+          { id: 'LT-Baixada', name: 'LT-Baixada Santista' },
+          { id: 'LT-Litoral-Sul', name: 'LT-Litoral-Sul' }
+        ]);
+        return;
+      }
       const { data: sensors } = await supabase.from('sensors').select('region, line_code');
       if (sensors) {
         const uniqueRegions = [...new Set(sensors.map(s => s.region).filter(Boolean))];

@@ -1,14 +1,12 @@
 {
   "name": "smartline-viz",
   "private": true,
-  "packageManager": "pnpm@9",
-  "workspaces": [
-    "apps/*",
-    "packages/*",
-    "workers/*"
-  ],
+  "packageManager": "pnpm@10.18.3",
+  "workspaces": ["apps/*", "packages/*", "workers/*"],
   "scripts": {
     "dev:web": "pnpm -C apps/web dev",
-    "dev:api": "pnpm -C apps/api dev"
+    "dev:api": "pnpm -C apps/api dev",
+    "build:web": "pnpm -C apps/web build",
+    "build:api": "pnpm -C apps/api build"
   }
 }

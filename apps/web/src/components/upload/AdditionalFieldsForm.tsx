@@ -1,5 +1,12 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 import type { FileType } from "@/lib/uploadConfig";
 
 interface AdditionalFieldsFormProps {
@@ -13,10 +20,29 @@ export function AdditionalFieldsForm({ fileType, values, onChange }: AdditionalF
     return null;
   }
 
+  const integrationTargets = fileType.integrationTargets ?? [
+    { value: "smartline", label: "Somente SmartLine Viz" },
+    { value: "adms", label: "Exportar para ADMS" },
+    { value: "supervisory", label: "Integração Supervisório" }
+  ];
+
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium">Campos Obrigatórios</h3>
       
+      {fileType.requiredFields.includes('name') && (
+        <div>
+          <Label htmlFor="name">Identificação *</Label>
+          <Input
+            id="name"
+            placeholder="Ex: Diagrama 138kV - LT Norte"
+            value={values.name || ''}
+            onChange={(e) => onChange('name', e.target.value)}
+            required
+          />
+        </div>
+      )}
+
       {fileType.requiredFields.includes('line_code') && (
         <div>
           <Label htmlFor="line_code">Código da Linha *</Label>
@@ -90,6 +116,33 @@ export function AdditionalFieldsForm({ fileType, values, onChange }: AdditionalF
           <p className="text-xs text-muted-foreground mt-1">
             Ground Sample Distance - tamanho do pixel em centímetros
           </p>
+        </div>
+      )}
+
+      {fileType.requiredFields.includes('integration_target') && (
+        <div className="space-y-1.5">
+          <Label htmlFor="integration_target">Destino de Integração *</Label>
+          <Select
+            value={values.integration_target ?? ''}
+            onValueChange={(value) => onChange('integration_target', value)}
+            required
+          >
+            <SelectTrigger id="integration_target">
+              <SelectValue placeholder="Selecione o destino" />
+            </SelectTrigger>
+            <SelectContent>
+              {integrationTargets.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium">{option.label}</span>
+                    {option.description && (
+                      <span className="text-[11px] text-muted-foreground">{option.description}</span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
     </div>

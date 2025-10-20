@@ -5,7 +5,7 @@ import {
   Droplets, Trees, Mountain, Ruler, ShieldCheck, Building2,
   Link2, GitBranch, Shield, Skull, Camera, Gauge, ChartArea,
   Bell, Plane, Clock as ClockIcon, FileCheck, Settings, Users, Lock,
-  Award, HardHat, BrainCircuit, MapPin, Flame, Home, History, Truck, CloudRain
+  Award, HardHat, BrainCircuit, MapPin, Flame, Home, History, Truck, CloudRain, Thermometer, ClipboardList, BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
@@ -37,6 +37,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "Upload Unificado", path: "/upload", icon: Upload },
       { title: "Histórico", path: "/upload/historico", icon: History },
+      { title: "Upload de Mídia", path: "/upload/midia", icon: Camera },
     ],
   },
   {
@@ -58,8 +59,10 @@ const menuGroups: MenuGroup[] = [
       { title: "Estruturas", path: "/estrutura/estruturas", icon: Building2 },
       { title: "Emendas e Conexões", path: "/estrutura/emendas", icon: Link2 },
       { title: "Travessias", path: "/estrutura/travessias", icon: GitBranch },
+      { title: "Perfil da Linha", path: "/estrutura/perfil-linha", icon: Ruler },
       { title: "Compliance Cruzamentos", path: "/estrutura/compliance", icon: Shield },
       { title: "Corrosão e Furto", path: "/estrutura/corrosao", icon: Skull },
+      { title: "Inspeção Termográfica", path: "/modules/estrutura/inspecao-termografica", icon: Thermometer },
     ],
   },
   {
@@ -75,6 +78,7 @@ const menuGroups: MenuGroup[] = [
     category: "Operações",
     items: [
       { title: "Missões de Drones", path: "/operacao/missoes", icon: Plane },
+      { title: "Gestão de Demandas", path: "/operacao/demandas", icon: ClipboardList },
       { title: "Eventos Históricos", path: "/operacao/eventos", icon: ClockIcon },
       { title: "Veículos On-Line", path: "/operacao/veiculos", icon: Truck },
       { title: "Compliance Operacional", path: "/operacao/compliance", icon: FileCheck },
@@ -84,6 +88,7 @@ const menuGroups: MenuGroup[] = [
   {
     category: "Análises Avançadas",
     items: [
+      { title: "Comparativo Execução", path: "/analytics/comparativo", icon: BarChart3 },
       { title: "Gêmeo Digital & IA", path: "/analises/gemeo-digital", icon: BrainCircuit },
       { title: "Fiscalização & Obras", path: "/fiscalizacao/obras", icon: HardHat },
       { title: "Auditorias de Qualidade", path: "/auditorias/qualidade", icon: Award },

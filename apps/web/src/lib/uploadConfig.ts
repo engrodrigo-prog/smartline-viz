@@ -13,6 +13,8 @@ export interface FileType {
   icon: LucideIcon;
   requiredFields?: string[];
   metadata?: Record<string, any>;
+  integrationTargets?: { value: string; label: string; description?: string }[];
+  defaultIntegrationTarget?: string;
 }
 
 export const FILE_TYPES: FileType[] = [
@@ -142,14 +144,21 @@ export const FILE_TYPES: FileType[] = [
   {
     id: 'unifilar_diagram',
     label: 'Diagrama Unifilar',
-    subtitle: 'SVG, JSON ou PNG',
-    description: 'Upload do diagrama unifilar da linha para visualização interativa',
-    acceptedFormats: ['.svg', '.json', '.png', '.jpg'],
+    subtitle: 'SVG, JSON, PNG ou CAD',
+    description: 'Upload do diagrama unifilar (vetor/imagem/CAD) para visualização e integrações com ADMS/supervisório',
+    acceptedFormats: ['.svg', '.json', '.png', '.jpg', '.dwg', '.dxf'],
     targetTable: 'unifilar_diagrams',
     edgeFunction: 'process-unifilar-diagram',
     category: 'outros',
     icon: Network,
-    requiredFields: ['line_code', 'name']
+    requiredFields: ['line_code', 'name', 'integration_target'],
+    integrationTargets: [
+      { value: 'smartline', label: 'Somente SmartLine Viz', description: 'Disponibilizar apenas na plataforma de visualização' },
+      { value: 'adms', label: 'Exportar para ADMS', description: 'Enviar atualizações para sistemas ADMS/SCADA' },
+      { value: 'supervisory', label: 'Integrar com Supervisório', description: 'Sincronizar com supervisórios externos ou EMS' }
+    ],
+    defaultIntegrationTarget: 'smartline',
+    metadata: { supportsCad: true }
   }
 ];
 

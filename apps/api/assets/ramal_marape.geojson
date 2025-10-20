@@ -1,0 +1,22 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ramal_marape",
+        "nome": "Ramal Marapé"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-46.3402, -23.9734],
+          [-46.3331, -23.9628],
+          [-46.3265, -23.9571],
+          [-46.3202, -23.9524],
+          [-46.3136, -23.9478]
+        ]
+      }
+    }
+  ]
+}

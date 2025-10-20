@@ -1,129 +1,86 @@
 import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
-import { logger } from "@hono/logger";
-import { cors } from "@hono/cors";
-import { cookie, deleteCookie, getSignedCookie, setSignedCookie } from "@hono/cookie";
-import { z } from "zod";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
+import { env } from "./env.js";
+import uploadRoutes from "./routes/upload.js";
+import { firmsRoutes } from "./routes/firms.js";
+import { statusRoutes } from "./routes/status.js";
+import { travessiasRoutes } from "./routes/travessias.js";
+import { alagadosRoutes } from "./routes/alagados.js";
+import { pointcloudRoutes } from "./routes/pointclouds.js";
+import { mediaRoutes } from "./routes/media.js";
+import { missoesRoutes } from "./routes/missoes.js";
+import { demandasRoutes } from "./routes/demandas.js";
+import weatherRoutes from "./routes/weather.js";
+import { readFileSync, existsSync, createReadStream } from "node:fs";
+import { join } from "node:path";
+import mime from "mime";
 
-import { env, isProduction } from "./env";
-import { fetchFirmsGeoJson, type FirmsPreset } from "./lib/firms";
+const app = new Hono();
 
-const SESSION_COOKIE = "smartline_demo_session";
-
-const loginSchema = z.object({
-  display_name: z.string().min(2, "Informe um nome"),
-  email: z.string().email().optional()
-});
-
-const presetSchema = z.enum(["12h", "24h", "48h", "7d"]);
-
-interface DemoSession {
-  id: string;
-  display_name: string;
-  email?: string;
-  issued_at: string;
-}
-
-const resolveOrigin = (origin: string | undefined) => {
-  if (!origin) {
-    return env.allowedOrigins?.[0] ?? "http://localhost:5173";
-  }
-
-  if (!env.allowedOrigins || env.allowedOrigins.length === 0) {
-    return origin;
-  }
-
-  return env.allowedOrigins.includes(origin) ? origin : env.allowedOrigins[0];
-};
-
-export const app = new Hono();
-
-app.use("*", logger());
-app.use("*", cookie());
 app.use(
   "*",
   cors({
-    origin: (origin) => resolveOrigin(origin),
-    allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type"],
+    origin: (origin) => {
+      // Return a concrete origin string to avoid 'true' in header
+      const fallback = env.ALLOWED_ORIGINS[0] ?? "http://localhost:5173";
+      if (!origin) return fallback;
+      return env.ALLOWED_ORIGINS.includes(origin) ? origin : fallback;
+    },
     credentials: true,
-    maxAge: 86400
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    exposeHeaders: ["Content-Type", "Content-Disposition"],
+    maxAge: 86400,
   })
 );
 
+app.use("*", logger());
+
 app.get("/health", (c) => c.json({ status: "ok" }));
 
+// Demo: retorna usuário atual (sem sessão real nesta versão)
+app.get("/auth/demo/me", (c) => {
+  return c.json({ user: null });
+});
+
 app.post("/auth/demo/login", async (c) => {
-  if (!env.sessionSecret) {
-    throw new HTTPException(500, { message: "SESSION_SECRET não configurado" });
-  }
-
-  const payload = await c.req.json();
-  const parsed = loginSchema.safeParse(payload);
-  if (!parsed.success) {
-    throw new HTTPException(400, { message: parsed.error.issues[0]?.message ?? "Dados inválidos" });
-  }
-
-  const session: DemoSession = {
-    id: `demo-${Date.now()}`,
-    display_name: parsed.data.display_name,
-    email: parsed.data.email,
-    issued_at: new Date().toISOString()
-  };
-
-  await setSignedCookie(c, SESSION_COOKIE, JSON.stringify(session), env.sessionSecret, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProduction,
-    path: "/",
-    maxAge: 60 * 60 * 24
-  });
-
-  return c.json({ user: session });
+  const body = await c.req.json().catch(() => ({}));
+  const displayName = body.display_name ?? "Guest";
+  return c.json({ ok: true, user: { id: "demo", display_name: displayName, issued_at: new Date().toISOString() } });
 });
 
-app.post("/auth/demo/logout", async (c) => {
-  if (env.sessionSecret) {
-    deleteCookie(c, SESSION_COOKIE, { path: "/" });
-  }
-  return c.json({ ok: true });
+app.post("/auth/demo/logout", (c) => c.json({ ok: true }));
+
+app.route("/upload", uploadRoutes);
+app.route("/firms", firmsRoutes);
+app.route("/status", statusRoutes);
+app.route("/travessias", travessiasRoutes);
+app.route("/alagados", alagadosRoutes);
+app.route("/pointclouds", pointcloudRoutes);
+app.route("/media", mediaRoutes);
+app.route("/missoes", missoesRoutes);
+app.route("/demandas", demandasRoutes);
+app.route("/weather", weatherRoutes);
+
+app.get("/jobs/:id/status", (c) => {
+  const p = join("workers/media/outbox", `${c.req.param("id")}.status.json`);
+  if (!existsSync(p)) return c.json({ state: "queued" });
+  return c.json(JSON.parse(readFileSync(p, "utf8")));
 });
 
-app.get("/auth/demo/me", async (c) => {
-  if (!env.sessionSecret) {
-    return c.json({ user: null });
-  }
-
-  const cookieValue = await getSignedCookie(c, env.sessionSecret, SESSION_COOKIE);
-  if (!cookieValue) {
-    return c.json({ user: null });
-  }
-
-  try {
-    const session = JSON.parse(cookieValue) as DemoSession;
-    return c.json({ user: session });
-  } catch (error) {
-    console.warn("Invalid session cookie", error);
-    deleteCookie(c, SESSION_COOKIE, { path: "/" });
-    return c.json({ user: null });
-  }
+app.get("/jobs/:id/result", (c) => {
+  const p = join("workers/media/outbox", `${c.req.param("id")}.geojson`);
+  if (!existsSync(p)) return c.json({ error: "not ready" }, 404);
+  return c.json(JSON.parse(readFileSync(p, "utf8")));
 });
 
-app.get("/firms", async (c) => {
-  const presetQuery = c.req.query("preset");
-  const parsedPreset = presetSchema.safeParse(presetQuery);
-  const preset = parsedPreset.success ? (parsedPreset.data as FirmsPreset) : "24h";
-
-  const result = await fetchFirmsGeoJson(preset, env.firmsBaseUrl);
-
-  return c.json({
-    type: result.collection.type,
-    features: result.collection.features,
-    metadata: {
-      preset,
-      cached: result.cached,
-      live: result.live,
-      source: result.source
-    }
-  });
+app.get("/processed/*", (c) => {
+  const sub = c.req.path.replace(/^\/processed\//, "");
+  const file = join("apps/api/.data/processed", sub);
+  if (!existsSync(file)) return c.text("Not Found", 404);
+  const type = mime.getType(file) || "application/octet-stream";
+  return new Response(createReadStream(file) as any, { headers: { "Content-Type": type } });
 });
+
+export default app;

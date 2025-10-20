@@ -12,6 +12,7 @@ import {
   type BasemapId,
 } from "@/lib/mapConfig";
 import { BasemapSelector } from "./BasemapSelector";
+import type { FeatureCollection } from "geojson";
 
 interface MapLibreUnifiedProps {
   filterRegiao?: string;
@@ -33,6 +34,9 @@ interface MapLibreUnifiedProps {
   focusCoord?: [number, number];
   zoneConfig?: any;
   queimadasData?: GeoJSON.FeatureCollection;
+  erosionData?: FeatureCollection | null;
+  soilData?: FeatureCollection | null;
+  layerOrder?: string[];
   onFeatureClick?: (feature: any) => void;
   onMapLoad?: (map: maplibregl.Map) => void;
 }
@@ -57,6 +61,9 @@ export const MapLibreUnified = ({
   focusCoord,
   zoneConfig,
   queimadasData,
+  erosionData,
+  soilData,
+  layerOrder,
   onFeatureClick,
   onMapLoad,
 }: MapLibreUnifiedProps) => {
@@ -100,6 +107,10 @@ export const MapLibreUnified = ({
       });
 
       instance.on("error", (error) => {
+        const message = (error?.error && (error.error as Error).message) || "";
+        if (typeof message === "string" && message.includes('unknown property "name"')) {
+          return;
+        }
         console.error("Map error:", error);
         setIsLoading(false);
       });
@@ -152,6 +163,109 @@ export const MapLibreUnified = ({
       map.removeSource(sourceId);
     }
   }, []);
+
+  // Erosion occurrences layer
+  useEffect(() => {
+    const mapInstance = mapRef.current;
+    if (!mapInstance) return;
+
+    const sourceId = "erosao";
+    const layerId = "erosao-points";
+
+    if (!showErosao || !erosionData || erosionData.features.length === 0) {
+      removeLayerAndSource(mapInstance, layerId, sourceId);
+      return;
+    }
+
+    const load = () => {
+      if (mapInstance.getSource(sourceId)) {
+        (mapInstance.getSource(sourceId) as maplibregl.GeoJSONSource).setData(erosionData);
+      } else {
+        mapInstance.addSource(sourceId, { type: "geojson", data: erosionData });
+        mapInstance.addLayer({
+          id: layerId,
+          type: "circle",
+          source: sourceId,
+          paint: {
+            "circle-radius": [
+              "interpolate",
+              ["linear"],
+              ["coalesce", ["get", "area"], 0],
+              0,
+              6,
+              5000,
+              18
+            ],
+            "circle-color": [
+              "match",
+              ["get", "severity"],
+              "Crítica",
+              "#ef4444",
+              "Alta",
+              "#f97316",
+              "Média",
+              "#facc15",
+              "#22c55e"
+            ],
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#0b1120",
+            "circle-opacity": 0.85
+          }
+        });
+      }
+    };
+
+    if (mapInstance.isStyleLoaded()) {
+      load();
+    } else {
+      mapInstance.once("style.load", load);
+    }
+  }, [erosionData, removeLayerAndSource, showErosao]);
+
+  // Soil samples layer
+  useEffect(() => {
+    const mapInstance = mapRef.current;
+    if (!mapInstance) return;
+
+    const sourceId = "soil-samples";
+    const layerId = "soil-samples";
+
+    if (!soilData || soilData.features.length === 0) {
+      removeLayerAndSource(mapInstance, layerId, sourceId);
+      return;
+    }
+
+    const load = () => {
+      if (mapInstance.getSource(sourceId)) {
+        (mapInstance.getSource(sourceId) as maplibregl.GeoJSONSource).setData(soilData);
+      } else {
+        mapInstance.addSource(sourceId, { type: "geojson", data: soilData });
+        mapInstance.addLayer({
+          id: layerId,
+          type: "symbol",
+          source: sourceId,
+          layout: {
+            "icon-image": "triangle-11",
+            "icon-size": 1.2,
+            "icon-allow-overlap": true,
+            "text-field": ["coalesce", ["get", "soilType"], "Solo"],
+            "text-size": 11,
+            "text-offset": [0, 1.2],
+            "text-allow-overlap": false
+          },
+          paint: {
+            "text-color": "#f472b6"
+          }
+        });
+      }
+    };
+
+    if (mapInstance.isStyleLoaded()) {
+      load();
+    } else {
+      mapInstance.once("style.load", load);
+    }
+  }, [removeLayerAndSource, soilData]);
 
   // Load infrastructure layer
   useEffect(() => {
@@ -326,6 +440,21 @@ export const MapLibreUnified = ({
     }
   }, [queimadasData, showQueimadas]);
 
+  // Apply layer ordering (array from bottom to top)
+  useEffect(() => {
+    const mapInstance = mapRef.current;
+    if (!mapInstance || !layerOrder || layerOrder.length === 0) return;
+    const existing = layerOrder.filter((layerId) => mapInstance.getLayer(layerId));
+    existing.forEach((layerId, index) => {
+      const before = existing[index + 1];
+      try {
+        mapInstance.moveLayer(layerId, before);
+      } catch (error) {
+        console.warn("Unable to move layer", layerId, error);
+      }
+    });
+  }, [layerOrder]);
+
   return (
     <div className="relative w-full h-full">
       {isLoading && (
@@ -343,3 +472,5 @@ export const MapLibreUnified = ({
     </div>
   );
 };
+
+export default MapLibreUnified;

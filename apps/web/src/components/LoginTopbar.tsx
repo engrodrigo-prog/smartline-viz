@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { api, ApiError } from "@/services/api";
+import { getJSON, postJSON } from "@/services/api";
 
 interface DemoUser {
   id: string;
@@ -55,7 +55,7 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const response = await api.get<{ user: DemoUser | null }>("/auth/demo/me");
+        const response = await getJSON<{ user: DemoUser | null }>("/auth/demo/me");
         if (response.user) {
           setUser(response.user);
           storeUser(response.user);
@@ -93,7 +93,7 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
 
     try {
       setLoading(true);
-      const response = await api.post<{ user: DemoUser }>("/auth/demo/login", {
+      const response = await postJSON<{ user: DemoUser }>("/auth/demo/login", {
         display_name: displayName.trim(),
         email: email.trim() || undefined
       });
@@ -104,14 +104,10 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
         description: `Bem-vindo(a), ${response.user.display_name}!`
       });
       setOpen(false);
-    } catch (error) {
-      const err = error as ApiError;
+    } catch (error: any) {
       toast({
         title: "Não foi possível entrar",
-        description:
-          err.body && typeof err.body === "object" && "message" in (err.body as Record<string, unknown>)
-            ? String((err.body as Record<string, unknown>).message)
-            : "Tente novamente em instantes.",
+        description: error?.message || "Tente novamente em instantes.",
         variant: "destructive"
       });
     } finally {
@@ -121,7 +117,7 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
 
   const handleLogout = async () => {
     try {
-      await api.post("/auth/demo/logout");
+      await postJSON("/auth/demo/logout", {});
     } catch (error) {
       console.warn("logout", error);
     }
@@ -133,7 +129,7 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
   const renderDialog = (trigger: React.ReactNode) => (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Entrar com conta demo</DialogTitle>
         </DialogHeader>

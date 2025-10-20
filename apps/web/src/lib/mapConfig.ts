@@ -189,26 +189,32 @@ const createESRIStyle = (basemap: BasemapOption, withHillshade = true): maplibre
 
   return {
     version: 8,
-    name: basemap.name,
     sources,
     layers,
-    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
   };
 };
 
 const disableTerrain = (map: maplibregl.Map) => {
-  try {
-    map.setTerrain(null as any);
-  } catch (error) {
-    console.warn("Terrain could not be disabled", error);
-  }
+  const cleanup = () => {
+    try {
+      map.setTerrain(null as any);
+    } catch (error) {
+      /* ignore */
+    }
 
-  if (map.getLayer("3d-buildings")) {
-    map.removeLayer("3d-buildings");
-  }
+    if (map.getLayer("3d-buildings")) {
+      map.removeLayer("3d-buildings");
+    }
 
-  if (map.getSource(MAPBOX_TERRAIN_SOURCE)) {
-    map.removeSource(MAPBOX_TERRAIN_SOURCE);
+    if (map.getSource(MAPBOX_TERRAIN_SOURCE)) {
+      map.removeSource(MAPBOX_TERRAIN_SOURCE);
+    }
+  };
+
+  if (map.isStyleLoaded()) {
+    cleanup();
+  } else {
+    map.once("styledata", cleanup);
   }
 };
 
@@ -330,7 +336,7 @@ export const initializeSmartlineMap = (
   const style =
     basemap.provider === "mapbox" && basemap.style && mapboxToken
       ? buildMapboxStyleUrl(basemap.style, mapboxToken)
-      : createESRIStyle(basemap);
+      : createESRIStyle(basemap, basemap.id === "imagery");
 
   const transformRequest =
     mapboxToken && basemap.provider === "mapbox"
@@ -353,6 +359,7 @@ export const initializeSmartlineMap = (
     minZoom: 4,
     antialias: true,
     attributionControl: { compact: false },
+    validate: false,
     transformRequest,
   });
 
@@ -363,6 +370,22 @@ export const initializeSmartlineMap = (
         map.easeTo({ pitch: 45, bearing: -17, duration: 2000 });
       }
     }
+  });
+
+  map.on("error", (event) => {
+    const message = (event.error && (event.error as Error).message) || "";
+    if (typeof message === "string" && message.includes('unknown property "name"')) {
+      return;
+    }
+    console.error("Map error:", event.error);
+  });
+
+  map.on("error", (event) => {
+    const message = (event.error && (event.error as Error).message) || "";
+    if (typeof message === "string" && message.includes('unknown property "name"')) {
+      return;
+    }
+    console.error("Map error:", event.error);
   });
 
   setBasemapState(map, basemapId);
@@ -403,7 +426,7 @@ export const changeBasemap = (
   const newStyle =
     basemap.provider === "mapbox" && basemap.style && options.mapboxToken
       ? buildMapboxStyleUrl(basemap.style, options.mapboxToken)
-      : createESRIStyle(basemap);
+      : createESRIStyle(basemap, basemap.id === "imagery");
 
   map.fire("basemap-changing" as any);
   map.setStyle(newStyle);

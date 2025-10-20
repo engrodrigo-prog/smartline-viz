@@ -1,20 +1,28 @@
-import { Search } from "lucide-react";
+import { Search, Pin, PinOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFilters } from "@/context/FiltersContext";
 import { linhas } from "@/lib/mockData";
 import { useEffect, useState } from "react";
 import { EMPRESAS, REGIOES_POR_EMPRESA, LINHAS_POR_REGIAO, TIPOS_MATERIAL, NIVEIS_TENSAO } from "@/lib/empresasRegioes";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
 
 interface FiltersBarProps {
   onApplyFilters?: (filters: any) => void;
   children?: React.ReactNode;
+  floating?: boolean;
 }
 
-const FiltersBar = ({ onApplyFilters, children }: FiltersBarProps) => {
+const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarProps) => {
   const { filters, setFilters } = useFilters();
   const [ramais, setRamais] = useState<string[]>([]);
   const [availableRegioes, setAvailableRegioes] = useState<string[]>([]);
   const [availableLinhas, setAvailableLinhas] = useState<string[]>([]);
+  const [isPinned, setIsPinned] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("filters_bar_pinned") === "true";
+  });
+  const [isHovered, setIsHovered] = useState(false);
 
   // Update regiões when empresa changes
   useEffect(() => {
@@ -54,9 +62,10 @@ const FiltersBar = ({ onApplyFilters, children }: FiltersBarProps) => {
     onApplyFilters?.(filters);
   };
 
-  return (
-    <div className="tech-card p-6 mb-6">
-      <div className="space-y-4">
+  const visible = !floating || isPinned || isHovered;
+
+  const content = (
+    <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {/* Empresa */}
           <div>
@@ -206,6 +215,56 @@ const FiltersBar = ({ onApplyFilters, children }: FiltersBarProps) => {
         
         {children}
       </div>
+  );
+
+  if (!floating) {
+    return <div className="tech-card p-6 mb-6">{content}</div>;
+  }
+
+  return (
+    <div
+      className="relative mb-6"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <AnimatePresence>
+        {visible && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.18 }}
+            className="tech-card p-6 shadow-xl backdrop-blur-sm bg-card/95 border border-border/70"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Filtros</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  const state = !isPinned;
+                  setIsPinned(state);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("filters_bar_pinned", String(state));
+                  }
+                }}
+              >
+                {isPinned ? <Pin className="h-4 w-4 text-primary" /> : <PinOff className="h-4 w-4" />}
+              </Button>
+            </div>
+            {content}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!visible && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute top-0 left-1/2 -translate-x-1/2 h-2 w-32 rounded-b-full bg-primary/30"
+        />
+      )}
     </div>
   );
 };

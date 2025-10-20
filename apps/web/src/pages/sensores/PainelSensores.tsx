@@ -1,10 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { SensorFiltersBar } from '@/components/sensors/SensorFiltersBar';
 import { SensorCard } from '@/components/sensors/SensorCard';
 import { useSensorFilters } from '@/hooks/useSensorFilters';
 import { Activity } from 'lucide-react';
+import MapLibreViewer from '@/components/MapLibreViewer';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+const fallbackSensors = [
+  {
+    id: 'sensor-orla-01',
+    name: 'Sensor Microclima - Orla Gonzaga',
+    sensor_type: 'Microclima',
+    status: 'normal',
+    region: 'Santos/SP',
+    line_code: 'LT-Santos',
+    latitude: -23.9673,
+    longitude: -46.3291,
+    temperature: 28,
+    humidity: 70,
+    vibration_level: null,
+    noise_level: 45
+  },
+  {
+    id: 'sensor-ponte-02',
+    name: 'Sensor Estrutural - Ponte do Mar Pequeno',
+    sensor_type: 'Vibração',
+    status: 'warning',
+    region: 'São Vicente/SP',
+    line_code: 'LT-Baixada',
+    latitude: -23.9776,
+    longitude: -46.3804,
+    temperature: 31,
+    humidity: 65,
+    vibration_level: 4.5,
+    noise_level: 60
+  }
+];
 
 export default function PainelSensores() {
   const { filters, setFilters, regions, lines } = useSensorFilters();
@@ -18,6 +51,12 @@ export default function PainelSensores() {
   const fetchSensors = async () => {
     setLoading(true);
     
+    if (!supabase) {
+      setSensors(fallbackSensors);
+      setLoading(false);
+      return;
+    }
+
     let query = supabase.from('sensors').select('*');
     
     if (filters.region) query = query.eq('region', filters.region);
@@ -46,6 +85,23 @@ export default function PainelSensores() {
     setLoading(false);
   };
 
+  const sensorFeatures = useMemo(() => {
+    return sensors
+      .filter((sensor) => sensor.longitude && sensor.latitude)
+      .map((sensor) => ({
+        id: sensor.id,
+        geometry: {
+          type: 'Point',
+          coordinates: [Number(sensor.longitude), Number(sensor.latitude)]
+        },
+        properties: {
+          name: sensor.name,
+          status: sensor.status,
+          type: sensor.sensor_type
+        }
+      }));
+  }, [sensors]);
+
   return (
     <AppLayout title="Painel de Sensores" subtitle="Monitoramento em tempo real dos sensores IoT">
       <SensorFiltersBar 
@@ -54,6 +110,19 @@ export default function PainelSensores() {
         regions={regions}
         lines={lines}
       />
+
+      {sensorFeatures.length > 0 && (
+        <Card className="mb-6 border border-border/60">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Activity className="w-4 h-4 text-primary" /> Distribuição geográfica
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MapLibreViewer data={sensorFeatures} height="360px" />
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="text-center py-12">Carregando sensores...</div>
