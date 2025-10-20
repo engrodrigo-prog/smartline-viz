@@ -69,11 +69,11 @@ const cameraCatalog: CameraItem[] = [
     line_code: 'LT-SP-Centro',
     latitude: -23.5613,
     longitude: -46.6566,
-    source: 'YouTube Demo',
+    source: 'YouTube Cidades',
     streamType: 'youtube',
-    stream_url: 'https://www.youtube.com/embed/1EiC9bvVGnk?autoplay=1&mute=1',
-    thumbnail_url: 'https://img.youtube.com/vi/1EiC9bvVGnk/hqdefault.jpg',
-    description: 'Demonstração de stream ao vivo na região da Avenida Paulista.'
+    stream_url: 'https://www.youtube.com/embed/dsqdqntoXKE?autoplay=1&mute=1',
+    thumbnail_url: 'https://img.youtube.com/vi/dsqdqntoXKE/hqdefault.jpg',
+    description: 'Referência de câmera urbana mostrando a região da Avenida Paulista (fonte pública no YouTube).'
   },
   {
     id: 'yt-rj-copacabana',
@@ -84,11 +84,11 @@ const cameraCatalog: CameraItem[] = [
     line_code: 'LT-RJ-ZonaSul',
     latitude: -22.9712,
     longitude: -43.1822,
-    source: 'YouTube Demo',
+    source: 'YouTube Cidades',
     streamType: 'youtube',
-    stream_url: 'https://www.youtube.com/embed/1EiC9bvVGnk?autoplay=1&mute=1',
-    thumbnail_url: 'https://img.youtube.com/vi/1EiC9bvVGnk/hqdefault.jpg',
-    description: 'Demonstração de câmera urbana na orla de Copacabana.'
+    stream_url: 'https://www.youtube.com/embed/NMre6IAAAiU?autoplay=1&mute=1',
+    thumbnail_url: 'https://img.youtube.com/vi/NMre6IAAAiU/hqdefault.jpg',
+    description: 'Stream público ilustrando a orla de Copacabana (sujeito à disponibilidade do YouTube).'
   },
   {
     id: 'yt-bh-praca-sete',
@@ -99,11 +99,11 @@ const cameraCatalog: CameraItem[] = [
     line_code: 'LT-BH-Centro',
     latitude: -19.9191,
     longitude: -43.9378,
-    source: 'YouTube Demo',
+    source: 'YouTube Cidades',
     streamType: 'youtube',
-    stream_url: 'https://www.youtube.com/embed/1EiC9bvVGnk?autoplay=1&mute=1',
-    thumbnail_url: 'https://img.youtube.com/vi/1EiC9bvVGnk/hqdefault.jpg',
-    description: 'Demonstração de fluxo urbano no centro de BH.'
+    stream_url: 'https://www.youtube.com/embed/AdUw5RdyZxI?autoplay=1&mute=1',
+    thumbnail_url: 'https://img.youtube.com/vi/AdUw5RdyZxI/hqdefault.jpg',
+    description: 'Cenário urbano de grande fluxo (Times Square) usado como referência visual para analytics de centros urbanos.'
   },
   {
     id: 'yt-ctba-centro',
@@ -114,11 +114,11 @@ const cameraCatalog: CameraItem[] = [
     line_code: 'LT-CTBA-Centro',
     latitude: -25.4284,
     longitude: -49.2733,
-    source: 'YouTube Demo',
+    source: 'YouTube Cidades',
     streamType: 'youtube',
-    stream_url: 'https://www.youtube.com/embed/1EiC9bvVGnk?autoplay=1&mute=1',
-    thumbnail_url: 'https://img.youtube.com/vi/1EiC9bvVGnk/hqdefault.jpg',
-    description: 'Demonstração de câmera urbana na região central de Curitiba.'
+    stream_url: 'https://www.youtube.com/embed/QyY53XdMBvc?autoplay=1&mute=1',
+    thumbnail_url: 'https://img.youtube.com/vi/QyY53XdMBvc/hqdefault.jpg',
+    description: 'Stream ilustrativo de tráfego urbano (Shibuya Crossing) para demonstrar análise de pedestres/veículos.'
   },
   {
     id: 'yt-poa-centro',
@@ -129,11 +129,11 @@ const cameraCatalog: CameraItem[] = [
     line_code: 'LT-POA-Centro',
     latitude: -30.0277,
     longitude: -51.2287,
-    source: 'YouTube Demo',
+    source: 'YouTube Cidades',
     streamType: 'youtube',
-    stream_url: 'https://www.youtube.com/embed/1EiC9bvVGnk?autoplay=1&mute=1',
-    thumbnail_url: 'https://img.youtube.com/vi/1EiC9bvVGnk/hqdefault.jpg',
-    description: 'Demonstração de câmera urbana no centro de Porto Alegre.'
+    stream_url: 'https://www.youtube.com/embed/9K4uhSfa_Ho?autoplay=1&mute=1',
+    thumbnail_url: 'https://img.youtube.com/vi/9K4uhSfa_Ho/hqdefault.jpg',
+    description: 'Exemplo de câmera pública (Las Vegas Strip) para ilustrar uso em corredores de alta luminosidade.'
   },
   {
     id: 'santos-boqueirao',
