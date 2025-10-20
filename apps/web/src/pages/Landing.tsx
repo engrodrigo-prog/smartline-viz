@@ -51,6 +51,10 @@ const Landing = () => {
   const [apiAvailable, setApiAvailable] = useState(false);
 
   useEffect(() => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setApiAvailable(false);
+      return;
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1500);
     const base = (ENV.API_BASE_URL || "").replace(/\/+$/, "");
