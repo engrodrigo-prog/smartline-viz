@@ -38,6 +38,7 @@ import { useMediaSearch } from "@/hooks/useMedia";
 import { useDemandasAnalytics } from "@/hooks/useDemandas";
 import { useMissoes } from "@/hooks/useMissoes";
 import { ENV } from "@/config/env";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import logoSmartline from "@/assets/logo-smartline.png";
 import bgHero from "@/assets/bg-hero.png";
 import bannerIA from "@/assets/banner-ia.png";
@@ -49,6 +50,7 @@ import controlRoom from "@/assets/control-room.png";
 
 const Landing = () => {
   const [apiAvailable, setApiAvailable] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -228,6 +230,13 @@ const Landing = () => {
                 >
                   Pesquisa de Acesso Smartline
                 </a>
+                <button
+                  type="button"
+                  onClick={() => setContactOpen(true)}
+                  className="btn-secondary text-lg inline-block"
+                >
+                  Falar com a equipe
+                </button>
               </div>
             </motion.div>
 
@@ -805,6 +814,26 @@ const Landing = () => {
           </div>
         </footer>
       </div>
+
+      <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+        <DialogContent className="sm:max-w-2xl" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Contato Smartline</DialogTitle>
+          </DialogHeader>
+          <div className="h-[70vh]">
+            <iframe
+              title="Formulário de Contato Smartline"
+              src="https://form.jotform.com/252925666837674"
+              className="w-full h-full rounded-md border"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            As respostas são armazenadas com segurança no Jotform para acompanhamento da equipe Smartline.
+          </p>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 };

@@ -1,12 +1,11 @@
-import { useMemo, useState } from "react";
-import { AlertTriangle, Clock, Flame, Loader2, Wind } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Flame, Loader2 } from "lucide-react";
 import type { Feature } from "geojson";
 
 import ModuleLayout from "@/components/ModuleLayout";
 import { MapLibreQueimadas } from "@/components/MapLibreQueimadas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import CardKPI from "@/components/CardKPI";
 import { useFirmsRisk } from "@/hooks/useFirmsRisk";
 
 const HORIZONS = [0, 3, 6, 24];
@@ -30,6 +29,37 @@ const getFeatureId = (feature: Feature, index: number) => {
   return (props?.id as string) ?? (props?.hotspot_id as string) ?? `firms-${index}`;
 };
 
+type FocusFilter = {
+  id: string;
+  label: string;
+  predicate: (item: ReturnType<typeof createEnrichedList>[number]) => boolean;
+};
+
+type EnrichedHotspot = ReturnType<typeof createEnrichedList>[number];
+
+const createEnrichedList = (collection: GeoJSON.FeatureCollection) =>
+  collection.features
+    .filter((feature) => feature.geometry?.type === "Point")
+    .map((feature, index) => {
+      const props = feature.properties as Record<string, any> | undefined;
+      const riskMax = Number(props?.risk_max ?? 0);
+      const frp = Number(props?.frp ?? props?.FRP ?? 0);
+      const eta = typeof props?.eta_h === "number" ? props?.eta_h : null;
+      const id = getFeatureId(feature, index);
+      return {
+        feature,
+        id,
+        riskMax,
+        frp,
+        eta,
+        windSpeed: Number(props?.wind_speed_ms ?? 0),
+        windDir: Number(props?.wind_dir_from_deg ?? 0),
+        distance: Number(props?.distance_to_line_m ?? 0),
+        intersectsCorridor: Boolean(props?.intersects_corridor)
+      };
+    })
+    .sort((a, b) => b.riskMax - a.riskMax);
+
 const Queimadas = () => {
   const { data, isLoading, isFetching, error, refetch } = useFirmsRisk({
     lineId: "ramal_marape",
@@ -39,38 +69,126 @@ const Queimadas = () => {
 
   const collection = (data as GeoJSON.FeatureCollection) ?? { type: "FeatureCollection", features: [] };
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusFilter, setFocusFilter] = useState<FocusFilter | null>(null);
 
-  const enriched = useMemo(() => {
-    return collection.features
-      .filter((feature) => feature.geometry?.type === "Point")
-      .map((feature, index) => {
-        const props = feature.properties as Record<string, any> | undefined;
-        const riskMax = Number(props?.risk_max ?? 0);
-        const frp = Number(props?.frp ?? props?.FRP ?? 0);
-        const eta = typeof props?.eta_h === "number" ? props?.eta_h : null;
-        const id = getFeatureId(feature, index);
-        return {
-          feature,
-          id,
-          riskMax,
-          frp,
-          eta,
-          windSpeed: Number(props?.wind_speed_ms ?? 0),
-          windDir: Number(props?.wind_dir_from_deg ?? 0),
-          distance: Number(props?.distance_to_line_m ?? 0)
-        };
-      })
-      .sort((a, b) => b.riskMax - a.riskMax);
-  }, [collection]);
+  const enriched = useMemo(() => createEnrichedList(collection), [collection]);
 
-  const topTwenty = enriched.slice(0, 20);
-  const selectedFeature = enriched.find((item) => item.id === selectedId) ?? topTwenty[0] ?? enriched[0] ?? null;
+  const baseAvgRisk = useMemo(() => {
+    if (!enriched.length) return 0;
+    return enriched.reduce((acc, item) => acc + item.riskMax, 0) / enriched.length;
+  }, [enriched]);
 
-  const maxRisk = enriched.length ? Math.max(...enriched.map((item) => item.riskMax)) : 0;
-  const avgRisk = enriched.length
-    ? enriched.reduce((acc, item) => acc + item.riskMax, 0) / enriched.length
-    : 0;
-  const threatsInCone = enriched.filter((item) => item.feature.properties?.intersects_corridor).length;
+  const focusCards: Array<FocusFilter & { value: string | number }> = useMemo(() => {
+    const criticalThreshold = 90;
+    const aboveAvgPredicate = (item: EnrichedHotspot) => item.riskMax >= baseAvgRisk && item.riskMax > 0;
+    return [
+      {
+        id: "total",
+        label: "Hotspots avaliados",
+        predicate: () => true,
+        value: collection.features.length,
+      },
+      {
+        id: "criticos",
+        label: `Risco ≥ ${criticalThreshold}`,
+        predicate: (item) => item.riskMax >= criticalThreshold,
+        value: enriched.filter((item) => item.riskMax >= criticalThreshold).length,
+      },
+      {
+        id: "acima-media",
+        label: "Acima da média",
+        predicate: aboveAvgPredicate,
+        value: enriched.filter(aboveAvgPredicate).length,
+      },
+      {
+        id: "corredor",
+        label: "No corredor",
+        predicate: (item) => item.intersectsCorridor,
+        value: enriched.filter((item) => item.intersectsCorridor).length,
+      },
+    ];
+  }, [collection.features.length, enriched, baseAvgRisk]);
+
+  const activeList = useMemo(() => {
+    if (!focusFilter) return enriched;
+    return enriched.filter(focusFilter.predicate);
+  }, [enriched, focusFilter]);
+
+  const activeIds = useMemo(() => new Set(activeList.map((item) => item.id)), [activeList]);
+
+  const displayCollection = useMemo<GeoJSON.FeatureCollection>(() => ({
+    type: "FeatureCollection",
+    features: collection.features.map((feature, index) => {
+      const id = getFeatureId(feature, index);
+      const properties = {
+        ...(feature.properties ?? {}),
+        isFocus: focusFilter ? activeIds.has(id) : false,
+      };
+      return { ...feature, properties };
+    }),
+  }), [collection, focusFilter, activeIds]);
+
+  const fitBounds = useMemo(() => {
+    const source = activeList.length ? activeList : enriched;
+    if (!source.length) return null;
+    const lngs: number[] = [];
+    const lats: number[] = [];
+    source.forEach((item) => {
+      const geometry = item.feature.geometry as GeoJSON.Point | undefined;
+      if (geometry?.coordinates) {
+        const [lon, lat] = geometry.coordinates as [number, number];
+        lngs.push(lon);
+        lats.push(lat);
+      }
+    });
+    if (!lngs.length || !lats.length) return null;
+    return [
+      [Math.min(...lngs), Math.min(...lats)],
+      [Math.max(...lngs), Math.max(...lats)],
+    ] as [[number, number], [number, number]];
+  }, [activeList, enriched]);
+
+  const topTwenty = activeList.slice(0, 20);
+  const selectedFeature = activeList.find((item) => item.id === selectedId) ?? topTwenty[0] ?? activeList[0] ?? null;
+
+  const activeSummary = useMemo(() => {
+    const list = activeList.length ? activeList : enriched;
+    if (!list.length) {
+      return {
+        count: 0,
+        maxRisk: 0,
+        avgRisk: 0,
+        corridor: 0,
+      };
+    }
+    const maxRisk = Math.max(...list.map((item) => item.riskMax));
+    const avgRisk = list.reduce((acc, item) => acc + item.riskMax, 0) / list.length;
+    const corridor = list.filter((item) => item.intersectsCorridor).length;
+    return {
+      count: list.length,
+      maxRisk,
+      avgRisk,
+      corridor,
+    };
+  }, [activeList, enriched]);
+
+  const handleFocus = (focus: FocusFilter) => {
+    setFocusFilter((prev) => (prev?.id === focus.id ? null : focus));
+  };
+
+  const resetFocus = () => setFocusFilter(null);
+
+  useEffect(() => {
+    if (!activeList.length) {
+      setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !activeList.some((item) => item.id === selectedId)) {
+      setSelectedId(activeList[0]?.id ?? null);
+    }
+  }, [activeList, selectedId]);
+
+  const cardIsActive = (id: string) => focusFilter?.id === id;
 
   return (
     <ModuleLayout title="Queimadas" icon={Flame}>
@@ -90,26 +208,28 @@ const Queimadas = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <CardKPI
-            title="Hotspots avaliados"
-            value={collection.features.length}
-            icon={Flame}
-          />
-          <CardKPI
-            title="Risco máximo"
-            value={`${maxRisk.toFixed(1)} / 100`}
-            icon={AlertTriangle}
-          />
-          <CardKPI
-            title="Risco médio"
-            value={`${avgRisk.toFixed(1)} / 100`}
-            icon={Wind}
-          />
-          <CardKPI
-            title="No corredor"
-            value={threatsInCone}
-            icon={Clock}
-          />
+          {focusCards.map((card) => (
+            <button
+              key={card.id}
+              className={`tech-card p-6 text-left transition flex flex-col gap-2 ${cardIsActive(card.id) ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/40"}`}
+              onClick={() => handleFocus(card)}
+            >
+              <div className="text-sm text-muted-foreground">{card.label}</div>
+              <div className="text-3xl font-bold text-primary">{card.value}</div>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div>
+            <span className="font-semibold text-primary">Resumo do filtro atual:</span> {activeSummary.count} hotspots ·
+            R máx {activeSummary.maxRisk.toFixed(1)} · R médio {activeSummary.avgRisk.toFixed(1)} · No corredor {activeSummary.corridor}
+          </div>
+          {focusFilter ? (
+            <button className="underline-offset-2 hover:underline" onClick={resetFocus}>
+              Limpar seleção
+            </button>
+          ) : null}
         </div>
 
         {error ? (
@@ -127,7 +247,8 @@ const Queimadas = () => {
         <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
           <div className="space-y-4">
             <MapLibreQueimadas
-              geojson={collection}
+              geojson={displayCollection}
+              fitBounds={fitBounds}
               onFeatureClick={(feature) => {
                 const id = getFeatureId(feature, 0);
                 setSelectedId(id);

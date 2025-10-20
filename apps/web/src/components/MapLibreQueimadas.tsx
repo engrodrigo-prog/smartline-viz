@@ -8,30 +8,44 @@ import type { Feature } from 'geojson';
 interface MapLibreQueimadasProps {
   geojson: GeoJSON.FeatureCollection;
   onFeatureClick?: (feature: Feature) => void;
+  fitBounds?: maplibregl.LngLatBoundsLike | null;
 }
 
 const riskColorExpression = [
-  "interpolate",
-  ["linear"],
-  ["coalesce", ["get", "risk_max"], 0],
-  0, "#16a34a",
-  25, "#84cc16",
-  50, "#facc15",
-  75, "#f97316",
-  90, "#ef4444",
-  100, "#b91c1c"
+  "case",
+  ["boolean", ["coalesce", ["get", "isFocus"], false], false], "#38bdf8",
+  [
+    "interpolate",
+    ["linear"],
+    ["coalesce", ["get", "risk_max"], 0],
+    0, "#16a34a",
+    25, "#84cc16",
+    50, "#facc15",
+    75, "#f97316",
+    90, "#ef4444",
+    100, "#b91c1c"
+  ]
 ];
 
 const riskRadiusExpression = [
-  "interpolate",
-  ["linear"],
-  ["sqrt", ["coalesce", ["get", "frp"], 0]],
-  0, 6,
-  4, 10,
-  8, 14
+  "+",
+  [
+    "interpolate",
+    ["linear"],
+    ["sqrt", ["coalesce", ["get", "frp"], 0]],
+    0, 6,
+    4, 10,
+    8, 14
+  ],
+  [
+    "case",
+    ["boolean", ["coalesce", ["get", "isFocus"], false], false],
+    4,
+    0
+  ]
 ];
 
-export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadasProps) => {
+export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds }: MapLibreQueimadasProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,8 +110,16 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick }: MapLibreQueimadas
   useEffect(() => {
     if (map.current && map.current.getSource('queimadas')) {
       (map.current.getSource('queimadas') as maplibregl.GeoJSONSource).setData(geojson);
+
+      if (fitBounds) {
+        try {
+          map.current.fitBounds(fitBounds, { padding: 60, duration: 800, maxZoom: 11 });
+        } catch (error) {
+          console.warn('fitBounds (queimadas) failed', error);
+        }
+      }
     }
-  }, [geojson]);
+  }, [geojson, fitBounds]);
 
   return (
     <div className="relative w-full h-[600px] rounded-lg overflow-hidden">

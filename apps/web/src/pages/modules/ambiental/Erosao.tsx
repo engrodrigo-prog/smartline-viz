@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import DetailDrawer from "@/components/DetailDrawer";
-import CardKPI from "@/components/CardKPI";
 import StatusBadge from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -17,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import type { FeatureCollection } from "geojson";
 
 type SoilSample = {
   id: string;
@@ -30,12 +30,20 @@ type SoilSample = {
   notes?: string;
 };
 
+type FocusFilter = {
+  id: string;
+  label: string;
+  predicate: (item: (typeof erosoes)[number]) => boolean;
+};
+
 const Erosao = () => {
   const { filters } = useFilters();
   const [selectedErosao, setSelectedErosao] = useState<any>(null);
   const [tipoFilter, setTipoFilter] = useState<string>('');
   const [gravidadeFilter, setGravidadeFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [focusFilter, setFocusFilter] = useState<FocusFilter | null>(null);
+  const [activeTab, setActiveTab] = useState("lista");
   const [soilSamples, setSoilSamples] = useState<SoilSample[]>([]);
   const [soilForm, setSoilForm] = useState({
     latitude: '',
@@ -115,6 +123,62 @@ const Erosao = () => {
     torresRisco: new Set(filteredData.flatMap(e => e.torres_proximas)).size,
     emIntervencao: filteredData.filter(e => e.status === 'Em Intervenção').length,
   }), [filteredData]);
+
+  const applyFocus = (id: string, label: string, predicate: FocusFilter["predicate"]) => {
+    setFocusFilter({ id, label, predicate });
+    setActiveTab("mapa");
+  };
+
+  const clearFocus = () => setFocusFilter(null);
+
+  const focusedData = useMemo(() => {
+    if (!focusFilter) return filteredData;
+    return filteredData.filter(focusFilter.predicate);
+  }, [filteredData, focusFilter]);
+
+  const points: FeatureCollection = useMemo(
+    () => ({
+      type: "FeatureCollection",
+      features: filteredData.map((item) => {
+        const [lat, lon] = item.coords;
+        return {
+          type: "Feature" as const,
+          geometry: { type: "Point" as const, coordinates: [lon, lat] },
+          properties: {
+            id: item.id,
+            status: item.status,
+            criticidade: item.gravidadeErosao,
+            color:
+              item.gravidadeErosao === "Crítica" || item.gravidadeErosao === "Alta"
+                ? "#ef4444"
+                : item.gravidadeErosao === "Média"
+                  ? "#facc15"
+                  : "#22c55e",
+            isFocus: focusFilter ? focusFilter.predicate(item) : false,
+          },
+        };
+      }),
+    }),
+    [filteredData, focusFilter],
+  );
+
+  const bounds = useMemo(() => {
+    const src = focusFilter ? focusedData : filteredData;
+    if (src.length === 0) return null;
+    const lngs = src.map((item) => item.coords[1]);
+    const lats = src.map((item) => item.coords[0]);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    if (!Number.isFinite(minLng) || !Number.isFinite(maxLng) || !Number.isFinite(minLat) || !Number.isFinite(maxLat)) {
+      return null;
+    }
+    return [
+      [minLng, minLat],
+      [maxLng, maxLat],
+    ] as [[number, number], [number, number]];
+  }, [filteredData, focusedData, focusFilter]);
 
   const erosionGeoJson = useMemo(() => ({
     type: "FeatureCollection",
@@ -452,14 +516,56 @@ const Erosao = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <CardKPI title="Total de Erosões" value={kpis.total} icon={Mountain} />
-          <CardKPI title="Críticas/Altas" value={kpis.criticas} icon={Mountain} trend={{ value: 8, isPositive: false }} />
-          <CardKPI title="Área Total (m²)" value={kpis.areaTotal} icon={Mountain} />
-          <CardKPI title="Torres em Risco" value={kpis.torresRisco} icon={Mountain} />
-          <CardKPI title="Em Intervenção" value={kpis.emIntervencao} icon={Mountain} />
+          {[{
+            id: "total",
+            title: "Total de Erosões",
+            value: kpis.total,
+            color: "text-primary",
+            predicate: () => true,
+          }, {
+            id: "criticas",
+            title: "Críticas / Altas",
+            value: kpis.criticas,
+            color: "text-destructive",
+            predicate: (item: (typeof erosoes)[number]) => item.gravidadeErosao === "Crítica" || item.gravidadeErosao === "Alta",
+          }, {
+            id: "area",
+            title: "Área Total (m²)",
+            value: Number(kpis.areaTotal).toLocaleString("pt-BR"),
+            color: "text-emerald-400",
+            predicate: () => true,
+          }, {
+            id: "torres",
+            title: "Torres em Risco",
+            value: kpis.torresRisco,
+            color: "text-amber-500",
+            predicate: (item: (typeof erosoes)[number]) => item.torres_proximas.length > 0,
+          }, {
+            id: "intervencao",
+            title: "Em Intervenção",
+            value: kpis.emIntervencao,
+            color: "text-sky-500",
+            predicate: (item: (typeof erosoes)[number]) => item.status === "Em Intervenção",
+          }].map((card) => (
+            <button
+              key={card.id}
+              className={`tech-card p-6 text-left transition ${focusFilter?.id === card.id ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/40"}`}
+              onClick={() => applyFocus(card.id, card.title, card.predicate)}
+            >
+              <div className="text-sm text-muted-foreground mb-1">{card.title}</div>
+              <div className={`text-3xl font-bold ${card.color}`}>{card.value}</div>
+            </button>
+          ))}
         </div>
-        
-        <Tabs defaultValue="lista">
+
+        {focusFilter && (
+          <div className="flex items-center justify-between px-4 py-2 border border-primary/20 bg-primary/5 rounded-lg text-xs">
+            <span className="text-primary font-semibold">Exibindo apenas: {focusFilter.label}</span>
+            <button className="underline-offset-2 hover:underline" onClick={clearFocus}>Limpar seleção</button>
+          </div>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="lista">Lista</TabsTrigger>
             <TabsTrigger value="mapa">Mapa</TabsTrigger>
@@ -467,7 +573,7 @@ const Erosao = () => {
           
           <TabsContent value="lista" className="mt-4">
             <DataTableAdvanced
-              data={filteredData}
+              data={focusedData}
               columns={columns}
               onRowClick={(erosao) => setSelectedErosao(erosao)}
               exportable
@@ -484,10 +590,12 @@ const Erosao = () => {
                 showErosao={true}
                 showInfrastructure={true}
                 initialCenter={[-46.63, -23.55]}
-                initialZoom={filters.linha ? 13 : 7}
+                initialZoom={filters.linha ? 12 : 7}
                 erosionData={erosionGeoJson}
                 soilData={showSoilLayer ? soilGeoJson : null}
                 layerOrder={layerOrder}
+                customPoints={points}
+                fitBounds={bounds}
               />
             </div>
           </TabsContent>
