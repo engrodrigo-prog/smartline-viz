@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { FiltersProvider } from "./context/FiltersContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
@@ -50,8 +51,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <FiltersProvider>
-        <Routes>
+        <ErrorBoundary>
+          <FiltersProvider>
+          <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/resultados" element={<Resultados />} />
           <Route path="/login" element={<Login />} />
@@ -118,8 +120,9 @@ const App = () => (
           <Route path="/config/layers" element={<ProtectedRoute><LayerManager /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFound />} />
-        </Routes>
-        </FiltersProvider>
+          </Routes>
+          </FiltersProvider>
+        </ErrorBoundary>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
