@@ -85,14 +85,14 @@ const LayerSelector = ({ layers, onToggleLayer, baseLayers, onToggleBaseLayer }:
 export default LayerSelector;
 
 export const DEFAULT_LAYERS: Layer[] = [
-  { id: 'linhas', name: 'Linhas de Transmissão', icon: Zap, visible: true },
-  { id: 'torres', name: 'Torres/Apoios', icon: Radio, visible: true },
+  { id: 'linhas', name: 'Linhas de Transmissão', icon: Zap, visible: false },
+  { id: 'torres', name: 'Torres/Apoios', icon: Radio, visible: false },
   { id: 'sensores', name: 'Sensores', icon: Activity, visible: false },
   { id: 'eventos', name: 'Eventos', icon: AlertTriangle, visible: false },
   { id: 'vegetacao', name: 'Vegetação Crítica', icon: Trees, visible: false },
   { id: 'ocupacoes', name: 'Ocupações de Faixa', icon: Home, visible: false },
   { id: 'travessias', name: 'Travessias', icon: Building2, visible: false },
-  { id: 'queimadas', name: 'Queimadas FIRMS (Pontos)', icon: Flame, visible: true },
+  { id: 'queimadas', name: 'Queimadas FIRMS (Pontos)', icon: Flame, visible: false },
   { id: 'queimadas_footprints', name: 'Queimadas FIRMS (Áreas)', icon: Flame, visible: false },
 ];
 

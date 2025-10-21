@@ -382,6 +382,7 @@ export const initializeSmartlineMap = (
     style,
     center,
     zoom,
+    fadeDuration: 0,
     pitch,
     bearing,
     maxZoom: 19,

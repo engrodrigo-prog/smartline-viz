@@ -35,6 +35,13 @@ export const eventos: Evento[] = Array.from({ length: 120 }, (_, i) => {
   const linha = linhas[Math.floor(Math.random() * linhas.length)];
   const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
   
+  let lat = -23.55 + (Math.random() - 0.5) * 1.0;
+  let lon = -46.63 + (Math.random() - 0.5) * 1.0;
+  // Clamp para manter pontos em terra (evita oceano a leste)
+  if (lon > -45.9) lon = -45.9 - Math.random() * 0.4;
+  if (lat < -24.5) lat = -24.5 + Math.random() * 0.6;
+  if (lat > -22.5) lat = -22.5 - Math.random() * 0.6;
+
   return {
     id: `EVT-${String(i + 1).padStart(4, '0')}`,
     tipo,
@@ -348,10 +355,7 @@ export const areasAlagadas: AreaAlagada[] = Array.from({ length: 45 }, (_, i) =>
     linha: linha.id,
     ramal,
     // Coordenadas simuladas próximas à RMSP, mantidas em faixa continental (evita pontos no mar)
-    coords: [
-      -23.55 + (Math.random() - 0.5) * 1.0,   // ~±0.5° em latitude
-      -46.63 + (Math.random() - 0.5) * 1.0    // ~±0.5° em longitude (limita leste para não cair no oceano)
-    ],
+    coords: [lat, lon],
     areaCritica: parseFloat((Math.random() * 5 + 0.5).toFixed(2)),
     nivelRisco: ['Baixo', 'Médio', 'Alto'][Math.floor(Math.random() * 3)] as any,
     ultimaAtualizacao: new Date(2025, 9, Math.floor(Math.random() * 30) + 1).toISOString(),
