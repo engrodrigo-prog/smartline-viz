@@ -133,3 +133,21 @@ export const corridorCentroid = (
 };
 
 export const pointFeature = (coordinates: [number, number]): Feature<Point> => point(coordinates);
+
+export const estimateWindSpeedAtHeight = (
+  speedAtReference: number,
+  referenceHeight: number,
+  targetHeight: number,
+  alpha = 0.143
+) => {
+  if (!Number.isFinite(speedAtReference) || speedAtReference <= 0) return 0;
+  if (!Number.isFinite(referenceHeight) || referenceHeight <= 0) return speedAtReference;
+  if (!Number.isFinite(targetHeight) || targetHeight <= 0) return speedAtReference;
+
+  if (Math.abs(targetHeight - referenceHeight) < 0.01) {
+    return speedAtReference;
+  }
+
+  const ratio = targetHeight / referenceHeight;
+  return speedAtReference * Math.pow(ratio, alpha);
+};

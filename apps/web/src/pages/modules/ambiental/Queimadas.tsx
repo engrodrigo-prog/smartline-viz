@@ -1,14 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { Flame, Loader2 } from "lucide-react";
 import type { Feature } from "geojson";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ReferenceLine
+} from "recharts";
 
 import ModuleLayout from "@/components/ModuleLayout";
 import { MapLibreQueimadas } from "@/components/MapLibreQueimadas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useFirmsRisk } from "@/hooks/useFirmsRisk";
+import { useFirmsRisk, type FirmsRiskFeatureCollection } from "@/hooks/useFirmsRisk";
 
 const HORIZONS = [0, 3, 6, 24];
+const WIND_HEIGHTS = [10, 50, 100, 200] as const;
+const HEIGHT_COLORS: Record<number, string> = {
+  10: "#38bdf8",
+  50: "#22c55e",
+  100: "#f97316",
+  200: "#ef4444"
+};
 
 const getRiskColor = (value: number) => {
   if (value >= 90) return "bg-red-600 text-white";
@@ -67,11 +84,61 @@ const Queimadas = () => {
     count: 2000
   });
 
-  const collection = (data as GeoJSON.FeatureCollection) ?? { type: "FeatureCollection", features: [] };
+  const collection = (data as FirmsRiskFeatureCollection) ?? { type: "FeatureCollection", features: [] };
+  const meta = collection.meta ?? null;
+  const windMeta = meta?.wind;
+
+  const [visibleHeights, setVisibleHeights] = useState<number[]>([10, 100, 200]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusFilter, setFocusFilter] = useState<FocusFilter | null>(null);
 
   const enriched = useMemo(() => createEnrichedList(collection), [collection]);
+  const visibleHeightSet = useMemo(() => new Set(visibleHeights), [visibleHeights]);
+  const windTimelineData = useMemo(() => {
+    if (!windMeta?.timeline?.length) return [];
+    return windMeta.timeline
+      .map((entry) => {
+        const ts = entry.dt * 1000;
+        const row: Record<string, any> = {
+          ts,
+          dt: entry.dt,
+          isPast: Boolean(entry.isPast),
+          label: new Date(ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+        };
+        for (const height of WIND_HEIGHTS) {
+          const sample = entry.heights?.[height];
+          row[`h${height}`] = sample ? Number(sample.speed.toFixed(2)) : null;
+        }
+        return row;
+      })
+      .sort((a, b) => a.ts - b.ts);
+  }, [windMeta?.timeline]);
+
+  const profileRows = useMemo(() => {
+    if (!windMeta?.profile_by_horizon) return [];
+    return Object.entries(windMeta.profile_by_horizon)
+      .map(([horizonKey, samples]) => ({
+        horizon: Number(horizonKey),
+        samples: (samples ?? []).slice().sort((a, b) => a.height - b.height)
+      }))
+      .sort((a, b) => a.horizon - b.horizon);
+  }, [windMeta?.profile_by_horizon]);
+
+  const availableHeightsLabel = useMemo(() => {
+    if (!windMeta?.available_heights?.length) return "estimadas (power law)";
+    return `${windMeta.available_heights.join(", ")} m`;
+  }, [windMeta?.available_heights]);
+
+  const toggleHeight = (height: number) => {
+    setVisibleHeights((prev) => {
+      if (prev.includes(height)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((value) => value !== height);
+      }
+      return [...prev, height].sort((a, b) => a - b);
+    });
+  };
+  const nowTs = useMemo(() => Date.now(), [windMeta?.timeline]);
 
   const baseAvgRisk = useMemo(() => {
     if (!enriched.length) return 0;
@@ -86,7 +153,7 @@ const Queimadas = () => {
         id: "total",
         label: "Hotspots avaliados",
         predicate: () => true,
-        value: collection.features.length,
+        value: meta?.stats?.hotspots_total ?? collection.features.length,
       },
       {
         id: "criticos",
@@ -150,6 +217,13 @@ const Queimadas = () => {
 
   const topTwenty = activeList.slice(0, 20);
   const selectedFeature = activeList.find((item) => item.id === selectedId) ?? topTwenty[0] ?? activeList[0] ?? null;
+  const selectedWindProfile = useMemo(() => {
+    if (!selectedFeature) return null;
+    const raw = (selectedFeature.feature.properties as any)?.wind_profile as
+      | Record<string, { speed_ms?: number; deg_from?: number }>
+      | undefined;
+    return raw ?? null;
+  }, [selectedFeature]);
 
   const activeSummary = useMemo(() => {
     const list = activeList.length ? activeList : enriched;
@@ -159,16 +233,19 @@ const Queimadas = () => {
         maxRisk: 0,
         avgRisk: 0,
         corridor: 0,
+        frpTotal: 0,
       };
     }
     const maxRisk = Math.max(...list.map((item) => item.riskMax));
     const avgRisk = list.reduce((acc, item) => acc + item.riskMax, 0) / list.length;
     const corridor = list.filter((item) => item.intersectsCorridor).length;
+    const frpTotal = list.reduce((acc, item) => acc + item.frp, 0);
     return {
       count: list.length,
       maxRisk,
       avgRisk,
       corridor,
+      frpTotal,
     };
   }, [activeList, enriched]);
 
@@ -223,7 +300,8 @@ const Queimadas = () => {
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
           <div>
             <span className="font-semibold text-primary">Resumo do filtro atual:</span> {activeSummary.count} hotspots ·
-            R máx {activeSummary.maxRisk.toFixed(1)} · R médio {activeSummary.avgRisk.toFixed(1)} · No corredor {activeSummary.corridor}
+            R máx {activeSummary.maxRisk.toFixed(1)} · R médio {activeSummary.avgRisk.toFixed(1)} · No corredor {activeSummary.corridor} ·
+            FRP Σ {activeSummary.frpTotal.toFixed(1)} MW
           </div>
           {focusFilter ? (
             <button className="underline-offset-2 hover:underline" onClick={resetFocus}>
@@ -231,6 +309,147 @@ const Queimadas = () => {
             </button>
           ) : null}
         </div>
+
+        {windMeta ? (
+          <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
+            <div className="tech-card p-4 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Ventos 10–200m (histórico e previsão)
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {windMeta.location?.lat?.toFixed(2)}°, {windMeta.location?.lon?.toFixed(2)}° · altura de risco {windMeta.height_used_for_risk} m
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {WIND_HEIGHTS.map((height) => (
+                    <button
+                      key={height}
+                      onClick={() => toggleHeight(height)}
+                      className={`px-2 py-1 rounded text-xs font-semibold border transition ${
+                        visibleHeightSet.has(height)
+                          ? "border-transparent text-white"
+                          : "border-border/60 text-muted-foreground"
+                      }`}
+                      style={{ backgroundColor: visibleHeightSet.has(height) ? HEIGHT_COLORS[height] : "transparent" }}
+                    >
+                      {height} m
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="h-[260px]">
+                {windTimelineData.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={windTimelineData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#33415522" />
+                      <XAxis
+                        dataKey="ts"
+                        type="number"
+                        domain={["dataMin", "dataMax"]}
+                        tickFormatter={(value) => new Date(value).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(value) => `${value} m/s`}
+                        width={60}
+                        domain={["auto", "auto"]}
+                        label={{ value: "m/s", angle: -90, position: "insideLeft", style: { fill: "#64748b", fontSize: 11 } }}
+                      />
+                      <RechartsTooltip
+                        formatter={(value: number | null, name) =>
+                          value != null ? [`${value.toFixed(1)} m/s`, `${name}`.replace("h", " ")] : value
+                        }
+                        labelFormatter={(value) =>
+                          new Date(value as number).toLocaleString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            day: "2-digit",
+                            month: "2-digit"
+                          })
+                        }
+                      />
+                      <ReferenceLine
+                        x={nowTs}
+                        stroke="#facc15"
+                        strokeDasharray="3 3"
+                        label={{ value: "Agora", position: "insideTop", fill: "#facc15", fontSize: 11 }}
+                      />
+                      {WIND_HEIGHTS.map((height) =>
+                        visibleHeightSet.has(height) ? (
+                          <Line
+                            key={height}
+                            type="monotone"
+                            dataKey={`h${height}`}
+                            name={`${height} m`}
+                            stroke={HEIGHT_COLORS[height]}
+                            dot={false}
+                            strokeWidth={2}
+                            isAnimationActive={false}
+                          />
+                        ) : null
+                      )}
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                    Sem série temporal de vento disponível.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="tech-card p-4 space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Perfis verticais por horizonte
+                </h3>
+                <p className="text-xs text-muted-foreground">Fontes disponíveis: {availableHeightsLabel}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-muted-foreground/80">
+                      <th className="text-left py-2 pr-4">Horizonte</th>
+                      {WIND_HEIGHTS.map((height) => (
+                        <th key={height} className="text-left py-2 pr-4 whitespace-nowrap">{height} m</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {profileRows.map((row) => (
+                      <tr key={row.horizon} className="border-t border-border/60">
+                        <td className="py-2 pr-4 font-medium text-muted-foreground whitespace-nowrap">H+{row.horizon}h</td>
+                        {WIND_HEIGHTS.map((height) => {
+                          const sample = row.samples.find((item) => Math.abs(item.height - height) < 0.5);
+                          return (
+                            <td key={height} className="py-2 pr-4 whitespace-nowrap">
+                              {sample ? (
+                                <span>{sample.speed.toFixed(1)} m/s · {Math.round(sample.deg)}°</span>
+                              ) : (
+                                <span className="text-muted-foreground/60">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                    {profileRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={1 + WIND_HEIGHTS.length} className="py-4 text-center text-muted-foreground">
+                          Sem dados de perfil disponíveis.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {error ? (
           <div className="tech-card p-4 text-destructive text-sm">
@@ -316,6 +535,21 @@ const Queimadas = () => {
                 <p className="text-muted-foreground">
                   Distância ao corredor: {selectedFeature.distance.toFixed(0)} m · ETA: {formatEta(selectedFeature.eta)}
                 </p>
+                {selectedWindProfile ? (
+                  <div className="flex flex-wrap gap-2 pt-1 text-xs text-muted-foreground">
+                    {WIND_HEIGHTS.map((height) => {
+                      const entry = selectedWindProfile[String(height)];
+                      if (!entry) return null;
+                      const speed = Number(entry.speed_ms ?? 0);
+                      const deg = Number(entry.deg_from ?? selectedFeature.windDir);
+                      return (
+                        <Badge key={height} variant="secondary" className="font-normal">
+                          {height}m: {speed.toFixed(1)} m/s · {Math.round(deg)}°
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

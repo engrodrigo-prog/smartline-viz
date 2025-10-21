@@ -19,7 +19,8 @@ import {
   lineCorridor,
   timeToLineHours,
   riskScore,
-  intersectsCorridor
+  intersectsCorridor,
+  estimateWindSpeedAtHeight
 } from "../lib/wind.js";
 import { getWindData } from "./weather.js";
 
@@ -403,27 +404,99 @@ firmsRoutes.post("/risk", async (c) => {
   const corridor = lineCorridor(lineInfo.collection, bufferMeters);
   const lineFeature = lineInfo.feature;
   const center = centroid(lineInfo.collection as any);
+  const [centerLon, centerLat] = center.geometry.coordinates as [number, number];
 
-  let weather;
-  try {
-    const windHeight = Number.isFinite(Number(body?.windHeight)) ? Number(body?.windHeight) : undefined;
-    weather = await getWindData(center.geometry.coordinates[1], center.geometry.coordinates[0], windHeight);
-  } catch (error: any) {
-    return c.json({ error: error?.message ?? "Falha ao buscar vento." }, 502);
+  const requestedHeightRaw = Number(body?.windHeight);
+  const requestedHeight = Number.isFinite(requestedHeightRaw) && requestedHeightRaw > 0 ? requestedHeightRaw : undefined;
+  const riskHeight = requestedHeight ?? 100;
+
+  const fetchHeights = new Set<number>([10, 100, riskHeight]);
+  const weatherByHeight = new Map<number, Awaited<ReturnType<typeof getWindData>>>();
+
+  for (const height of Array.from(fetchHeights).sort((a, b) => a - b)) {
+    try {
+      const weatherPayload = await getWindData(centerLat, centerLon, height);
+      weatherByHeight.set(height, weatherPayload);
+    } catch (error: any) {
+      console.warn(`[firms] falha ao buscar vento para altura ${height}m:`, error?.message ?? error);
+    }
   }
 
-  const baseTimestamp = Number(weather.current?.dt ?? Math.floor(Date.now() / 1000));
+  if (weatherByHeight.size === 0) {
+    return c.json({ error: "Não foi possível obter dados de vento para a localização informada." }, 502);
+  }
+
+  const riskWeather =
+    weatherByHeight.get(riskHeight) ??
+    weatherByHeight.get(100) ??
+    weatherByHeight.get(10) ??
+    weatherByHeight.values().next().value;
+
+  if (!riskWeather) {
+    return c.json({ error: "Dados de vento indisponíveis." }, 502);
+  }
+
+  const riskBaseTimestamp = Number(riskWeather.current?.dt ?? Math.floor(Date.now() / 1000));
 
   const windByHorizon = new Map<number, { speed: number; deg: number; toward: number; dt: number }>();
+  const profileRecorder = new Map<number, Map<number, { wind_speed: number; wind_deg: number; dt: number }>>();
+
+  const ensureProfileMap = (horizon: number) => {
+    if (!profileRecorder.has(horizon)) {
+      profileRecorder.set(horizon, new Map());
+    }
+    return profileRecorder.get(horizon)!;
+  };
+
   for (const horizon of uniqueHorizons) {
-    const sample = selectWindSample(horizon, weather, baseTimestamp);
-    const toward = bearingToToward(sample.wind_deg ?? 0);
+    const riskSample = selectWindSample(horizon, riskWeather, riskBaseTimestamp);
+    const toward = bearingToToward(riskSample.wind_deg ?? 0);
     windByHorizon.set(horizon, {
-      speed: Number(sample.wind_speed ?? 0),
-      deg: Number(sample.wind_deg ?? 0),
+      speed: Number(riskSample.wind_speed ?? 0),
+      deg: Number(riskSample.wind_deg ?? 0),
       toward,
-      dt: Number(sample.dt ?? baseTimestamp)
+      dt: Number(riskSample.dt ?? riskBaseTimestamp)
     });
+
+    for (const [height, weatherPayload] of weatherByHeight.entries()) {
+      const baseTs = Number(weatherPayload.current?.dt ?? riskBaseTimestamp);
+      const sample = selectWindSample(horizon, weatherPayload, baseTs);
+      ensureProfileMap(horizon).set(height, {
+        wind_speed: Number(sample.wind_speed ?? 0),
+        wind_deg: Number(sample.wind_deg ?? 0),
+        dt: Number(sample.dt ?? baseTs)
+      });
+    }
+
+    const derivedMap = ensureProfileMap(horizon);
+    const availableHeights = Array.from(derivedMap.keys());
+
+    const derivedTargets = [50, 200];
+    for (const targetHeight of derivedTargets) {
+      if (derivedMap.has(targetHeight)) continue;
+
+      let referenceHeight = targetHeight <= 70 ? 10 : 100;
+      let referenceSample = derivedMap.get(referenceHeight);
+
+      if (!referenceSample && availableHeights.length) {
+        referenceHeight = availableHeights[0];
+        referenceSample = derivedMap.get(referenceHeight);
+      }
+
+      if (!referenceSample) continue;
+
+      const speed = estimateWindSpeedAtHeight(
+        Number(referenceSample.wind_speed ?? 0),
+        referenceHeight,
+        targetHeight
+      );
+
+      derivedMap.set(targetHeight, {
+        wind_speed: speed,
+        wind_deg: Number(referenceSample.wind_deg ?? 0),
+        dt: Number(referenceSample.dt ?? riskBaseTimestamp)
+      });
+    }
   }
 
   const featuresWithRisk: Feature[] = [];
@@ -441,7 +514,7 @@ firmsRoutes.post("/risk", async (c) => {
     const debugGeometries: Feature<Polygon>[] = [];
 
     for (const horizon of uniqueHorizons) {
-      const wind = windByHorizon.get(horizon) ?? { speed: 0, deg: 0, toward: 0, dt: baseTimestamp };
+      const wind = windByHorizon.get(horizon) ?? { speed: 0, deg: 0, toward: 0, dt: riskBaseTimestamp };
       const rawRadius = Math.max(0, wind.speed * 3600 * horizon);
       const radiusMeters = horizon === 0 ? Math.max(rawRadius, bufferMeters) : rawRadius;
 
@@ -466,8 +539,26 @@ firmsRoutes.post("/risk", async (c) => {
       }
     }
 
-    const windNow = windByHorizon.get(0) ?? { speed: 0, deg: 0, toward: 0, dt: baseTimestamp };
+    const windNow = windByHorizon.get(0) ?? { speed: 0, deg: 0, toward: 0, dt: riskBaseTimestamp };
     const eta = windNow.speed > 0 ? timeToLineHours(hotspotPoint, lineInfo.collection, windNow.speed) : null;
+
+    const currentProfileMap = profileRecorder.get(0);
+    const windProfile =
+      currentProfileMap && currentProfileMap.size
+        ? Object.fromEntries(
+            Array.from(currentProfileMap.entries())
+              .sort((a, b) => a[0] - b[0])
+              .map(([height, sample]) => [
+                String(height),
+                {
+                  speed_ms: Number(Number(sample.wind_speed ?? 0).toFixed(2)),
+                  speed_kmh: Number((Number(sample.wind_speed ?? 0) * 3.6).toFixed(1)),
+                  deg_from: Number(sample.wind_deg ?? 0),
+                  dt: Number(sample.dt ?? riskBaseTimestamp)
+                }
+              ])
+          )
+        : undefined;
 
     const updatedFeature: Feature = {
       type: feature.type,
@@ -482,7 +573,8 @@ firmsRoutes.post("/risk", async (c) => {
         wind_dir_from_deg: windNow.deg,
         wind_dir_toward_deg: windNow.toward,
         distance_to_line_m: Number(distMeters.toFixed(1)),
-        intersects_corridor: intersectsAny
+        intersects_corridor: intersectsAny,
+        ...(windProfile ? { wind_profile: windProfile } : {})
       }
     };
 
@@ -493,5 +585,127 @@ firmsRoutes.post("/risk", async (c) => {
     featuresWithRisk.push(updatedFeature);
   }
 
-  return c.json({ type: "FeatureCollection", features: featuresWithRisk });
+  const riskValues = featuresWithRisk
+    .map((feature) => Number(((feature.properties ?? {}) as Record<string, unknown>).risk_max ?? 0))
+    .filter((value) => Number.isFinite(value));
+  const frpValues = featuresWithRisk
+    .map((feature) => Number(((feature.properties ?? {}) as Record<string, unknown>).frp ?? 0))
+    .filter((value) => Number.isFinite(value));
+
+  const totalHotspots = featuresWithRisk.length;
+  const maxRisk = riskValues.length ? Math.max(...riskValues) : 0;
+  const avgRisk = riskValues.length ? riskValues.reduce((acc, value) => acc + value, 0) / riskValues.length : 0;
+  const corridorCount = featuresWithRisk.filter(
+    (feature) => Boolean(((feature.properties ?? {}) as Record<string, unknown>).intersects_corridor)
+  ).length;
+  const frpSum = frpValues.length ? frpValues.reduce((acc, value) => acc + value, 0) : 0;
+
+  const profileByHorizon = Object.fromEntries(
+    Array.from(profileRecorder.entries()).map(([horizon, map]) => [
+      String(horizon),
+      Array.from(map.entries())
+        .map(([height, sample]) => ({
+          height,
+          speed: Number(Number(sample.wind_speed ?? 0).toFixed(2)),
+          deg: Number(sample.wind_deg ?? 0),
+          dt: Number(sample.dt ?? riskBaseTimestamp)
+        }))
+        .sort((a, b) => a.height - b.height)
+    ])
+  );
+
+  const nowEpoch = Math.floor(Date.now() / 1000);
+  const has10m = weatherByHeight.has(10);
+  const timelineBaseHeight = has10m ? 10 : riskHeight;
+  const timelineSource = has10m ? weatherByHeight.get(10) : riskWeather;
+  const height100Data = weatherByHeight.get(100);
+
+  const timeline: Array<{ dt: number; isPast: boolean; heights: Record<number, { speed: number; deg: number }> }> = [];
+  const timelineLength = timelineSource?.hourly?.length ?? 0;
+
+  for (let i = 0; i < timelineLength; i++) {
+    const baseSample = timelineSource?.hourly?.[i];
+    if (!baseSample) continue;
+    const dt = Number(baseSample.dt ?? 0);
+    if (!dt) continue;
+
+    const heightsRecord: Record<number, { speed: number; deg: number }> = {};
+    const speedBase = Number(baseSample.wind_speed ?? 0);
+    const degBase = Number(baseSample.wind_deg ?? 0);
+
+    heightsRecord[timelineBaseHeight] = {
+      speed: Number(speedBase.toFixed(2)),
+      deg: degBase
+    };
+
+    const sample100 = height100Data?.hourly?.[i];
+    let referenceHeightFor200 = timelineBaseHeight;
+    let referenceSpeedFor200 = speedBase;
+    let referenceDegFor200 = degBase;
+
+    if (sample100) {
+      const speed100 = Number(sample100.wind_speed ?? 0);
+      const deg100 = Number(sample100.wind_deg ?? degBase);
+      heightsRecord[100] = {
+        speed: Number(speed100.toFixed(2)),
+        deg: deg100
+      };
+      referenceHeightFor200 = 100;
+      referenceSpeedFor200 = speed100;
+      referenceDegFor200 = deg100;
+    } else {
+      const derived100 = estimateWindSpeedAtHeight(speedBase, timelineBaseHeight, 100);
+      heightsRecord[100] = {
+        speed: Number(derived100.toFixed(2)),
+        deg: degBase
+      };
+      referenceHeightFor200 = 100;
+      referenceSpeedFor200 = derived100;
+      referenceDegFor200 = degBase;
+    }
+
+    const speed50 = estimateWindSpeedAtHeight(speedBase, timelineBaseHeight, 50);
+    heightsRecord[50] = {
+      speed: Number(speed50.toFixed(2)),
+      deg: degBase
+    };
+
+    const speed200 = estimateWindSpeedAtHeight(referenceSpeedFor200, referenceHeightFor200, 200);
+    heightsRecord[200] = {
+      speed: Number(speed200.toFixed(2)),
+      deg: referenceDegFor200
+    };
+
+    heightsRecord[10] ??= {
+      speed: Number(estimateWindSpeedAtHeight(speedBase, timelineBaseHeight, 10).toFixed(2)),
+      deg: degBase
+    };
+
+    timeline.push({
+      dt,
+      isPast: dt < nowEpoch,
+      heights: heightsRecord
+    });
+  }
+
+  const meta = {
+    generated_at: new Date().toISOString(),
+    horizons: uniqueHorizons,
+    wind: {
+      location: { lat: centerLat, lon: centerLon },
+      height_used_for_risk: riskHeight,
+      available_heights: Array.from(weatherByHeight.keys()).sort((a, b) => a - b),
+      profile_by_horizon: profileByHorizon,
+      timeline
+    },
+    stats: {
+      hotspots_total: totalHotspots,
+      risk_max: Number(maxRisk.toFixed(2)),
+      risk_avg: Number(avgRisk.toFixed(2)),
+      corridor_count: corridorCount,
+      frp_sum: Number(frpSum.toFixed(2))
+    }
+  };
+
+  return c.json({ type: "FeatureCollection", features: featuresWithRisk, meta });
 });
