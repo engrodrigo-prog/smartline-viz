@@ -99,6 +99,11 @@ All colors MUST be HSL.
 }
 
 @layer components {
+  .map-smooth {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
+  }
   .postit {
     @apply absolute top-2 right-2 bg-yellow-300/95 text-slate-900 shadow border border-yellow-500/60 px-2 py-0.5 rounded-sm text-[10px] font-semibold rotate-2;
   }

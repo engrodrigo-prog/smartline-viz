@@ -243,7 +243,7 @@ const UnifiedMapView = () => {
       </div>
 
       {/* Mapa principal */}
-      <div className="flex-1 relative rounded-lg overflow-hidden tech-card">
+      <div className="flex-1 relative rounded-lg overflow-hidden border border-border bg-card/30 map-smooth">
         <MapLibreUnified
           filterRegiao={filters.regiao}
           filterEmpresa={filters.empresa}
