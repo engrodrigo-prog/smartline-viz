@@ -5,10 +5,16 @@ export interface FirmsRiskParams {
   linha?: unknown;
   horizons?: number[];
   count?: number;
+  windHeight?: number;
 }
 
 export const useFirmsRisk = (params: FirmsRiskParams) => {
   const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  const defaultHeight = Number(import.meta.env.VITE_WIND_HEIGHT ?? 0) || undefined;
+  const body = { ...params } as FirmsRiskParams;
+  if (body.windHeight == null && defaultHeight != null) {
+    body.windHeight = defaultHeight;
+  }
 
   return useQuery({
     queryKey: ["firms-risk", params],
@@ -16,7 +22,7 @@ export const useFirmsRisk = (params: FirmsRiskParams) => {
       const resp = await fetch(`${base}/firms/risk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params)
+        body: JSON.stringify(body)
       });
       if (!resp.ok) {
         throw new Error("FIRMS risk indisponível");
