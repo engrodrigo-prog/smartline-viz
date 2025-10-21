@@ -3,6 +3,7 @@ import { Camera, Home } from "lucide-react";
 import { toast } from "sonner";
 
 import ModuleLayout from "@/components/ModuleLayout";
+import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import FiltersBar from "@/components/FiltersBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
@@ -178,6 +179,7 @@ const OcupacaoFaixa = () => {
   return (
     <ModuleLayout title="Ocupação de Faixa" icon={Home}>
       <div className="p-6 space-y-6">
+        <ModuleDemoBanner />
         <FiltersBar>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>

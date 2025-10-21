@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { MapPin, Layers, Ruler, RefreshCw, Filter } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
+import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,6 +95,7 @@ const PerfilLinha = () => {
   return (
     <ModuleLayout title="Perfil da Linha" icon={Layers}>
       <div className="p-6 space-y-6">
+        <ModuleDemoBanner />
         <Card className="border border-border/70">
           <CardHeader>
             <CardTitle>Parâmetros de análise</CardTitle>

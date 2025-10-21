@@ -3,6 +3,7 @@ import { useFilters } from "@/context/FiltersContext";
 import { areasAlagadas, protecoesPássaros } from "@/lib/mockData";
 import { Droplets } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
+import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import FiltersBar from "@/components/FiltersBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
@@ -89,6 +90,7 @@ const AreasAlagadas = () => {
   return (
     <ModuleLayout title="Áreas Alagadas" icon={Droplets}>
       <div className="p-6 space-y-6">
+        <ModuleDemoBanner />
         
         <FiltersBar>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">

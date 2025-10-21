@@ -3,6 +3,7 @@ import { eventos, ndviJundiai } from "@/lib/mockData";
 import { TreePine, MapPin } from "lucide-react";
 import FloatingFiltersBar from "@/components/FloatingFiltersBar";
 import ModuleLayout from "@/components/ModuleLayout";
+import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import { useMemo, useState } from "react";
 import type { FeatureCollection } from "geojson";
 import { Badge } from "@/components/ui/badge";
@@ -164,6 +165,7 @@ const Vegetacao = () => {
   return (
     <ModuleLayout title="Gestão de Vegetação" icon={TreePine}>
       <div className="p-6 space-y-6">
+        <ModuleDemoBanner />
 
         <FloatingFiltersBar />
 

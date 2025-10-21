@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Flame, Thermometer } from "lucide-react";
 
 import ModuleLayout from "@/components/ModuleLayout";
+import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import FiltersBar from "@/components/FiltersBar";
 import { useFilters } from "@/context/FiltersContext";
 import { emendas } from "@/lib/mockData";
@@ -159,6 +160,7 @@ export default function InspecaoTermografica() {
   return (
     <ModuleLayout title="Inspeção Termográfica" icon={Flame}>
       <div className="p-6 space-y-6">
+        <ModuleDemoBanner />
         <FiltersBar floating={false} />
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">

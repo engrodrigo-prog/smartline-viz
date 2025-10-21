@@ -13,6 +13,8 @@ import {
 } from "recharts";
 
 import ModuleLayout from "@/components/ModuleLayout";
+import ModuleDemoBanner from "@/components/ModuleDemoBanner";
+import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import { MapLibreQueimadas } from "@/components/MapLibreQueimadas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -270,6 +272,7 @@ const Queimadas = () => {
   return (
     <ModuleLayout title="Queimadas" icon={Flame}>
       <div className="p-6 space-y-6">
+        <ModuleDemoBanner />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm text-muted-foreground max-w-2xl">

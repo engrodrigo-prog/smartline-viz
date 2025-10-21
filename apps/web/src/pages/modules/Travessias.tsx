@@ -3,6 +3,7 @@ import { Cable, Camera, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 import ModuleLayout from "@/components/ModuleLayout";
+import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import FiltersBar from "@/components/FiltersBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -216,6 +217,7 @@ const Travessias = () => {
   return (
     <ModuleLayout title="Gestão de Travessias" icon={Cable}>
       <div className="p-6 space-y-6">
+        <ModuleDemoBanner />
         <FiltersBar>
           <div className="flex flex-wrap gap-2 mt-4">
             {STATUS_FILTERS.map((status) => {
