@@ -96,6 +96,7 @@ export const MapLibreUnified = ({
 
   const [isLoading, setIsLoading] = useState(true);
   const [currentBasemap, setCurrentBasemap] = useState<BasemapId>(resolvedInitialBasemap);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   useEffect(() => {
     setCurrentBasemap(resolvedInitialBasemap);
@@ -204,6 +205,21 @@ export const MapLibreUnified = ({
       mapRef.current = null;
     };
   }, [resolvedInitialBasemap, fallbackBasemapIdResolved, initialCenter, initialZoom, mapboxToken, onMapLoad]);
+
+  // Desbloqueia troca de basemap somente após interação do usuário
+  useEffect(() => {
+    const el = mapContainer.current;
+    if (!el || hasInteracted) return;
+    const unlock = () => setHasInteracted(true);
+    el.addEventListener('pointerdown', unlock, { once: true });
+    el.addEventListener('wheel', unlock, { once: true });
+    return () => {
+      try {
+        el.removeEventListener('pointerdown', unlock as any);
+        el.removeEventListener('wheel', unlock as any);
+      } catch {/* ignore */}
+    };
+  }, [hasInteracted]);
 
   // Focus on specific coordinates
   useEffect(() => {
@@ -779,16 +795,10 @@ export const MapLibreUnified = ({
 
   return (
     <div className="relative w-full h-full" style={outerStyle}>
-      {isLoading && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            <span className="text-foreground">Carregando mapa...</span>
-          </div>
-        </div>
+      {/* Sem overlay/blur durante o load para evitar flicker */}
+      {hasInteracted && (
+        <BasemapSelector value={currentBasemap} onChange={handleBasemapChange} mapboxAvailable={mapboxAvailable} />
       )}
-
-      <BasemapSelector value={currentBasemap} onChange={handleBasemapChange} mapboxAvailable={mapboxAvailable} />
 
       <div ref={mapContainer} className="w-full h-full" />
     </div>
