@@ -137,13 +137,15 @@ const Erosao = () => {
     return filteredData.filter(focusFilter.predicate);
   }, [filteredData, focusFilter]);
 
+  const RS_BOUNDS: [[number, number], [number, number]] = [[-57.65, -33.75], [-49.5, -27.0]];
+
   const points: FeatureCollection = useMemo(
     () => ({
       type: "FeatureCollection",
       features: filteredData
         .filter((item) => {
           const [lat, lon] = item.coords;
-          return lat >= -35 && lat <= 5 && lon >= -74 && lon <= -34;
+          return lon >= RS_BOUNDS[0][0] && lon <= RS_BOUNDS[1][0] && lat >= RS_BOUNDS[0][1] && lat <= RS_BOUNDS[1][1];
         })
         .map((item) => {
           const [lat, lon] = item.coords;
@@ -189,10 +191,10 @@ const Erosao = () => {
   const erosionGeoJson = useMemo(() => ({
     type: "FeatureCollection",
     features: filteredData
-      // Filtro defensivo: mantém apenas pontos dentro do bounding box BR aproximado
+      // Filtro defensivo: mantém apenas pontos dentro do RS
       .filter((e) => {
         const [lat, lon] = e.coords;
-        return lat >= -35 && lat <= 5 && lon >= -74 && lon <= -34;
+        return lon >= RS_BOUNDS[0][0] && lon <= RS_BOUNDS[1][0] && lat >= RS_BOUNDS[0][1] && lat <= RS_BOUNDS[1][1];
       })
       .map((e) => ({
       type: "Feature",
@@ -624,14 +626,14 @@ const Erosao = () => {
                 filterLinha={filters.linha}
                 showErosao={true}
                 showInfrastructure={true}
-                initialCenter={[-46.63, -23.55]}
-                initialZoom={filters.linha ? 12 : 7}
+                initialCenter={[-53.0, -30.0]}
+                initialZoom={filters.linha ? 12 : 6}
                 erosionData={erosionGeoJson}
                 soilData={showSoilLayer ? soilGeoJson : null}
                 layerOrder={layerOrder}
                 customPoints={points}
                 customLines={rsDemoLine as any}
-                fitBounds={bounds}
+                fitBounds={bounds || RS_BOUNDS}
                 height="600px"
                 initialBasemapId="imagery"
                 fallbackBasemapId="imagery"

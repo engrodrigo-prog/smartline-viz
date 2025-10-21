@@ -20,8 +20,9 @@ const UnifiedMapView = () => {
   const [loadingLayers, setLoadingLayers] = useState<Set<string>>(new Set());
   const [isBasemapChanging, setIsBasemapChanging] = useState(false);
   
-  // Determinar se deve mostrar modo Brasil
+  // Modo demo: quando não há filtros, focar RS
   const shouldShowBrazilMode = !filters.linha && !filters.regiao && !filters.empresa;
+  const RS_BOUNDS: [[number, number], [number, number]] = [[-57.65, -33.75], [-49.5, -27.0]];
   
   // CORRIGIDO: usar 'BRASIL' em modo Brasil para forçar mode=brasil no edge function
   const { data: queimadasData, isLoading } = useQueimadas({
@@ -207,10 +208,10 @@ const UnifiedMapView = () => {
   }, [queimadasData]);
 
   const centerCoords = shouldShowBrazilMode
-    ? { lat: -12.0, lng: -52.0 } // Centro do Brasil
+    ? { lat: -30.0, lng: -53.0 } // Centro aproximado do RS
     : { lat: -23.96, lng: -46.33 }; // Santos
 
-  const initialZoom = shouldShowBrazilMode ? 4 : 12;
+  const initialZoom = shouldShowBrazilMode ? 6 : 12;
 
   return (
     <div className="flex h-full gap-4">
@@ -256,6 +257,7 @@ const UnifiedMapView = () => {
           onMapLoad={setMapInstance}
           initialBasemapId="imagery"
           fallbackBasemapId="imagery"
+          fitBounds={shouldShowBrazilMode ? RS_BOUNDS : undefined}
         />
         
         {/* Camada de footprints FIRMS */}
