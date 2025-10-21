@@ -140,25 +140,30 @@ const Erosao = () => {
   const points: FeatureCollection = useMemo(
     () => ({
       type: "FeatureCollection",
-      features: filteredData.map((item) => {
-        const [lat, lon] = item.coords;
-        return {
-          type: "Feature" as const,
-          geometry: { type: "Point" as const, coordinates: [lon, lat] },
-          properties: {
-            id: item.id,
-            status: item.status,
-            criticidade: item.gravidadeErosao,
-            color:
-              item.gravidadeErosao === "Crítica" || item.gravidadeErosao === "Alta"
-                ? "#ef4444"
-                : item.gravidadeErosao === "Média"
-                  ? "#facc15"
-                  : "#22c55e",
-            isFocus: focusFilter ? focusFilter.predicate(item) : false,
-          },
-        };
-      }),
+      features: filteredData
+        .filter((item) => {
+          const [lat, lon] = item.coords;
+          return lat >= -35 && lat <= 5 && lon >= -74 && lon <= -34;
+        })
+        .map((item) => {
+          const [lat, lon] = item.coords;
+          return {
+            type: "Feature" as const,
+            geometry: { type: "Point" as const, coordinates: [lon, lat] },
+            properties: {
+              id: item.id,
+              status: item.status,
+              criticidade: item.gravidadeErosao,
+              color:
+                item.gravidadeErosao === "Crítica" || item.gravidadeErosao === "Alta"
+                  ? "#ef4444"
+                  : item.gravidadeErosao === "Média"
+                    ? "#facc15"
+                    : "#22c55e",
+              isFocus: focusFilter ? focusFilter.predicate(item) : false,
+            },
+          };
+        }),
     }),
     [filteredData, focusFilter],
   );
@@ -611,7 +616,7 @@ const Erosao = () => {
           </TabsContent>
           
           <TabsContent value="mapa" className="mt-4">
-            <div className="tech-card p-0 overflow-hidden">
+            <div className="relative rounded-lg overflow-hidden border border-border bg-card/30 p-0 map-smooth">
               {/* @ts-ignore */}
               <MapLibreUnified
                 filterRegiao={filters.regiao}
@@ -628,6 +633,8 @@ const Erosao = () => {
                 customLines={rsDemoLine as any}
                 fitBounds={bounds}
                 height="600px"
+                initialBasemapId="imagery"
+                fallbackBasemapId="imagery"
               />
             </div>
           </TabsContent>

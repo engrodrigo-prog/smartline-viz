@@ -794,7 +794,7 @@ export const MapLibreUnified = ({
   const outerStyle = height ? { height } : undefined;
 
   return (
-    <div className="relative w-full h-full" style={outerStyle}>
+    <div className="relative w-full h-full map-smooth" style={outerStyle}>
       {/* Sem overlay/blur durante o load para evitar flicker */}
       {hasInteracted && (
         <BasemapSelector value={currentBasemap} onChange={handleBasemapChange} mapboxAvailable={mapboxAvailable} />
