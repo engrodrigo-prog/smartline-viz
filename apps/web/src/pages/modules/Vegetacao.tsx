@@ -1,5 +1,5 @@
 import { useFilters } from "@/context/FiltersContext";
-import { eventos } from "@/lib/mockData";
+import { eventos, ndviJundiai } from "@/lib/mockData";
 import { TreePine, MapPin } from "lucide-react";
 import FloatingFiltersBar from "@/components/FloatingFiltersBar";
 import ModuleLayout from "@/components/ModuleLayout";
@@ -14,6 +14,13 @@ type FocusFilter = {
   label: string;
   predicate: (item: (typeof eventos)[number]) => boolean;
 };
+
+const NDVI_LEGEND = [
+  { label: "Vegetação densa (NDVI ≥ 0.6)", color: "#15803d" },
+  { label: "Vegetação moderada (0.3 – 0.6)", color: "#22c55e" },
+  { label: "Solo exposto / urbano (0 – 0.3)", color: "#f97316" },
+  { label: "Baixa vegetação (NDVI < 0)", color: "#6366f1" },
+];
 
 const Vegetacao = () => {
   const { filters } = useFilters();
@@ -102,9 +109,25 @@ const Vegetacao = () => {
 
   const bounds = useMemo(() => {
     const source = focusFilter ? focusedData : filteredData;
-    if (source.length === 0) return null;
-    const lngs = source.map((item) => item.coords[0]);
-    const lats = source.map((item) => item.coords[1]);
+    const lngs: number[] = [];
+    const lats: number[] = [];
+
+    source.forEach((item) => {
+      lngs.push(item.coords[0]);
+      lats.push(item.coords[1]);
+    });
+
+    ndviJundiai.features.forEach((feature) => {
+      if (feature.geometry?.type === "Polygon") {
+        feature.geometry.coordinates[0]?.forEach(([lon, lat]) => {
+          lngs.push(lon);
+          lats.push(lat);
+        });
+      }
+    });
+
+    if (!lngs.length || !lats.length) return null;
+
     const minLng = Math.min(...lngs);
     const maxLng = Math.max(...lngs);
     const minLat = Math.min(...lats);
@@ -237,15 +260,32 @@ const Vegetacao = () => {
             </div>
           </TabsContent>
           
-          <TabsContent value="mapa" className="mt-4">
+          <TabsContent value="mapa" className="mt-4 space-y-4">
+            <div className="tech-card p-4 flex flex-col gap-3">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">NDVI – Município de Jundiaí</h3>
+                <p className="text-xs text-muted-foreground">
+                  Mapa demonstrativo com valores NDVI simulados para análise rápida de stress hídrico e cobertura vegetal.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {NDVI_LEGEND.map((item) => (
+                  <div key={item.label} className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="w-4 h-4 rounded-sm border border-border" style={{ backgroundColor: item.color }} />
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
             <MapLibreUnified
               filterRegiao={filters.regiao}
               filterEmpresa={filters.empresa}
               showVegetacao={true}
               showInfrastructure={true}
-              initialCenter={[-46.63, -23.55]}
-              initialZoom={filters.linha ? 12 : 7}
+              initialCenter={[-46.85, -23.20]}
+              initialZoom={filters.linha ? 12 : 8}
               customPoints={points}
+              customPolygons={ndviJundiai}
               fitBounds={bounds}
             />
           </TabsContent>

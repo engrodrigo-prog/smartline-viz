@@ -12,7 +12,7 @@ import {
   type BasemapId,
 } from "@/lib/mapConfig";
 import { BasemapSelector } from "./BasemapSelector";
-import type { FeatureCollection, Geometry } from "geojson";
+import type { FeatureCollection, Geometry, Polygon } from "geojson";
 
 interface MapLibreUnifiedProps {
   filterRegiao?: string;
@@ -41,6 +41,7 @@ interface MapLibreUnifiedProps {
   onMapLoad?: (map: maplibregl.Map) => void;
   customPoints?: FeatureCollection<Geometry, { color?: string; isFocus?: boolean; size?: number }>;
   fitBounds?: maplibregl.LngLatBoundsLike | null;
+  customPolygons?: FeatureCollection<Polygon, { color?: string; ndvi?: number }>;
 }
 
 export const MapLibreUnified = ({
@@ -70,6 +71,7 @@ export const MapLibreUnified = ({
   onMapLoad,
   customPoints,
   fitBounds,
+  customPolygons,
 }: MapLibreUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -232,6 +234,96 @@ export const MapLibreUnified = ({
       mapInstance.once("style.load", addOrUpdateLayer);
     }
   }, [customPoints, removeLayerAndSource]);
+
+  // Custom polygons layer (e.g., NDVI surfaces)
+  useEffect(() => {
+    const mapInstance = mapRef.current;
+    if (!mapInstance) return;
+
+    const sourceId = "custom-polygons";
+    const fillLayerId = "custom-polygons-fill";
+    const outlineLayerId = "custom-polygons-outline";
+
+    if (!customPolygons || customPolygons.features.length === 0) {
+      if (mapInstance.getLayer(outlineLayerId)) {
+        mapInstance.removeLayer(outlineLayerId);
+      }
+      removeLayerAndSource(mapInstance, fillLayerId, sourceId);
+      return;
+    }
+
+    const data: FeatureCollection = {
+      type: "FeatureCollection",
+      features: customPolygons.features.map((feature) => ({
+        type: "Feature",
+        geometry: feature.geometry,
+        properties: {
+          ...(feature.properties ?? {}),
+        },
+      })),
+    };
+
+    const addLayers = () => {
+      if (mapInstance.getLayer(outlineLayerId)) {
+        mapInstance.removeLayer(outlineLayerId);
+      }
+      if (mapInstance.getLayer(fillLayerId)) {
+        mapInstance.removeLayer(fillLayerId);
+      }
+      if (mapInstance.getSource(sourceId)) {
+        (mapInstance.getSource(sourceId) as maplibregl.GeoJSONSource).setData(data);
+      } else {
+        mapInstance.addSource(sourceId, { type: "geojson", data });
+      }
+
+      mapInstance.addLayer({
+        id: fillLayerId,
+        type: "fill",
+        source: sourceId,
+        paint: {
+          "fill-color": [
+            "coalesce",
+            ["get", "color"],
+            [
+              "interpolate",
+              ["linear"],
+              ["coalesce", ["get", "ndvi"], 0],
+              -0.2, "#6366f1",
+              0, "#f97316",
+              0.3, "#facc15",
+              0.6, "#22c55e",
+              0.8, "#15803d"
+            ],
+          ],
+          "fill-opacity": 0.45,
+        },
+      });
+
+      mapInstance.addLayer({
+        id: outlineLayerId,
+        type: "line",
+        source: sourceId,
+        paint: {
+          "line-color": "#0f172a",
+          "line-width": 1.25,
+          "line-dasharray": [2, 1.5],
+        },
+      });
+    };
+
+    if (mapInstance.isStyleLoaded()) {
+      addLayers();
+    } else {
+      mapInstance.once("style.load", addLayers);
+    }
+
+    return () => {
+      if (mapInstance.getLayer(outlineLayerId)) {
+        mapInstance.removeLayer(outlineLayerId);
+      }
+      removeLayerAndSource(mapInstance, fillLayerId, sourceId);
+    };
+  }, [customPolygons, removeLayerAndSource]);
 
   // Erosion occurrences layer
   useEffect(() => {

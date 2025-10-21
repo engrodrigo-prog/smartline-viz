@@ -545,6 +545,85 @@ export const erosoes: Erosao[] = Array.from({ length: 40 }, (_, i) => {
   };
 });
 
+// NDVI — Jundiaí mock polygons
+export const ndviJundiai: FeatureCollection = {
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      properties: {
+        ndvi: 0.72,
+        area: "Serra do Japi",
+        color: "#15803d",
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: [[
+          [-46.983, -23.180],
+          [-46.925, -23.180],
+          [-46.925, -23.230],
+          [-46.983, -23.230],
+          [-46.983, -23.180],
+        ]],
+      },
+    },
+    {
+      type: "Feature",
+      properties: {
+        ndvi: 0.48,
+        area: "Zona urbana",
+        color: "#facc15",
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: [[
+          [-46.925, -23.180],
+          [-46.865, -23.180],
+          [-46.865, -23.230],
+          [-46.925, -23.230],
+          [-46.925, -23.180],
+        ]],
+      },
+    },
+    {
+      type: "Feature",
+      properties: {
+        ndvi: 0.18,
+        area: "Distrito industrial",
+        color: "#f97316",
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: [[
+          [-46.865, -23.180],
+          [-46.805, -23.180],
+          [-46.805, -23.230],
+          [-46.865, -23.230],
+          [-46.865, -23.180],
+        ]],
+      },
+    },
+    {
+      type: "Feature",
+      properties: {
+        ndvi: 0.35,
+        area: "Vale do Jundiaí",
+        color: "#4ade80",
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: [[
+          [-46.925, -23.230],
+          [-46.865, -23.230],
+          [-46.865, -23.280],
+          [-46.925, -23.280],
+          [-46.925, -23.230],
+        ]],
+      },
+    },
+  ],
+};
+
 // Queimadas
 export type Queimada = {
   id: string;
