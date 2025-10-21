@@ -1,73 +1,31 @@
-# Welcome to your Lovable project
+# SmartLine AssetHealth Web App
 
-## Project info
+React + Vite single-page application used by SmartLine for the AssetHealth experience.  
+This package lives inside the monorepo at `smartline-viz/apps/web`.
 
-**URL**: https://lovable.dev/projects/5c33b8ee-c511-4dbf-9006-38abf1bdf0af
-
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/5c33b8ee-c511-4dbf-9006-38abf1bdf0af) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Getting Started
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+pnpm install
+pnpm dev            # starts Vite dev server on http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+Environment variables for the web client live in `.env` in this directory.  
+The server uses port `8080`; adjust via `vite.config.ts` if needed.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Available Scripts
 
-**Use GitHub Codespaces**
+- `pnpm dev` – development server with hot reload
+- `pnpm build` – production build written to `dist/`
+- `pnpm preview` – preview the production build locally
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Tech Stack
 
-## What technologies are used for this project?
+- Vite + React + TypeScript
+- Tailwind CSS + shadcn/ui
+- Supabase integrations for data and auth
 
-This project is built with:
+## Deployment Notes
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/5c33b8ee-c511-4dbf-9006-38abf1bdf0af) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Static builds are generated with `pnpm build`.  
+`vercel.json` contains the rewrite rules needed for Vercel so that client-side routing works (single-page app fallback to `index.html`).
