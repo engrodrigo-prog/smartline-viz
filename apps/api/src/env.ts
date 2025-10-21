@@ -10,7 +10,8 @@ export const env = {
   S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
   REDIS_URL: process.env.REDIS_URL,
   FIRMS_WFS_BASE: process.env.FIRMS_WFS_BASE ?? 'https://firms.modaps.eosdis.nasa.gov/mapserver/wfs/South_America',
-  FIRMS_WFS_KEY: process.env.FIRMS_WFS_KEY,
+  // Use WFS key; if absent, fall back to general FIRMS API key
+  FIRMS_WFS_KEY: process.env.FIRMS_WFS_KEY ?? process.env.FIRMS_API_KEY,
   FIRMS_DEFAULT_TYPENAMES: (process.env.FIRMS_DEFAULT_TYPENAMES ?? 'ms:fires_noaa20_24hrs,ms:fires_noaa21_24hrs,ms:fires_npp_24hrs,ms:fires_modis_24hrs').split(',').map((s) => s.trim()).filter(Boolean),
   FIRMS_DEFAULT_COUNT: Number(process.env.FIRMS_DEFAULT_COUNT ?? 5000),
   FIRMS_CACHE_TTL_SEC: Number(process.env.FIRMS_CACHE_TTL_SEC ?? 600),
@@ -30,6 +31,7 @@ export const env = {
   SMTP_PASS: process.env.SMTP_PASS,
   OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY,
   OPENWEATHER_ONECALL_URL: process.env.OPENWEATHER_ONECALL_URL ?? 'https://api.openweathermap.org/data/2.5/onecall',
+  OPENMETEO_BASE_URL: process.env.OPENMETEO_BASE_URL ?? 'https://api.open-meteo.com/v1/forecast',
   WEATHER_CACHE_TTL_SEC: Number(process.env.WEATHER_CACHE_TTL_SEC ?? 300),
   QUEIMADAS_LINE_BUFFER_M: Number(process.env.QUEIMADAS_LINE_BUFFER_M ?? 200),
   QUEIMADAS_CONE_HALF_ANGLE_DEG: Number(process.env.QUEIMADAS_CONE_HALF_ANGLE_DEG ?? 30),

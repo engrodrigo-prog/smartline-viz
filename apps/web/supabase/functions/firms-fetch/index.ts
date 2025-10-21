@@ -36,8 +36,19 @@ Deno.serve(async (req) => {
     // Handle GET with URL parameter or POST with file
     if (req.method === 'GET') {
       const url = new URL(req.url);
-      const kmlUrl = url.searchParams.get('url') || Deno.env.get('FIRMS_FOOTPRINTS_URL') || 
-        'https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/kml/J1_VIIRS_C2_South_America_24h.kmz';
+      const apiKey = Deno.env.get('FIRMS_API_KEY');
+      const preset = url.searchParams.get('preset') || '24h';
+      const region = url.searchParams.get('region') || 'south_america';
+
+      let kmlUrl = url.searchParams.get('url') || Deno.env.get('FIRMS_FOOTPRINTS_URL') || '';
+      if (!kmlUrl) {
+        if (apiKey) {
+          kmlUrl = `https://firms.modaps.eosdis.nasa.gov/api/kml_fire_footprints/${region}/${preset}/${apiKey}`;
+        } else {
+          // Public fallback (may be rate-limited or change)
+          kmlUrl = 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/kml/J1_VIIRS_C2_South_America_24h.kmz';
+        }
+      }
       
       console.log(`Fetching FIRMS KML/KMZ from: ${kmlUrl}`);
       

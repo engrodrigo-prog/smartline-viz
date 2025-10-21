@@ -345,6 +345,7 @@ type FirmsRiskBody = {
   horizons?: number[];
   count?: number;
   debugCone?: boolean;
+  windHeight?: number; // altura desejada para vento (m), ex: 10 ou 100
 };
 
 firmsRoutes.post("/risk", async (c) => {
@@ -405,7 +406,8 @@ firmsRoutes.post("/risk", async (c) => {
 
   let weather;
   try {
-    weather = await getWindData(center.geometry.coordinates[1], center.geometry.coordinates[0]);
+    const windHeight = Number.isFinite(Number(body?.windHeight)) ? Number(body?.windHeight) : undefined;
+    weather = await getWindData(center.geometry.coordinates[1], center.geometry.coordinates[0], windHeight);
   } catch (error: any) {
     return c.json({ error: error?.message ?? "Falha ao buscar vento." }, 502);
   }

@@ -46,34 +46,56 @@ Deno.serve(async (req) => {
     const OPENWEATHER_API_KEY = Deno.env.get('OPENWEATHER_API_KEY');
     
     if (!OPENWEATHER_API_KEY) {
-      console.warn('OPENWEATHER_API_KEY not configured, returning mock data');
-      const mockData = {
-        current: {
-          temp: 25 + Math.random() * 10,
-          feels_like: 25 + Math.random() * 10,
-          humidity: 60 + Math.random() * 20,
-          wind_speed: 5 + Math.random() * 10,
-          wind_deg: Math.floor(Math.random() * 360),
-          weather: [{ id: 800, main: 'Clear', description: 'Céu limpo', icon: '01d' }],
-          rain: { '1h': Math.random() * 5 }
-        },
-        hourly: Array.from({ length: 48 }, (_, i) => ({
-          dt: Date.now() / 1000 + i * 3600,
-          temp: 20 + Math.random() * 15,
-          rain: { '1h': Math.random() * 3 },
-          wind_speed: 3 + Math.random() * 8,
-          wind_deg: Math.floor(Math.random() * 360),
-        })),
-        daily: Array.from({ length: 7 }, (_, i) => ({
-          dt: Date.now() / 1000 + i * 86400,
-          temp: { min: 18 + Math.random() * 5, max: 28 + Math.random() * 8 },
-          rain: Math.random() * 10,
-          wind_speed: 4 + Math.random() * 6,
-        }))
+      // Fallback: Open‑Meteo (gratis) com vento a 10m/100m e variáveis básicas
+      const url = new URL('https://api.open-meteo.com/v1/forecast');
+      url.searchParams.set('latitude', String(lat));
+      url.searchParams.set('longitude', String(lon));
+      url.searchParams.set('current', 'temperature_2m,relativehumidity_2m,windspeed_10m,winddirection_10m,windspeed_100m,winddirection_100m,rain');
+      url.searchParams.set('hourly', 'temperature_2m,relativehumidity_2m,windspeed_10m,winddirection_10m,windspeed_100m,winddirection_100m,rain');
+      url.searchParams.set('daily', 'temperature_2m_max,temperature_2m_min,precipitation_sum');
+      url.searchParams.set('timezone', 'UTC');
+
+      const res = await fetch(url.toString());
+      if (!res.ok) throw new Error(`Open-Meteo error: ${res.status}`);
+      const data = await res.json();
+
+      const pick = (obj: any, key: string) => (obj && key in obj ? obj[key] : undefined);
+
+      const windSpeedCurrent = Number(pick(data.current, 'windspeed_100m') ?? pick(data.current, 'windspeed_10m') ?? 0);
+      const windDirCurrent = Number(pick(data.current, 'winddirection_100m') ?? pick(data.current, 'winddirection_10m') ?? 0);
+
+      const current = {
+        temp: Number(data.current?.temperature_2m ?? 0),
+        feels_like: Number(data.current?.temperature_2m ?? 0),
+        humidity: Number(data.current?.relativehumidity_2m ?? 0),
+        wind_speed: windSpeedCurrent,
+        wind_deg: windDirCurrent,
+        weather: [{ id: 800, main: 'Clear', description: 'Open‑Meteo', icon: '01d' }],
+        rain: { '1h': Number(data.current?.rain ?? 0) }
       };
-      
+
+      const hourlyTimes: string[] = data.hourly?.time ?? [];
+      const hourly = hourlyTimes.slice(0, 48).map((t: string, i: number) => ({
+        dt: Math.floor(Date.parse(t) / 1000),
+        temp: Number(data.hourly?.temperature_2m?.[i] ?? 0),
+        rain: { '1h': Number(data.hourly?.rain?.[i] ?? 0) },
+        wind_speed: Number(data.hourly?.windspeed_100m?.[i] ?? data.hourly?.windspeed_10m?.[i] ?? 0),
+        wind_deg: Number(data.hourly?.winddirection_100m?.[i] ?? data.hourly?.winddirection_10m?.[i] ?? 0),
+      }));
+
+      const dailyTimes: string[] = data.daily?.time ?? [];
+      const daily = dailyTimes.slice(0, 7).map((t: string, i: number) => ({
+        dt: Math.floor(Date.parse(t) / 1000),
+        temp: {
+          min: Number(data.daily?.temperature_2m_min?.[i] ?? 0),
+          max: Number(data.daily?.temperature_2m_max?.[i] ?? 0),
+        },
+        rain: Number(data.daily?.precipitation_sum?.[i] ?? 0),
+        wind_speed: 0, // Open‑Meteo daily wind speed not mapped here
+      }));
+
       return new Response(
-        JSON.stringify(mockData),
+        JSON.stringify({ current, hourly, daily, provider: 'open-meteo' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
