@@ -162,6 +162,28 @@ const Vegetacao = () => {
     return [[minLng, minLat], [maxLng, maxLat]] as [[number, number], [number, number]];
   }, [filteredData, focusedData, focusFilter, ndviBounds.bounds]);
 
+  const rsDemoLine = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: [
+      {
+        type: "Feature" as const,
+        geometry: {
+          type: "LineString" as const,
+          coordinates: [
+            [-57.08, -29.75],
+            [-55.60, -29.50],
+            [-54.10, -29.65],
+            [-53.10, -30.00],
+            [-52.00, -30.10],
+            [-51.23, -30.03],
+            [-51.18, -29.16]
+          ]
+        },
+        properties: { color: "#0284c7", width: 3, opacity: 0.9 }
+      }
+    ]
+  }), []);
+
   return (
     <ModuleLayout title="Gestão de Vegetação" icon={TreePine}>
       <div className="p-6 space-y-6">
@@ -308,6 +330,7 @@ const Vegetacao = () => {
               initialZoom={filters.linha ? 12 : 10}
               customPoints={points}
               customPolygons={ndviJundiai}
+              customLines={rsDemoLine as any}
               fitBounds={mapBounds ?? ndviBounds.bounds}
               height="600px"
             />

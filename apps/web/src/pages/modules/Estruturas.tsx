@@ -3,6 +3,7 @@ import { eventos } from "@/lib/mockData";
 import { Building2 } from "lucide-react";
 import FloatingFiltersBar from "@/components/FloatingFiltersBar";
 import ModuleLayout from "@/components/ModuleLayout";
+import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import { useMemo, useState } from "react";
 import type { FeatureCollection } from "geojson";
 import { Badge } from "@/components/ui/badge";
@@ -89,9 +90,32 @@ const Estruturas = () => {
     ] as [[number, number], [number, number]];
   }, [filteredData, focusedData, focusFilter]);
 
+  const rsDemoLine = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: [
+      {
+        type: "Feature" as const,
+        geometry: {
+          type: "LineString" as const,
+          coordinates: [
+            [-57.08, -29.75],
+            [-55.60, -29.50],
+            [-54.10, -29.65],
+            [-53.10, -30.00],
+            [-52.00, -30.10],
+            [-51.23, -30.03],
+            [-51.18, -29.16]
+          ]
+        },
+        properties: { color: "#0284c7", width: 3, opacity: 0.9 }
+      }
+    ]
+  }), []);
+
   return (
     <ModuleLayout title="Gestão de Estruturas" icon={Building2}>
       <div className="p-6 space-y-6">
+      <ModuleDemoBanner />
 
       <FloatingFiltersBar />
 
@@ -207,6 +231,7 @@ const Estruturas = () => {
                 showEstruturas={true}
                 initialZoom={filters.linha ? 12 : 7}
                 customPoints={points}
+                customLines={rsDemoLine as any}
                 fitBounds={bounds}
               />
             </div>

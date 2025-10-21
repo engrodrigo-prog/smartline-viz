@@ -157,6 +157,28 @@ export default function InspecaoTermografica() {
     criticos: focusedData.filter((item) => item.statusTermico === "Crítico").length,
   };
 
+  const rsDemoLine = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: [
+      {
+        type: "Feature" as const,
+        geometry: {
+          type: "LineString" as const,
+          coordinates: [
+            [-57.08, -29.75],
+            [-55.60, -29.50],
+            [-54.10, -29.65],
+            [-53.10, -30.00],
+            [-52.00, -30.10],
+            [-51.23, -30.03],
+            [-51.18, -29.16]
+          ]
+        },
+        properties: { color: "#0284c7", width: 3, opacity: 0.9 }
+      }
+    ]
+  }), []);
+
   return (
     <ModuleLayout title="Inspeção Termográfica" icon={Flame}>
       <div className="p-6 space-y-6">
@@ -192,6 +214,7 @@ export default function InspecaoTermografica() {
               filterLinha={filters.linha}
               showInfrastructure
               customPoints={points}
+              customLines={rsDemoLine as any}
               fitBounds={bounds}
               initialCenter={[-46.63, -23.55]}
               initialZoom={filters.linha ? 12 : 8}

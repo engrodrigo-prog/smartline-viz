@@ -12,7 +12,7 @@ import {
   type BasemapId,
 } from "@/lib/mapConfig";
 import { BasemapSelector } from "./BasemapSelector";
-import type { FeatureCollection, Geometry, Polygon } from "geojson";
+import type { FeatureCollection, Geometry, Polygon, LineString } from "geojson";
 
 interface MapLibreUnifiedProps {
   filterRegiao?: string;
@@ -42,6 +42,7 @@ interface MapLibreUnifiedProps {
   customPoints?: FeatureCollection<Geometry, { color?: string; isFocus?: boolean; size?: number }>;
   fitBounds?: maplibregl.LngLatBoundsLike | null;
   customPolygons?: FeatureCollection<Polygon, { color?: string; ndvi?: number }>;
+  customLines?: FeatureCollection<LineString, { color?: string; width?: number; opacity?: number }>;
   height?: string;
 }
 
@@ -73,6 +74,7 @@ export const MapLibreUnified = ({
   customPoints,
   fitBounds,
   customPolygons,
+  customLines,
   height,
 }: MapLibreUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -326,6 +328,78 @@ export const MapLibreUnified = ({
       removeLayerAndSource(mapInstance, fillLayerId, sourceId);
     };
   }, [customPolygons, removeLayerAndSource]);
+
+  // Custom lines layer (e.g., demo RS line)
+  useEffect(() => {
+    const mapInstance = mapRef.current;
+    if (!mapInstance) return;
+
+    const sourceId = "custom-lines";
+    const corridorId = "custom-lines-corridor";
+    const mainId = "custom-lines";
+
+    if (!customLines || customLines.features.length === 0) {
+      if (mapInstance.getLayer(corridorId)) mapInstance.removeLayer(corridorId);
+      removeLayerAndSource(mapInstance, mainId, sourceId);
+      return;
+    }
+
+    const data: FeatureCollection = {
+      type: "FeatureCollection",
+      features: customLines.features.map((f) => ({
+        type: "Feature",
+        geometry: f.geometry,
+        properties: {
+          ...(f.properties ?? {}),
+          color: f.properties?.color ?? "#0284c7",
+          width: f.properties?.width ?? 3,
+          opacity: f.properties?.opacity ?? 0.9,
+        },
+      })),
+    };
+
+    const addOrUpdate = () => {
+      if (mapInstance.getSource(sourceId)) {
+        (mapInstance.getSource(sourceId) as maplibregl.GeoJSONSource).setData(data);
+      } else {
+        mapInstance.addSource(sourceId, { type: "geojson", data });
+      }
+
+      if (!mapInstance.getLayer(corridorId)) {
+        mapInstance.addLayer({
+          id: corridorId,
+          type: "line",
+          source: sourceId,
+          paint: {
+            "line-color": "#22d3ee",
+            "line-width": 10,
+            "line-opacity": 0.25,
+          },
+        });
+      }
+
+      if (!mapInstance.getLayer(mainId)) {
+        mapInstance.addLayer({
+          id: mainId,
+          type: "line",
+          source: sourceId,
+          paint: {
+            "line-color": ["coalesce", ["get", "color"], "#0284c7"],
+            "line-width": ["coalesce", ["get", "width"], 3],
+            "line-opacity": ["coalesce", ["get", "opacity"], 0.9],
+          },
+        });
+      }
+    };
+
+    if (mapInstance.isStyleLoaded()) addOrUpdate();
+    else mapInstance.once("style.load", addOrUpdate);
+
+    return () => {
+      if (mapInstance.getLayer(corridorId)) mapInstance.removeLayer(corridorId);
+      removeLayerAndSource(mapInstance, mainId, sourceId);
+    };
+  }, [customLines, removeLayerAndSource]);
 
   // Erosion occurrences layer
   useEffect(() => {
