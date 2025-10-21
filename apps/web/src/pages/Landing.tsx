@@ -219,9 +219,16 @@ const Landing = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <Link to="/dashboard" className="btn-primary text-lg inline-block">
-                  Acessar Sistema
-                </Link>
+                <div className="relative inline-block">
+                  <Link to="/dashboard" className="btn-primary text-lg inline-block">
+                    Acessar Sistema
+                  </Link>
+                  <div className="pointer-events-none absolute -top-3 -right-3 rotate-2">
+                    <div className="bg-yellow-300/95 text-slate-900 shadow border border-yellow-500/60 px-2 py-0.5 rounded-sm text-[10px] font-semibold">
+                      Em desenvolvimento
+                    </div>
+                  </div>
+                </div>
                 <a
                   href="https://form.jotform.com/251775321495058"
                   target="_blank"
