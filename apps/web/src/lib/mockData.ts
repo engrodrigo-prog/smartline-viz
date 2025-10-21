@@ -347,9 +347,10 @@ export const areasAlagadas: AreaAlagada[] = Array.from({ length: 45 }, (_, i) =>
     regiao: regioes[Math.floor(Math.random() * regioes.length)],
     linha: linha.id,
     ramal,
+    // Coordenadas simuladas próximas à RMSP, mantidas em faixa continental (evita pontos no mar)
     coords: [
-      -23.55 + (Math.random() - 0.5) * 2,
-      -46.63 + (Math.random() - 0.5) * 2
+      -23.55 + (Math.random() - 0.5) * 1.0,   // ~±0.5° em latitude
+      -46.63 + (Math.random() - 0.5) * 1.0    // ~±0.5° em longitude (limita leste para não cair no oceano)
     ],
     areaCritica: parseFloat((Math.random() * 5 + 0.5).toFixed(2)),
     nivelRisco: ['Baixo', 'Médio', 'Alto'][Math.floor(Math.random() * 3)] as any,

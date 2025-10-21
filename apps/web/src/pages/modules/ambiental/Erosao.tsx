@@ -183,7 +183,13 @@ const Erosao = () => {
 
   const erosionGeoJson = useMemo(() => ({
     type: "FeatureCollection",
-    features: filteredData.map((e) => ({
+    features: filteredData
+      // Filtro defensivo: mantém apenas pontos dentro do bounding box BR aproximado
+      .filter((e) => {
+        const [lat, lon] = e.coords;
+        return lat >= -35 && lat <= 5 && lon >= -74 && lon <= -34;
+      })
+      .map((e) => ({
       type: "Feature",
       geometry: {
         type: "Point",
