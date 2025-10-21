@@ -47,6 +47,7 @@ import bannerCompliance from "@/assets/banner-compliance.png";
 import dashboardControl from "@/assets/dashboard-control.png";
 import teamAnalysis from "@/assets/team-analysis.png";
 import controlRoom from "@/assets/control-room.png";
+import RSStatusMap from "@/components/RSStatusMap";
 
 const Landing = () => {
   const [apiAvailable, setApiAvailable] = useState(false);
@@ -267,6 +268,23 @@ const Landing = () => {
                 </div>
               ))}
             </motion.div>
+          </div>
+        </section>
+
+        {/* RS Demo Map */}
+        <section className="py-10 px-6">
+          <div className="container mx-auto max-w-6xl">
+            <div className="tech-card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-semibold text-muted-foreground uppercase tracking-wide">
+                  Demonstração de Linha · RS
+                </h3>
+                <Link to="/ambiental/firms-viewer" className="text-primary text-sm underline-offset-2 hover:underline">
+                  Abrir Viewer FIRMS
+                </Link>
+              </div>
+              <RSStatusMap />
+            </div>
           </div>
         </section>
 

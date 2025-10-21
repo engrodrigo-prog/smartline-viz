@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "LT_RS_Demo",
+        "voltagem_kV": 230,
+        "status": "simulada"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-57.08, -29.75],
+          [-55.60, -29.50],
+          [-54.10, -29.65],
+          [-53.10, -30.00],
+          [-52.00, -30.10],
+          [-51.23, -30.03],
+          [-51.18, -29.16]
+        ]
+      }
+    }
+  ]
+}
+
