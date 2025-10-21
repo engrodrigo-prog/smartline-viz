@@ -44,6 +44,8 @@ interface MapLibreUnifiedProps {
   customPolygons?: FeatureCollection<Polygon, { color?: string; ndvi?: number }>;
   customLines?: FeatureCollection<LineString, { color?: string; width?: number; opacity?: number }>;
   height?: string;
+  initialBasemapId?: BasemapId;
+  fallbackBasemapId?: BasemapId;
 }
 
 export const MapLibreUnified = ({
@@ -76,36 +78,75 @@ export const MapLibreUnified = ({
   customPolygons,
   customLines,
   height,
+  initialBasemapId,
+  fallbackBasemapId,
 }: MapLibreUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const fallbackAppliedRef = useRef(false);
 
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
   const mapboxAvailable = Boolean(mapboxToken);
-  const defaultBasemap = useMemo(() => resolveBasemapId(DEFAULT_BASEMAP, mapboxToken), [mapboxToken]);
+  const preferredBasemapId = initialBasemapId ?? DEFAULT_BASEMAP;
+  const resolvedInitialBasemap = useMemo(
+    () => resolveBasemapId(preferredBasemapId, mapboxToken),
+    [preferredBasemapId, mapboxToken],
+  );
+  const fallbackBasemapIdResolved: BasemapId = fallbackBasemapId ?? "imagery";
 
   const [isLoading, setIsLoading] = useState(true);
-  const [currentBasemap, setCurrentBasemap] = useState<BasemapId>(defaultBasemap);
+  const [currentBasemap, setCurrentBasemap] = useState<BasemapId>(resolvedInitialBasemap);
 
   useEffect(() => {
-    setCurrentBasemap(defaultBasemap);
-  }, [defaultBasemap]);
+    setCurrentBasemap(resolvedInitialBasemap);
+  }, [resolvedInitialBasemap]);
 
   // Initialize map
   useEffect(() => {
+    fallbackAppliedRef.current = false;
     if (!mapContainer.current || mapRef.current) return;
+
+    let safetyTimeout: number | undefined;
 
     try {
       const instance = initializeSmartlineMap(mapContainer.current, {
         center: initialCenter || [-46.333, -23.96],
         zoom: initialZoom || 12,
-        basemap: defaultBasemap,
+        basemap: resolvedInitialBasemap,
         mapboxToken,
       });
 
       instance.addControl(new maplibregl.NavigationControl(), "top-right");
       instance.addControl(new maplibregl.FullscreenControl(), "top-right");
       instance.addControl(new maplibregl.ScaleControl(), "bottom-right");
+
+      const applyFallback = () => {
+        if (fallbackAppliedRef.current) {
+          return;
+        }
+        fallbackAppliedRef.current = true;
+        if (safetyTimeout !== undefined) {
+          window.clearTimeout(safetyTimeout);
+        }
+        try {
+          console.warn("[map] Aplicando fallback de mapa base para", fallbackBasemapIdResolved);
+          changeBasemap(instance, fallbackBasemapIdResolved, { mapboxToken });
+          setCurrentBasemap(fallbackBasemapIdResolved);
+          onMapLoad?.(instance);
+        } catch (err) {
+          console.warn("[map] Falha ao aplicar fallback em MapLibreUnified", err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      // Safety timeout: if style doesn't load (e.g., token/domínio), fallback to ESRI imagery
+      safetyTimeout = window.setTimeout(() => {
+        if (!instance.isStyleLoaded()) {
+          console.warn("[map] Timeout no carregamento do estilo inicial. Forçando fallback ESRI.");
+          applyFallback();
+        }
+      }, 6000);
 
       instance.on("load", () => {
         setIsLoading(false);
@@ -114,15 +155,39 @@ export const MapLibreUnified = ({
           setCurrentBasemap(resolved);
         }
         onMapLoad?.(instance);
+        if (safetyTimeout !== undefined) {
+          window.clearTimeout(safetyTimeout);
+        }
       });
 
-      instance.on("error", (error) => {
-        const message = (error?.error && (error.error as Error).message) || "";
+      instance.on("error", (event: any) => {
+        const message = (event?.error && (event.error as Error).message) || "";
         if (typeof message === "string" && message.includes('unknown property "name"')) {
           return;
         }
-        console.error("Map error:", error);
+
+        const status = (event?.error as any)?.status ?? (event?.error as any)?.resource?.status;
+        const resourceUrl = (event?.error as any)?.resource?.url ?? "";
+        const isMapboxAuthIssue =
+          status === 401 ||
+          status === 403 ||
+          /access[_-]?token|unauthorized|forbidden/i.test(String(message)) ||
+          /api\.mapbox\.com|styles\/v1/.test(resourceUrl);
+
+        if (isMapboxAuthIssue) {
+          console.warn("[map] Erro de autenticação/estilo Mapbox detectado. Aplicando fallback ESRI.", event?.error);
+          applyFallback();
+          if (safetyTimeout !== undefined) {
+            window.clearTimeout(safetyTimeout);
+          }
+          return;
+        }
+
+        console.error("Map error:", event);
         setIsLoading(false);
+        if (safetyTimeout !== undefined) {
+          window.clearTimeout(safetyTimeout);
+        }
       });
 
       mapRef.current = instance;
@@ -132,10 +197,13 @@ export const MapLibreUnified = ({
     }
 
     return () => {
+      if (safetyTimeout !== undefined) {
+        window.clearTimeout(safetyTimeout);
+      }
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [defaultBasemap, initialCenter, initialZoom, mapboxToken, onMapLoad]);
+  }, [resolvedInitialBasemap, fallbackBasemapIdResolved, initialCenter, initialZoom, mapboxToken, onMapLoad]);
 
   // Focus on specific coordinates
   useEffect(() => {

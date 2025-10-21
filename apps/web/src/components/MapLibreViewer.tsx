@@ -49,33 +49,30 @@ const MapLibreViewer = ({
   useEffect(() => {
     if (!map.current || !data || data.length === 0) return;
 
-    // Wait for map to load
-    map.current.on('load', () => {
-      if (!map.current) return;
+    const geojson: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: data.map(item => ({
+        type: 'Feature',
+        id: item.id,
+        geometry: typeof item.geometry === 'string'
+          ? JSON.parse(item.geometry)
+          : item.geometry,
+        properties: item.properties || {},
+      })),
+    };
 
-      // Convert data to GeoJSON
-      const geojson: GeoJSON.FeatureCollection = {
-        type: 'FeatureCollection',
-        features: data.map(item => ({
-          type: 'Feature',
-          id: item.id,
-          geometry: typeof item.geometry === 'string' 
-            ? JSON.parse(item.geometry) 
-            : item.geometry,
-          properties: item.properties || {},
-        })),
-      };
+    const applyData = () => {
+      if (!map.current) {
+        return;
+      }
 
-      // Add source
-      if (!map.current!.getSource('geodata')) {
-        map.current!.addSource('geodata', {
+      if (!map.current.getSource('geodata')) {
+        map.current.addSource('geodata', {
           type: 'geojson',
           data: geojson,
         });
 
-        // Add layers for different geometry types
-        // Points
-        map.current!.addLayer({
+        map.current.addLayer({
           id: 'geodata-points',
           type: 'circle',
           source: 'geodata',
@@ -88,8 +85,7 @@ const MapLibreViewer = ({
           },
         });
 
-        // Lines
-        map.current!.addLayer({
+        map.current.addLayer({
           id: 'geodata-lines',
           type: 'line',
           source: 'geodata',
@@ -100,8 +96,7 @@ const MapLibreViewer = ({
           },
         });
 
-        // Polygons
-        map.current!.addLayer({
+        map.current.addLayer({
           id: 'geodata-polygons',
           type: 'fill',
           source: 'geodata',
@@ -112,8 +107,7 @@ const MapLibreViewer = ({
           },
         });
 
-        // Polygon outlines
-        map.current!.addLayer({
+        map.current.addLayer({
           id: 'geodata-polygons-outline',
           type: 'line',
           source: 'geodata',
@@ -124,7 +118,6 @@ const MapLibreViewer = ({
           },
         });
 
-        // Add click handlers
         ['geodata-points', 'geodata-lines', 'geodata-polygons'].forEach(layerId => {
           map.current!.on('click', layerId, (e) => {
             if (e.features && e.features.length > 0 && onFeatureClick) {
@@ -132,7 +125,6 @@ const MapLibreViewer = ({
             }
           });
 
-          // Change cursor on hover
           map.current!.on('mouseenter', layerId, () => {
             if (map.current) map.current.getCanvas().style.cursor = 'pointer';
           });
@@ -142,12 +134,9 @@ const MapLibreViewer = ({
           });
         });
       } else {
-        // Update existing source
-        const source = map.current!.getSource('geodata') as maplibregl.GeoJSONSource;
-        source.setData(geojson);
+        (map.current.getSource('geodata') as maplibregl.GeoJSONSource).setData(geojson);
       }
 
-      // Fit bounds to data
       if (geojson.features.length > 0) {
         const bounds = new maplibregl.LngLatBounds();
         geojson.features.forEach(feature => {
@@ -161,10 +150,28 @@ const MapLibreViewer = ({
         });
 
         if (!bounds.isEmpty()) {
-          map.current!.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+          map.current.fitBounds(bounds, { padding: 50, maxZoom: 15 });
         }
       }
-    });
+    };
+
+    if (map.current.isStyleLoaded()) {
+      applyData();
+      return;
+    }
+
+    const handleLoad = () => {
+      applyData();
+    };
+
+    map.current.once('load', handleLoad);
+    return () => {
+      try {
+        map.current?.off('load', handleLoad);
+      } catch {
+        /* ignore */
+      }
+    };
   }, [data, onFeatureClick]);
 
   return (

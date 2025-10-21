@@ -254,6 +254,8 @@ const UnifiedMapView = () => {
           initialCenter={[centerCoords.lng, centerCoords.lat]}
           initialZoom={initialZoom}
           onMapLoad={setMapInstance}
+          initialBasemapId="imagery"
+          fallbackBasemapId="imagery"
         />
         
         {/* Camada de footprints FIRMS */}

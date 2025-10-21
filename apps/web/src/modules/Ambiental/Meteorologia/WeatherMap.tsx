@@ -65,70 +65,77 @@ const WeatherMap = ({
 
   // Adicionar camadas meteorológicas
   useEffect(() => {
-    if (!map.current || !map.current.loaded()) return;
+    if (!map.current) return;
 
-    // Verificar se o estilo está carregado
-    if (!map.current.isStyleLoaded()) {
-      map.current.once('style.load', () => {
-        // Força re-render após style carregar
-        setIsLoading(false);
+    const applyLayers = () => {
+      const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY || 'demo';
+
+      enabledLayers.forEach((layer) => {
+        const sourceId = `weather-${layer.id}`;
+        const layerId = `weather-layer-${layer.id}`;
+
+        if (layer.enabled) {
+          // Remover camada existente para garantir atualização
+          if (map.current!.getLayer(layerId)) {
+            map.current!.removeLayer(layerId);
+          }
+          if (map.current!.getSource(sourceId)) {
+            map.current!.removeSource(sourceId);
+          }
+
+          let tileUrl = '';
+          if (layer.id === 'precipitation') {
+            tileUrl = `https://tilecache.rainviewer.com/v2/radar/0/{z}/{x}/{y}/256/1_1.png`;
+          } else {
+            tileUrl = `https://tile.openweathermap.org/map/${layer.url}/{z}/{x}/{y}.png?appid=${apiKey}`;
+          }
+
+          map.current!.addSource(sourceId, {
+            type: 'raster',
+            tiles: [tileUrl],
+            tileSize: 256,
+            attribution:
+              layer.id === 'precipitation'
+                ? '© RainViewer'
+                : '© OpenWeather',
+          });
+
+          map.current!.addLayer({
+            id: layerId,
+            type: 'raster',
+            source: sourceId,
+            paint: {
+              'raster-opacity': 0.6,
+              'raster-fade-duration': 300,
+            },
+          });
+        } else {
+          if (map.current!.getLayer(layerId)) {
+            map.current!.removeLayer(layerId);
+          }
+          if (map.current!.getSource(sourceId)) {
+            map.current!.removeSource(sourceId);
+          }
+        }
       });
-      return;
+    };
+
+    if (!map.current.isStyleLoaded()) {
+      const handleStyleLoad = () => {
+        setIsLoading(false);
+        applyLayers();
+      };
+      map.current.once('style.load', handleStyleLoad);
+      return () => {
+        try {
+          map.current?.off('style.load', handleStyleLoad);
+        } catch {
+          /* ignore */
+        }
+      };
     }
 
-    const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY || 'demo';
-
-    enabledLayers.forEach((layer) => {
-      const sourceId = `weather-${layer.id}`;
-      const layerId = `weather-layer-${layer.id}`;
-
-      if (layer.enabled) {
-        // Remover camada existente
-        if (map.current!.getLayer(layerId)) {
-          map.current!.removeLayer(layerId);
-        }
-        if (map.current!.getSource(sourceId)) {
-          map.current!.removeSource(sourceId);
-        }
-
-        // URL especial para precipitação (RainViewer gratuito)
-        let tileUrl = '';
-        if (layer.id === 'precipitation') {
-          tileUrl = `https://tilecache.rainviewer.com/v2/radar/0/{z}/{x}/{y}/256/1_1.png`;
-        } else {
-          tileUrl = `https://tile.openweathermap.org/map/${layer.url}/{z}/{x}/{y}.png?appid=${apiKey}`;
-        }
-
-        // Adicionar fonte raster
-        map.current!.addSource(sourceId, {
-          type: 'raster',
-          tiles: [tileUrl],
-          tileSize: 256,
-          attribution: layer.id === 'precipitation' 
-            ? '© RainViewer' 
-            : '© OpenWeather',
-        });
-
-        // Adicionar camada
-        map.current!.addLayer({
-          id: layerId,
-          type: 'raster',
-          source: sourceId,
-          paint: {
-            'raster-opacity': 0.6,
-            'raster-fade-duration': 300,
-          },
-        });
-      } else {
-        // Remover camada se desativada
-        if (map.current!.getLayer(layerId)) {
-          map.current!.removeLayer(layerId);
-        }
-        if (map.current!.getSource(sourceId)) {
-          map.current!.removeSource(sourceId);
-        }
-      }
-    });
+    applyLayers();
   }, [enabledLayers]);
 
   return (

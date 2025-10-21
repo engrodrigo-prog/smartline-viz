@@ -116,11 +116,40 @@ const MapView = () => {
       }
     });
 
+    const handleMapError = (event: mapboxgl.ErrorEvent & { error?: any }) => {
+      if (!token || !(mapRef.current instanceof mapboxgl.Map)) {
+        return;
+      }
+      if ((map as any).__smartlineFallbackApplied) {
+        return;
+      }
+
+      const rawError = event?.error as any;
+      const status = rawError?.status ?? rawError?.resource?.status;
+      const message = String(rawError?.message ?? "").toLowerCase();
+
+      const shouldFallback =
+        status === 401 ||
+        status === 403 ||
+        message.includes("access token") ||
+        message.includes("unauthorized") ||
+        message.includes("forbidden");
+
+      if (shouldFallback) {
+        (map as any).__smartlineFallbackApplied = true;
+        console.warn("[map] Falha ao carregar estilo Mapbox, aplicando fallback ESRI.", rawError);
+        handleBasemapChange("imagery");
+      }
+    };
+
+    map.on("error", handleMapError);
+
     return () => {
+      map.off("error", handleMapError);
       map.remove();
       mapRef.current = null;
     };
-  }, [currentBasemap, token]);
+  }, [currentBasemap, token, handleBasemapChange]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -230,7 +259,7 @@ const MapView = () => {
     }
   };
 
-  const handleBasemapChange = (next: BasemapId) => {
+  const handleBasemapChange = useCallback((next: BasemapId) => {
     const map = mapRef.current;
     if (!map) return;
 
@@ -249,7 +278,8 @@ const MapView = () => {
     setCurrentBasemap(resolved);
     measurementPoints.current = [];
     setMeasurementKm(null);
-  };
+    updateMeasurement();
+  }, [token, updateMeasurement]);
 
   const availableBasemaps = useMemo(() => basemapIds(), []);
 

@@ -78,6 +78,10 @@ All colors MUST be HSL.
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   * {
     @apply border-border;
   }
@@ -95,6 +99,9 @@ All colors MUST be HSL.
 }
 
 @layer components {
+  .postit {
+    @apply absolute top-2 right-2 bg-yellow-300/95 text-slate-900 shadow border border-yellow-500/60 px-2 py-0.5 rounded-sm text-[10px] font-semibold rotate-2;
+  }
   .hexagon-pattern {
     background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill='none' stroke='%2300A67A' stroke-opacity='0.1' stroke-width='1'/%3E%3C/svg%3E");
   }

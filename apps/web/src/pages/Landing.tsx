@@ -17,6 +17,9 @@ import {
   FileWarning,
   ClipboardCheck,
   Users,
+  GraduationCap,
+  Layers,
+  CloudUpload,
   MapPin,
   Brain,
   Map,
@@ -247,26 +250,7 @@ const Landing = () => {
               </div>
             </motion.div>
 
-            {/* Stats */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20 max-w-4xl mx-auto"
-            >
-              {[
-                { icon: Database, label: "Ativos Monitorados", value: "15.000+" },
-                { icon: Activity, label: "Sensores Ativos", value: "3.200+" },
-                { icon: Cloud, label: "Dados Processados", value: "2.5TB" },
-                { icon: TrendingUp, label: "Uptime", value: "99.9%" },
-              ].map((stat, index) => (
-                <div key={index} className="tech-card p-6 text-center">
-                  <stat.icon className="w-8 h-8 mx-auto mb-3 text-primary" />
-                  <div className="text-3xl font-bold text-primary mb-1">{stat.value}</div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
-                </div>
-              ))}
-            </motion.div>
+            {/* Stats removidos conforme solicitação */}
           </div>
         </section>
 
@@ -380,6 +364,44 @@ const Landing = () => {
           </div>
         </section>
 
+        {/* Training Preview Section (mesmo estilo, 1 foto + texto) */}
+        <section className="py-20 px-10">
+          <div className="container mx-auto max-w-7xl">
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="flex items-center justify-center order-2 lg:order-1"
+              >
+                <img
+                  src="/training.png"
+                  alt="Treinamento e Capacitação"
+                  className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="backdrop-blur-md bg-slate-900/70 rounded-xl p-8 border border-white/10 order-1 lg:order-2"
+              >
+                <h2 className="text-3xl font-bold mb-4 text-white">Treinamento & Capacitação</h2>
+                <p className="text-white/90 text-lg mb-4">
+                  Capacite sua equipe para estudar nuvem de pontos, gerar camadas e indicadores e transformar dados em
+                  informação para decisões ágeis na gestão de linhas.
+                </p>
+                <a href="#treinamento" className="btn-primary inline-block">
+                  Ver Programa de Treinamento
+                </a>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
         {/* Features Section */}
         <section className="py-20 px-4">
           <div className="container mx-auto max-w-7xl">
@@ -406,8 +428,9 @@ const Landing = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  className="tech-card overflow-hidden group"
+                  className="tech-card overflow-hidden group relative"
                 >
+                  <div className="postit">simulação</div>
                   <div className="h-48 overflow-hidden relative">
                     <img
                       src={feature.image}
@@ -738,9 +761,121 @@ const Landing = () => {
           </div>
         </section>
 
+        {/* Treinamento & Capacitação (antes das automações) */}
+        <section id="treinamento" className="py-20 px-6 bg-gradient-to-b from-slate-900/60 to-slate-900/30 border-t border-white/10">
+          <div className="container mx-auto max-w-7xl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="text-center mb-12"
+            >
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 flex items-center gap-3 justify-center">
+                <GraduationCap className="w-8 h-8 text-primary" />
+                Programa de Treinamento & Capacitação
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                Do estudo de nuvens de pontos à geração de camadas técnicas e indicadores: capacitamos sua equipe
+                para transformar dados em informação e acelerar a tomada de decisão na gestão de linhas.
+              </p>
+            </motion.div>
+
+            <div className="grid lg:grid-cols-2 gap-8 items-stretch">
+              {/* Conteúdo */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="tech-card p-8 h-full"
+              >
+                <h3 className="text-2xl font-semibold mb-4">Trilhas práticas</h3>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <Layers className="w-5 h-5 text-primary mt-0.5" />
+                    <span>
+                      Estudo e tratamento de <strong className="text-foreground">nuvens de pontos (LAS/LAZ)</strong>,
+                      ortomosaicos e registro 3D para gêmeos digitais.
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <FileCheck className="w-5 h-5 text-primary mt-0.5" />
+                    <span>
+                      <strong className="text-foreground">Geração de dados</strong>: extração de feições, perfis e
+                      métricas; validação e qualidade (QC) com boas práticas.
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <BarChart3 className="w-5 h-5 text-primary mt-0.5" />
+                    <span>
+                      <strong className="text-foreground">Jornada dados → informação → decisão</strong> com
+                      dashboards, alertas e compliance aplicados à operação.
+                    </span>
+                  </li>
+                </ul>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Badge variant="secondary">Workshops hands‑on</Badge>
+                  <Badge variant="secondary">Onboarding guiado</Badge>
+                  <Badge variant="secondary">Mentoria técnica</Badge>
+                </div>
+              </motion.div>
+
+              {/* Modalidades de adoção */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.15 }}
+                className="tech-card p-8 h-full"
+              >
+                <h3 className="text-2xl font-semibold mb-4">Modalidades de adoção</h3>
+                <div className="space-y-4">
+                  <div className="flex gap-3">
+                    <CloudUpload className="w-6 h-6 text-primary shrink-0" />
+                    <div>
+                      <div className="font-semibold">Terceirização completa</div>
+                      <p className="text-sm text-muted-foreground">
+                        Subimos seus dados desde o início (upload, padronização e indexação) com SLA e rastreabilidade.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Users className="w-6 h-6 text-primary shrink-0" />
+                    <div>
+                      <div className="font-semibold">Operação híbrida</div>
+                      <p className="text-sm text-muted-foreground">
+                        Seu time decide quando trabalhar os dados. Nosso suporte carrega e publica na plataforma sob demanda.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <GraduationCap className="w-6 h-6 text-primary shrink-0" />
+                    <div>
+                      <div className="font-semibold">Autonomia assistida</div>
+                      <p className="text-sm text-muted-foreground">
+                        Capacitação contínua para que a equipe evolua até a autonomia total, com tutoria Smartline.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-4">
+                  <Button className="btn-primary" onClick={() => setContactOpen(true)}>
+                    Quero capacitar meu time
+                  </Button>
+                  <Link to="/upload" className="btn-secondary">
+                    Ver fluxo de dados
+                  </Link>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
         {/* Automações (movido para fim da página) */}
-        <section className="py-16 px-6">
-          <div className="container mx-auto max-w-6xl">
+        <section className="py-16 px-10">
+          <div className="container mx-auto max-w-7xl">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -772,8 +907,9 @@ const Landing = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4 }}
-                  className="tech-card p-6 space-y-4 border border-white/10"
+                  className="tech-card p-6 space-y-4 border border-white/10 relative"
                 >
+                  <div className="postit">simulação</div>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-lg font-semibold text-white">{card.title}</h3>
