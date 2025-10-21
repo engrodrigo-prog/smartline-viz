@@ -27,6 +27,40 @@ const Vegetacao = () => {
   const [activeTab, setActiveTab] = useState("lista");
   const [focusFilter, setFocusFilter] = useState<FocusFilter | null>(null);
 
+  const ndviBounds = useMemo(() => {
+    const lngs: number[] = [];
+    const lats: number[] = [];
+    ndviJundiai.features.forEach((feature) => {
+      if (feature.geometry?.type === "Polygon") {
+        feature.geometry.coordinates[0]?.forEach(([lon, lat]) => {
+          lngs.push(lon);
+          lats.push(lat);
+        });
+      }
+    });
+    if (!lngs.length || !lats.length) {
+      // fallback roughly over Jundiaí
+      return {
+        minLng: -46.99,
+        maxLng: -46.74,
+        minLat: -23.32,
+        maxLat: -23.16,
+        bounds: [[-46.99, -23.32], [-46.74, -23.16]] as [[number, number], [number, number]],
+      };
+    }
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    return {
+      minLng,
+      maxLng,
+      minLat,
+      maxLat,
+      bounds: [[minLng, minLat], [maxLng, maxLat]] as [[number, number], [number, number]],
+    };
+  }, []);
+
   const filteredData = useMemo(() => {
     let data = eventos.filter(e => e.tipo === 'Vegetação');
 
@@ -34,6 +68,14 @@ const Vegetacao = () => {
     if (filters.linha) data = data.filter(e => e.linha === filters.linha);
     if (filters.ramal) data = data.filter(e => e.ramal === filters.ramal);
     if (filters.search) data = data.filter(e => e.nome.toLowerCase().includes(filters.search!.toLowerCase()));
+
+    const hasAreaFilters = Boolean(filters.regiao || filters.linha || filters.ramal);
+    if (!hasAreaFilters) {
+      data = data.filter((item) => {
+        const [lon, lat] = item.coords;
+        return lon >= ndviBounds.minLng && lon <= ndviBounds.maxLng && lat >= ndviBounds.minLat && lat <= ndviBounds.maxLat;
+      });
+    }
 
     // Garantir que todos os itens tenham coords no formato correto
     return data.map(item => {
@@ -107,39 +149,17 @@ const Vegetacao = () => {
     };
   }, [filteredData, focusFilter]);
 
-  const bounds = useMemo(() => {
-    const source = focusFilter ? focusedData : filteredData;
-    const lngs: number[] = [];
-    const lats: number[] = [];
-
-    source.forEach((item) => {
-      lngs.push(item.coords[0]);
-      lats.push(item.coords[1]);
-    });
-
-    ndviJundiai.features.forEach((feature) => {
-      if (feature.geometry?.type === "Polygon") {
-        feature.geometry.coordinates[0]?.forEach(([lon, lat]) => {
-          lngs.push(lon);
-          lats.push(lat);
-        });
-      }
-    });
-
-    if (!lngs.length || !lats.length) return null;
-
+  const mapBounds = useMemo(() => {
+    const src = focusFilter ? focusedData : filteredData;
+    if (!src.length) return ndviBounds.bounds;
+    const lngs = src.map((item) => item.coords[0]);
+    const lats = src.map((item) => item.coords[1]);
     const minLng = Math.min(...lngs);
     const maxLng = Math.max(...lngs);
     const minLat = Math.min(...lats);
     const maxLat = Math.max(...lats);
-    if (!Number.isFinite(minLng) || !Number.isFinite(minLat) || !Number.isFinite(maxLng) || !Number.isFinite(maxLat)) {
-      return null;
-    }
-    return [
-      [minLng, minLat],
-      [maxLng, maxLat],
-    ] as [[number, number], [number, number]];
-  }, [filteredData, focusedData, focusFilter]);
+    return [[minLng, minLat], [maxLng, maxLat]] as [[number, number], [number, number]];
+  }, [filteredData, focusedData, focusFilter, ndviBounds.bounds]);
 
   return (
     <ModuleLayout title="Gestão de Vegetação" icon={TreePine}>
@@ -283,10 +303,10 @@ const Vegetacao = () => {
               showVegetacao={true}
               showInfrastructure={true}
               initialCenter={[-46.85, -23.20]}
-              initialZoom={filters.linha ? 12 : 8}
+              initialZoom={filters.linha ? 12 : 10}
               customPoints={points}
               customPolygons={ndviJundiai}
-              fitBounds={bounds}
+              fitBounds={mapBounds ?? ndviBounds.bounds}
             />
           </TabsContent>
         </Tabs>
