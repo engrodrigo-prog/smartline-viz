@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import LegalNotice from "@/components/LegalNotice";
 import { FiltersProvider } from "./context/FiltersContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
@@ -42,6 +43,7 @@ import Demandas from "./pages/operacao/Demandas";
 import MissoesPage from "./pages/missoes";
 import PerfilLinha from "./pages/modules/estrutura/PerfilLinha";
 import ComparativoExecucao from "./pages/analytics/ComparativoExecucao";
+import Legal from "./pages/Legal";
 
 const queryClient = new QueryClient();
 
@@ -53,10 +55,11 @@ const App = () => (
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ErrorBoundary>
           <FiltersProvider>
-          <Routes>
+            <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/resultados" element={<Resultados />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/legal" element={<Legal />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/relatorios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
@@ -120,7 +123,8 @@ const App = () => (
           <Route path="/config/layers" element={<ProtectedRoute><LayerManager /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFound />} />
-          </Routes>
+            </Routes>
+            <LegalNotice />
           </FiltersProvider>
         </ErrorBoundary>
       </BrowserRouter>

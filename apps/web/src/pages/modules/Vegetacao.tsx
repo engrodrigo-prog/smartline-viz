@@ -307,6 +307,7 @@ const Vegetacao = () => {
               customPoints={points}
               customPolygons={ndviJundiai}
               fitBounds={mapBounds ?? ndviBounds.bounds}
+              height="600px"
             />
           </TabsContent>
         </Tabs>

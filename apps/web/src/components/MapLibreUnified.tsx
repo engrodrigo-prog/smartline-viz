@@ -42,6 +42,7 @@ interface MapLibreUnifiedProps {
   customPoints?: FeatureCollection<Geometry, { color?: string; isFocus?: boolean; size?: number }>;
   fitBounds?: maplibregl.LngLatBoundsLike | null;
   customPolygons?: FeatureCollection<Polygon, { color?: string; ndvi?: number }>;
+  height?: string;
 }
 
 export const MapLibreUnified = ({
@@ -72,6 +73,7 @@ export const MapLibreUnified = ({
   customPoints,
   fitBounds,
   customPolygons,
+  height,
 }: MapLibreUnifiedProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -631,8 +633,10 @@ export const MapLibreUnified = ({
     }
   }, [fitBounds]);
 
+  const outerStyle = height ? { height } : undefined;
+
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full" style={outerStyle}>
       {isLoading && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="flex items-center gap-2">

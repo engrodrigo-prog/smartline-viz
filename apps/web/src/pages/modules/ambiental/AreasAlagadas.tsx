@@ -154,7 +154,8 @@ const AreasAlagadas = () => {
                 showAreasAlagadas={true}
                 showInfrastructure={true}
                 initialCenter={[-46.63, -23.55]}
-                initialZoom={filters.linha ? 13 : 7}
+                initialZoom={filters.linha ? 12 : 8}
+                height="600px"
               />
             </div>
           </TabsContent>

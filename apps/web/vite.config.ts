@@ -5,6 +5,24 @@ import { componentTagger } from "lovable-tagger";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
 
+function buildSignaturePlugin() {
+  return {
+    name: "build-signature",
+    generateBundle() {
+      const stamp = `${process.env.VITE_BUILD_SIGNATURE || "SmartLine™ Build"} • ${new Date().toISOString()}`;
+      this.emitFile({
+        type: "asset",
+        fileName: "build-signature.txt",
+        source: stamp,
+      });
+    },
+    transformIndexHtml(html: string) {
+      const stamp = `${process.env.VITE_BUILD_SIGNATURE || "SmartLine™ Build"}`;
+      return html.replace("</head>", `<meta name="build-signature" content="${stamp}">\n</head>`);
+    },
+  };
+}
+
 const require = createRequire(import.meta.url);
 let reactRouterDir: string | undefined;
 try {
@@ -14,18 +32,37 @@ try {
   reactRouterDir = undefined;
 }
 
+const hasTerser = (() => {
+  try {
+    require.resolve("terser");
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
-  },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      ...(reactRouterDir ? { "react-router": reactRouterDir } : {}),
+export default defineConfig(({ mode }) => {
+  const plugins = [react(), buildSignaturePlugin()];
+  if (mode === "development") {
+    plugins.push(componentTagger());
+  }
+
+  return {
+    server: {
+      host: "::",
+      port: 8080,
     },
-    dedupe: ["react", "react-dom", "react-router", "react-router-dom"],
-  },
-}));
+    plugins,
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+        ...(reactRouterDir ? { "react-router": reactRouterDir } : {}),
+      },
+      dedupe: ["react", "react-dom", "react-router", "react-router-dom"],
+    },
+    build: {
+      minify: hasTerser ? "terser" : "esbuild",
+    },
+  };
+});

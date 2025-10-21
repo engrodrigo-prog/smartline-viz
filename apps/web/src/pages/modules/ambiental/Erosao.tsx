@@ -596,6 +596,7 @@ const Erosao = () => {
                 layerOrder={layerOrder}
                 customPoints={points}
                 fitBounds={bounds}
+                height="600px"
               />
             </div>
           </TabsContent>
