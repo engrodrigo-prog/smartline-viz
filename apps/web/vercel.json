@@ -1,8 +1,8 @@
 {
   "version": 2,
   "framework": "vite",
-  "buildCommand": "pnpm build",
-  "outputDirectory": "dist",
+  "buildCommand": "pnpm --filter @smartline/web build",
+  "outputDirectory": "apps/web/dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
