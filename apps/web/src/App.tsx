@@ -23,6 +23,7 @@ import UploadHistorico from "./pages/upload/UploadHistorico";
 import LayerUpload from "./pages/upload/LayerUpload";
 import LayerManager from "./pages/settings/LayerManager";
 import QueimadasModern from "./pages/modules/ambiental/Queimadas";
+import FirmsViewer from "./pages/modules/ambiental/FirmsViewer";
 import Vegetacao from "./pages/modules/Vegetacao";
 import AmbienteModule from "./modules/ambiente";
 import Travessias from "./pages/modules/Travessias";
@@ -80,6 +81,7 @@ const App = () => (
           <Route path="/ambiental/alagadas" element={<ProtectedRoute><AreasAlagadas /></ProtectedRoute>} />
           <Route path="/ambiental/erosao" element={<ProtectedRoute><Erosao /></ProtectedRoute>} />
           <Route path="/ambiental/queimadas" element={<ProtectedRoute><QueimadasModern /></ProtectedRoute>} />
+          <Route path="/ambiental/firms-viewer" element={<ProtectedRoute><FirmsViewer /></ProtectedRoute>} />
           <Route path="/ambiental/meteorologia" element={<ProtectedRoute><WeatherPanel /></ProtectedRoute>} />
           <Route path="/ambiental/vegetacao" element={<ProtectedRoute><Vegetacao /></ProtectedRoute>} />
           <Route path="/ambiental/ocupacao" element={<ProtectedRoute><OcupacaoFaixa /></ProtectedRoute>} />
