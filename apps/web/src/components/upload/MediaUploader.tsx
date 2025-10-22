@@ -1,13 +1,23 @@
 import { useRef, useState, useEffect } from 'react'
-import { initUpload, sendFiles, commitUpload } from '../../services/upload'
-import { ENV } from '../../config/env'
+import type { FeatureCollection } from 'geojson'
+import { uploadMedia, fetchMediaFrames } from '@/services/media'
 
-export function MediaUploader() {
+export function MediaUploader({
+  onJobDone,
+  onFrames,
+  onMediaCreated
+}: {
+  onJobDone?: (jobId: string) => void
+  onFrames?: (fc: FeatureCollection) => void
+  onMediaCreated?: (mediaId: string) => void
+}) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [files, setFiles] = useState<File[]>([])
   const [intervalo, setIntervalo] = useState(1)
   const [jobId, setJobId] = useState<string | undefined>()
+  const [mediaId, setMediaId] = useState<string | undefined>()
   const [status, setStatus] = useState<string>('')
+  const [frames, setFrames] = useState<FeatureCollection | null>(null)
 
   function pick() {
     inputRef.current?.click()
@@ -19,14 +29,26 @@ export function MediaUploader() {
 
   async function start() {
     if (!files.length) return
-    setStatus('Preparando...')
-    const plan = await initUpload(files)
     setStatus('Enviando arquivos...')
-    await sendFiles(plan, files)
-    setStatus('Enfileirando processamento...')
-    const { jobId } = await commitUpload(plan.sessionId, files, { frameIntervalSec: intervalo })
-    setJobId(jobId)
-    setStatus('Processando… acompanhe o status abaixo.')
+    const form = new FormData()
+    files.forEach((f) => form.append('files', f))
+    // Campo obrigatório pelo backend
+    form.append('temaPrincipal', 'Inspeção de Ativos')
+    form.append('frame_interval_s', String(Math.max(1, Number(intervalo) || 1)))
+    try {
+      const res = await uploadMedia(form)
+      setJobId(res.jobId)
+      setMediaId(res.id)
+      onJobDone?.(res.jobId)
+      onMediaCreated?.(res.id)
+      setStatus('Processando… gerando frames no worker.')
+      setFiles([])
+      if (inputRef.current) {
+        inputRef.current.value = ''
+      }
+    } catch (err: any) {
+      setStatus(err?.message || 'Falha no upload de mídia')
+    }
   }
 
   return (
@@ -66,52 +88,45 @@ export function MediaUploader() {
       </button>
       {status && <div className="text-sm text-foreground/80">{status}</div>}
       {jobId && <div className="text-sm">Job: <code>{jobId}</code></div>}
-      {jobId && <JobStatus jobId={jobId} />}
+      {mediaId && (
+        <FramesWatcher
+          mediaId={mediaId}
+          onFrames={(fc) => {
+            setFrames(fc)
+            onFrames?.(fc)
+          }}
+          onReady={() => setStatus('Processamento concluído. Frames disponíveis abaixo.')}
+        />
+      )}
+      {frames && (
+        <div className="text-xs text-muted-foreground">Frames recebidos: {frames.features?.length ?? 0}</div>
+      )}
     </div>
   )
 }
 
-function JobStatus({ jobId }: { jobId: string }) {
-  const [state, setState] = useState<string>('queued')
-  const [features, setFeatures] = useState<number>(0)
-
+function FramesWatcher({ mediaId, onFrames, onReady }: { mediaId: string; onFrames: (fc: FeatureCollection) => void; onReady?: () => void }) {
   useEffect(() => {
-    let mounted = true
-
-    const tick = async () => {
-      const base = ENV.API_BASE_URL.replace(/\/+$/, '')
-      const res = await fetch(`${base}/jobs/${jobId}/status`).then((r) => r.json())
-      if (!mounted) return
-      if (res.state) setState(res.state)
-      if (typeof res.features === 'number') setFeatures(res.features)
-      if (res.state !== 'done') {
-        setTimeout(tick, 1000)
-      }
+    let stop = false
+    let resolved = false
+    const poll = async () => {
+      try {
+        const data = await fetchMediaFrames(mediaId)
+        if (!stop) {
+          onFrames(data)
+          if (!resolved) {
+            onReady?.()
+            resolved = true
+          }
+        }
+        return
+      } catch {/* not ready */}
+      if (!stop) setTimeout(poll, 1500)
     }
-
-    tick()
+    poll()
     return () => {
-      mounted = false
+      stop = true
     }
-  }, [jobId])
-
-  const base = ENV.API_BASE_URL.replace(/\/+$/, '')
-  return (
-    <div className="text-sm text-muted-foreground">
-      Status: <b>{state}</b>
-      {features > 0 && <>
-        {' '}• {features} pontos
-      </>}
-      {state === 'done' && (
-        <a
-          href={`${base}/jobs/${jobId}/result`}
-          className="underline ml-2"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Ver GeoJSON
-        </a>
-      )}
-    </div>
-  )
+  }, [mediaId, onFrames, onReady])
+  return null
 }

@@ -1,4 +1,5 @@
 import { ENV } from "@/config/env";
+import type { FeatureCollection } from "geojson";
 
 export type MediaTema =
   | "Ocorrências"
@@ -77,6 +78,13 @@ export interface MediaSearchResponse {
 
 const baseUrl = ENV.API_BASE_URL?.replace(/\/+$/, "") ?? "";
 
+const encodePathSegments = (path: string) =>
+  path
+    .split(/[\\/]+/)
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
 export const uploadMedia = async (formData: FormData): Promise<MediaUploadResponse> => {
   const response = await fetch(`${baseUrl}/media/upload`, {
     method: "POST",
@@ -97,12 +105,12 @@ export const fetchMediaRecord = async (id: string) => {
   return (await response.json()) as MediaRecord;
 };
 
-export const fetchMediaFrames = async (id: string) => {
+export const fetchMediaFrames = async (id: string): Promise<FeatureCollection> => {
   const response = await fetch(`${baseUrl}/media/${encodeURIComponent(id)}/frames`);
   if (!response.ok) {
     throw new Error("Frames indisponíveis");
   }
-  return response.json();
+  return (await response.json()) as FeatureCollection;
 };
 
 export const searchMedia = async (params: { tema?: string; periodoInicio?: string; periodoFim?: string; lineId?: string; missionId?: string }) => {
@@ -119,3 +127,12 @@ export const searchMedia = async (params: { tema?: string; periodoInicio?: strin
   }
   return (await response.json()) as MediaSearchResponse;
 };
+
+export const getMediaFileUrl = (relativePath: string) =>
+  `${baseUrl}/media/files/${encodePathSegments(relativePath)}`;
+
+export const getMediaFramesArchiveUrl = (mediaId: string) =>
+  `${baseUrl}/media/${encodeURIComponent(mediaId)}/frames/archive`;
+
+export const getMediaFramesGeoJsonUrl = (mediaId: string) =>
+  `${baseUrl}/media/${encodeURIComponent(mediaId)}/frames`;

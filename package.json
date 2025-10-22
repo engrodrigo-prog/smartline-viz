@@ -6,6 +6,8 @@
   "scripts": {
     "dev:web": "pnpm -C apps/web dev",
     "dev:api": "pnpm -C apps/api dev",
+    "dev:worker": "python workers/media/python/main.py",
+    "dev:all": "bash -c 'pnpm -C apps/api dev & pnpm -C apps/web dev & python workers/media/python/main.py'",
     "build:web": "pnpm -C apps/web build",
     "build:api": "pnpm -C apps/api build",
     "deploy:dist": "npx vercel --prod --yes --cwd ./apps/web/dist",

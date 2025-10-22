@@ -1,5 +1,6 @@
 opencv-python-headless==4.10.0.84
-numpy==2.1.1
+# numpy 2.x requires Python >=3.10; pin to last 1.x for Python 3.9
+numpy==1.26.4
 exifread==3.0.0
 shapely==2.0.4
 pyproj==3.6.1

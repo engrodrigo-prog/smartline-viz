@@ -1,7 +1,13 @@
+import { useState } from 'react'
+import type { FeatureCollection } from 'geojson'
 import { MediaUploader } from '../../components/upload/MediaUploader'
 import { MapLibreUnified } from '../../components/MapLibreUnified'
+import { FramesPreview } from '@/components/upload/FramesPreview'
 
 export default function UploadMidiaPage() {
+  const [frames, setFrames] = useState<FeatureCollection | null>(null)
+  const [mediaId, setMediaId] = useState<string | null>(null)
+
   return (
     <div className="grid md:grid-cols-2 gap-4 p-4">
       <div>
@@ -9,13 +15,20 @@ export default function UploadMidiaPage() {
         <p className="text-sm text-muted-foreground mb-4">
           Fotos com EXIF e vídeos com SRT serão georreferenciados automaticamente e exibidos no mapa.
         </p>
-        <MediaUploader />
+        <MediaUploader onFrames={(fc) => setFrames(fc)} onMediaCreated={(id) => setMediaId(id)} />
         <div className="mt-4 text-xs text-muted-foreground">
           Dica: arquivos térmicos (ex.: FLIR, *.tiff) serão enviados para <b>Emendas → Inspeção Termográfica</b>.
         </div>
       </div>
-      <div className="h-[70vh] border border-border rounded overflow-hidden">
-        <MapLibreUnified showInfrastructure initialZoom={5} />
+      <div className="space-y-4">
+        <div className="h-[40vh] md:h-[70vh] border border-border rounded overflow-hidden">
+          <MapLibreUnified
+            showInfrastructure
+            initialZoom={5}
+            customPoints={frames ?? undefined}
+          />
+        </div>
+        <FramesPreview frames={frames ?? undefined} mediaId={mediaId ?? undefined} />
       </div>
     </div>
   )

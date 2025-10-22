@@ -1,8 +1,10 @@
 import { Hono } from "hono";
-import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from "node:fs";
-import { join, extname } from "node:path";
+import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, createReadStream, statSync } from "node:fs";
+import { join, extname, resolve, relative } from "node:path";
 import { nanoid } from "nanoid";
 import type { FeatureCollection } from "geojson";
+import mime from "mime";
+import { ZipFile } from "yazl";
 import { env } from "../env.js";
 
 const THEMES = [
@@ -41,6 +43,12 @@ type MediaRecord = {
   assets: MediaAsset[];
   jobId?: string;
   status: "queued" | "processing" | "done";
+  derived?: {
+    frames?: {
+      geojson: string;
+      baseDir: string;
+    };
+  };
 };
 
 type FileMetaEntry = {
@@ -62,6 +70,32 @@ const ensureDirectories = () => {
   [MEDIA_ROOT, MEDIA_RAW, MEDIA_DERIVED, MEDIA_META, MEDIA_FRAMES, WORKER_INBOX].forEach((dir) =>
     mkdirSync(dir, { recursive: true })
   );
+};
+
+const sanitizeRelativePath = (value: string) => value.replace(/\\+/g, "/").replace(/^\/+/, "");
+
+const resolveMediaPath = (subPath: string) => {
+  const cleaned = sanitizeRelativePath(subPath);
+  const absolute = resolve(MEDIA_ROOT, cleaned);
+  if (!absolute.startsWith(MEDIA_ROOT)) {
+    throw new Error("invalid path");
+  }
+  return absolute;
+};
+
+const enumerateFiles = (dir: string, baseDir = dir): { abs: string; rel: string }[] => {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  const files: { abs: string; rel: string }[] = [];
+  for (const entry of entries) {
+    const entryPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...enumerateFiles(entryPath, baseDir));
+    } else if (entry.isFile()) {
+      const relPath = relative(baseDir, entryPath).replace(/\\+/g, "/");
+      files.push({ abs: entryPath, rel: relPath });
+    }
+  }
+  return files;
 };
 
 const temaFromValue = (value: unknown): Tema | undefined => {
@@ -280,6 +314,68 @@ mediaRoutes.post("/upload", async (c) => {
     assets: assets.length,
     mensagem: "Upload recebido. Processamento de frames e metadados será iniciado em breve."
   });
+});
+
+mediaRoutes.get("/files/*", (c) => {
+  const requestedPath = c.req.param("*");
+  if (!requestedPath) {
+    return c.json({ error: "Caminho requerido." }, 400);
+  }
+  try {
+    const filePath = resolveMediaPath(requestedPath);
+    if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
+      return c.json({ error: "Arquivo não encontrado." }, 404);
+    }
+    const type = mime.getType(filePath) ?? "application/octet-stream";
+    const filename = requestedPath.split("/").pop() ?? "arquivo";
+    return new Response(createReadStream(filePath) as any, {
+      headers: {
+        "Content-Type": type,
+        "Content-Disposition": `inline; filename="${filename.replace(/"/g, "")}"; filename*=UTF-8''${encodeURIComponent(filename)}`
+      }
+    });
+  } catch {
+    return c.json({ error: "Caminho inválido." }, 400);
+  }
+});
+
+mediaRoutes.get("/:id/frames/archive", (c) => {
+  const id = c.req.param("id");
+  const record = loadMeta(id);
+  if (!record) {
+    return c.json({ error: "Mídia não encontrada." }, 404);
+  }
+  const baseDirRel = record.derived?.frames?.baseDir;
+  if (!baseDirRel) {
+    return c.json({ error: "Frames ainda não disponíveis." }, 404);
+  }
+  try {
+    const framesDir = resolveMediaPath(baseDirRel);
+    if (!existsSync(framesDir) || !statSync(framesDir).isDirectory()) {
+      return c.json({ error: "Frames indisponíveis." }, 404);
+    }
+    const files = enumerateFiles(framesDir);
+    if (!files.length) {
+      return c.json({ error: "Nenhum frame encontrado." }, 404);
+    }
+    const zip = new ZipFile();
+    const zipRoot = `${id}-frames`;
+    for (const file of files) {
+      const zipPath = `${zipRoot}/${file.rel}`.replace(/\\+/g, "/");
+      zip.addFile(file.abs, zipPath);
+    }
+    zip.end();
+    const filename = `${id}-frames.zip`;
+    return new Response(zip.outputStream as any, {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`
+      }
+    });
+  } catch (error) {
+    console.warn("[media] falha ao gerar zip de frames", error);
+    return c.json({ error: "Falha ao preparar arquivos." }, 500);
+  }
 });
 
 mediaRoutes.get("/:id/assets", (c) => {

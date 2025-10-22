@@ -47,7 +47,8 @@ export default defineConfig(() => {
   return {
     server: {
       host: "::",
-      port: 8080,
+      // Use Vite default dev port to avoid clashing with API
+      port: 5173,
     },
     plugins,
     resolve: {

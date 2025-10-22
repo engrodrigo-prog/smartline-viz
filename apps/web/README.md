@@ -7,11 +7,11 @@ This package lives inside the monorepo at `smartline-viz/apps/web`.
 
 ```sh
 pnpm install
-pnpm dev            # starts Vite dev server on http://localhost:8080
+pnpm dev            # starts Vite dev server on http://localhost:5173
 ```
 
 Environment variables for the web client live in `.env` in this directory.  
-The server uses port `8080`; adjust via `vite.config.ts` if needed.
+The dev server uses port `5173` (see `vite.config.ts`). Set `VITE_API_BASE_URL` to your API URL (default `http://localhost:8080`).
 
 ## Available Scripts
 

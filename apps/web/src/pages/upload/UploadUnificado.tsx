@@ -32,13 +32,15 @@ import { AdditionalFieldsForm } from "@/components/upload/AdditionalFieldsForm";
 import { UploadQueueManager, type UploadJob } from "@/components/upload/UploadQueueManager";
 import { getFileTypesByCategory, type FileType } from "@/lib/uploadConfig";
 import { supabase } from "@/integrations/supabase/client";
-import { useMediaUpload, useMediaRecord } from "@/hooks/useMedia";
+import { useMediaUpload, useMediaRecord, useMediaFrames } from "@/hooks/useMedia";
 import {
   useUploadPointcloud,
   useIndexPointcloud,
   useProfilePointcloud,
   usePointcloudIndex
 } from "@/hooks/usePointclouds";
+import { MapLibreUnified } from "@/components/MapLibreUnified";
+import { FramesPreview } from "@/components/upload/FramesPreview";
 import type { MediaTema } from "@/services/media";
 import { DEMANDA_TEMAS } from "@/services/demandas";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -79,6 +81,7 @@ const UploadUnificado = () => {
 
   const mediaMutation = useMediaUpload();
   const mediaRecordQuery = useMediaRecord(lastMediaId ?? undefined);
+  const mediaFramesQuery = useMediaFrames(lastMediaId ?? undefined);
 
   const pointUploadMutation = useUploadPointcloud();
   const pointIndexMutation = useIndexPointcloud();
@@ -615,6 +618,44 @@ const UploadUnificado = () => {
                     {mediaRecordQuery.data.framesResumo?.quantidade ?? "Processando"}
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {lastMediaId ? (
+            <Card className="border border-border/70">
+              <CardHeader>
+                <CardTitle>Visualização no mapa</CardTitle>
+                <CardDescription>
+                  Os pontos são carregados automaticamente quando o worker concluir o processamento.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[60vh] border border-border rounded overflow-hidden">
+                  <MapLibreUnified
+                    showInfrastructure
+                    initialZoom={6}
+                    customPoints={mediaFramesQuery.data ?? undefined}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {lastMediaId ? (
+            <Card className="border border-border/70">
+              <CardHeader>
+                <CardTitle>Pré-visualização & downloads</CardTitle>
+                <CardDescription>
+                  Visualize os frames extraídos e faça download individual ou em lote.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FramesPreview
+                  frames={mediaFramesQuery.data ?? undefined}
+                  mediaId={lastMediaId ?? undefined}
+                  loading={mediaFramesQuery.isLoading}
+                />
               </CardContent>
             </Card>
           ) : null}
