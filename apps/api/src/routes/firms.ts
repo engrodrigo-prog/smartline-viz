@@ -8,7 +8,7 @@ import {
   point as turfPoint,
   pointToLineDistance
 } from "@turf/turf";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { env } from "../env.js";
@@ -158,10 +158,6 @@ const loadFirmsCollection = async (
   return { features: deduped, attemptedFormats };
 };
 
-const LINE_ASSETS: Record<string, string> = {
-  ramal_marape: join(process.cwd(), "apps/api/assets/ramal_marape.geojson")
-};
-
 const normaliseId = (value: string) =>
   value
     .normalize("NFD")
@@ -172,9 +168,15 @@ const normaliseId = (value: string) =>
 
 const loadLineAsset = (lineId: string) => {
   const normalised = normaliseId(lineId);
-  const assetPath = LINE_ASSETS[normalised];
+  const fileName = `${normalised}.geojson`;
+  const candidates = [
+    join(process.cwd(), "apps/api/assets", fileName),
+    join(process.cwd(), "apps/web/api/assets", fileName),
+  ];
+
+  const assetPath = candidates.find((p) => existsSync(p));
   if (!assetPath) {
-    throw new Error(`Linha '${lineId}' não cadastrada.`);
+    throw new Error(`Linha '${lineId}' não cadastrada (asset ausente).`);
   }
   const raw = readFileSync(assetPath, "utf-8");
   const data = JSON.parse(raw) as FeatureCollection;
