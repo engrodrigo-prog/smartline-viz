@@ -111,12 +111,12 @@ export const ESRI_BASEMAPS = {
   },
 } satisfies Record<string, BasemapOption>;
 
+// Mapbox desabilitado por padrão para evitar travamentos quando não há token.
 export const BASEMAP_GROUPS = [
-  { id: "mapbox", label: "Mapbox", basemaps: Object.values(MAPBOX_BASEMAPS) },
   {
     id: "esri",
     label: "ESRI / Raster",
-    basemaps: Object.values(ESRI_BASEMAPS).filter((bm) => bm.id !== "hillshade")
+    basemaps: Object.values(ESRI_BASEMAPS).filter((bm) => bm.id !== "hillshade"),
   },
 ] as const;
 
@@ -126,7 +126,8 @@ export type BasemapId = MapboxBasemapId | EsriBasemapId;
 
 const DEFAULT_CENTER: [number, number] = [-46.333, -23.96];
 const DEFAULT_ZOOM = 12;
-export const DEFAULT_BASEMAP: BasemapId = "mapbox-satellite";
+// Default to ESRI imagery when no token is configured to avoid flicker
+export const DEFAULT_BASEMAP: BasemapId = "imagery";
 
 const CUSTOM_LAYER_PREFIXES = ["infrastructure", "queimadas", "smartline", "alarm"];
 const MAPBOX_TERRAIN_SOURCE = "mapbox-dem";
@@ -400,14 +401,6 @@ export const initializeSmartlineMap = (
         map.easeTo({ pitch: 45, bearing: -17, duration: 2000 });
       }
     }
-  });
-
-  map.on("error", (event) => {
-    const message = (event.error && (event.error as Error).message) || "";
-    if (typeof message === "string" && message.includes('unknown property "name"')) {
-      return;
-    }
-    console.error("Map error:", event.error);
   });
 
   map.on("error", (event) => {
