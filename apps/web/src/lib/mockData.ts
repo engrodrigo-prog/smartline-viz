@@ -347,6 +347,9 @@ export const areasAlagadas: AreaAlagada[] = Array.from({ length: 45 }, (_, i) =>
   const linha = linhas[Math.floor(Math.random() * linhas.length)];
   const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
   const numTorres = Math.floor(Math.random() * 8) + 2;
+  // Coordenadas simuladas próximas à RMSP
+  const lat = -23.55 + (Math.random() - 0.5) * 2;
+  const lon = -46.63 + (Math.random() - 0.5) * 2;
   
   return {
     id: `ALG-${String(i + 1).padStart(3, '0')}`,
@@ -354,7 +357,7 @@ export const areasAlagadas: AreaAlagada[] = Array.from({ length: 45 }, (_, i) =>
     regiao: regioes[Math.floor(Math.random() * regioes.length)],
     linha: linha.id,
     ramal,
-    // Coordenadas simuladas próximas à RMSP, mantidas em faixa continental (evita pontos no mar)
+    // Mantém em faixa continental (não crítico para mock)
     coords: [lat, lon],
     areaCritica: parseFloat((Math.random() * 5 + 0.5).toFixed(2)),
     nivelRisco: ['Baixo', 'Médio', 'Alto'][Math.floor(Math.random() * 3)] as any,
