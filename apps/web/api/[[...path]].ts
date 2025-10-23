@@ -3,7 +3,7 @@ import { handle } from 'hono/vercel'
 import app from './_serverless_app'
 
 export const config = {
-  runtime: 'nodejs18.x',
+  runtime: 'nodejs',
 }
 
 // Important: Vercel will call this function under /api/*, so mount the app at /api here.
