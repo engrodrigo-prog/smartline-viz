@@ -11,6 +11,7 @@
     "build:web": "pnpm -C apps/web build",
     "build:api": "pnpm -C apps/api build",
     "deploy:dist": "npx vercel --prod --yes --cwd ./apps/web/dist",
-    "pub": "pnpm build:web && pnpm deploy:dist"
+    "pub": "pnpm build:web && pnpm deploy:dist",
+    "deploy:web:auto": "node scripts/deploy-web.mjs"
   }
 }

@@ -14,6 +14,33 @@ function buildSignaturePlugin() {
         fileName: "build-signature.txt",
         source: stamp,
       });
+
+      // Emit a minimal vercel.json so deploying the built dist works as SPA
+      const vercelConfig = {
+        version: 2,
+        rewrites: [
+          { source: "/(.*)", destination: "/index.html" },
+        ],
+        headers: [
+          {
+            source: "/logo-smartline.png",
+            headers: [
+              { key: "Cache-Control", value: "public,max-age=31536000,immutable" },
+            ],
+          },
+          {
+            source: "/smartline-og.png",
+            headers: [
+              { key: "Cache-Control", value: "public,max-age=604800" },
+            ],
+          },
+        ],
+      };
+      this.emitFile({
+        type: "asset",
+        fileName: "vercel.json",
+        source: JSON.stringify(vercelConfig, null, 2),
+      });
     },
     transformIndexHtml(html: string) {
       const stamp = `${process.env.VITE_BUILD_SIGNATURE || "SmartLine™ Build"}`;
@@ -41,7 +68,7 @@ const hasTerser = (() => {
 })();
 
 // https://vitejs.dev/config/
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
   const plugins = [react(), buildSignaturePlugin()];
 
   return {
@@ -60,6 +87,7 @@ export default defineConfig(() => {
     },
     build: {
       minify: hasTerser ? "terser" : "esbuild",
+      sourcemap: mode === "development",
     },
   };
 });

@@ -6,7 +6,8 @@ export const config = {
   runtime: 'nodejs18.x',
 }
 
-// Mount the serverless subset of the API under /api so the frontend can use VITE_API_BASE_URL=/api
+// Important: Vercel will call this function under /api/*, so mount the app at /api here.
+// This makes /api/health resolve correctly to app.get('/health').
 const root = new Hono().route('/api', app)
 
 export default handle(root)

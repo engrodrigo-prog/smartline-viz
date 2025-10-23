@@ -25,7 +25,17 @@ app.use(
       // Return a concrete origin string to avoid 'true' in header
       const fallback = env.ALLOWED_ORIGINS[0] ?? "http://localhost:5173";
       if (!origin) return fallback;
-      return env.ALLOWED_ORIGINS.includes(origin) ? origin : fallback;
+      const allowed = env.ALLOWED_ORIGINS;
+      const match = allowed.some((pat) => {
+        if (!pat) return false;
+        if (pat === "*") return true; // will return origin below
+        if (pat.startsWith("*.")) {
+          const suffix = pat.slice(1); // ".example.com"
+          return origin.endsWith(suffix);
+        }
+        return pat === origin;
+      });
+      return match ? origin : fallback;
     },
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

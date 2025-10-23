@@ -173,6 +173,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.83.0
         version: 5.90.5(react@18.3.1)
+      '@tmcw/togeojson':
+        specifier: ^5.7.0
+        version: 5.8.1(@types/geojson@7946.0.16)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -182,15 +185,24 @@ importers:
       cmdk:
         specifier: ^1.1.1
         version: 1.1.1(@types/react-dom@18.3.7(@types/react@18.3.26))(@types/react@18.3.26)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      csv-parse:
+        specifier: ^5.5.6
+        version: 5.6.0
       date-fns:
         specifier: ^3.6.0
         version: 3.6.0
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.6.1
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@18.3.1)
       framer-motion:
         specifier: ^12.23.22
         version: 12.23.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      hono:
+        specifier: ^4.10.1
+        version: 4.10.1
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -209,6 +221,9 @@ importers:
       next-themes:
         specifier: ^0.3.0
         version: 0.3.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      node-cache:
+        specifier: ^5.1.2
+        version: 5.1.2
       react:
         specifier: ^18.3.1
         version: 18.3.1
