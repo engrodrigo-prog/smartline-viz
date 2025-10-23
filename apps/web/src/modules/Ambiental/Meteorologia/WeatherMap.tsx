@@ -25,6 +25,7 @@ const WeatherMap = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [layerErrors, setLayerErrors] = useState<string[]>([]);
   const loadTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
@@ -68,7 +69,19 @@ const WeatherMap = ({
     if (!map.current) return;
 
     const applyLayers = () => {
-      const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY || 'demo';
+      const openWeatherTileKey =
+        import.meta.env.VITE_OPENWEATHER_TILE_KEY ||
+        import.meta.env.VITE_OPENWEATHER_API_KEY ||
+        '';
+      const rainviewerTileUrl = import.meta.env.VITE_RAINVIEWER_TILE_URL?.trim();
+
+      const newErrors: string[] = [];
+
+      const addError = (message: string) => {
+        if (!newErrors.includes(message)) {
+          newErrors.push(message);
+        }
+      };
 
       enabledLayers.forEach((layer) => {
         const sourceId = `weather-${layer.id}`;
@@ -85,9 +98,21 @@ const WeatherMap = ({
 
           let tileUrl = '';
           if (layer.id === 'precipitation') {
-            tileUrl = `https://tilecache.rainviewer.com/v2/radar/0/{z}/{x}/{y}/256/1_1.png`;
+            if (!rainviewerTileUrl) {
+              addError(
+                'Camada de precipitação indisponível. Defina VITE_RAINVIEWER_TILE_URL com um servidor autorizado (ex.: proxy próprio).' 
+              );
+              return;
+            }
+            tileUrl = rainviewerTileUrl;
           } else {
-            tileUrl = `https://tile.openweathermap.org/map/${layer.url}/{z}/{x}/{y}.png?appid=${apiKey}`;
+            if (!openWeatherTileKey || openWeatherTileKey === 'demo') {
+              addError(
+                'Camadas de temperatura, vento, nuvens e pressão requerem VITE_OPENWEATHER_TILE_KEY (ou VITE_OPENWEATHER_API_KEY) válido.'
+              );
+              return;
+            }
+            tileUrl = `https://tile.openweathermap.org/map/${layer.url}/{z}/{x}/{y}.png?appid=${openWeatherTileKey}`;
           }
 
           map.current!.addSource(sourceId, {
@@ -118,6 +143,8 @@ const WeatherMap = ({
           }
         }
       });
+
+      setLayerErrors(newErrors);
     };
 
     if (!map.current.isStyleLoaded()) {
@@ -154,6 +181,16 @@ const WeatherMap = ({
         )}
       </AnimatePresence>
       <div ref={mapContainer} className="w-full h-full rounded-lg" />
+      {layerErrors.length > 0 && (
+        <div className="absolute bottom-4 left-4 max-w-sm rounded-md border border-border/70 bg-background/90 backdrop-blur p-3 text-xs text-muted-foreground shadow-lg">
+          <strong className="block text-foreground mb-1">Camadas desativadas</strong>
+          <ul className="space-y-1 list-disc pl-4">
+            {layerErrors.map((error) => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

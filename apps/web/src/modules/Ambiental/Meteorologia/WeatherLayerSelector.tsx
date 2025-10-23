@@ -45,7 +45,7 @@ export const WeatherLayerSelector = ({ layers, onLayerToggle }: WeatherLayerSele
 };
 
 export const DEFAULT_WEATHER_LAYERS: WeatherLayer[] = [
-  { id: 'precipitation', name: 'Precipitação', icon: CloudRain, enabled: true, url: 'precipitation_new' },
+  { id: 'precipitation', name: 'Precipitação', icon: CloudRain, enabled: false, url: 'precipitation_new' },
   { id: 'temperature', name: 'Temperatura', icon: Thermometer, enabled: false, url: 'temp_new' },
   { id: 'wind', name: 'Vento', icon: Wind, enabled: false, url: 'wind_new' },
   { id: 'clouds', name: 'Nuvens', icon: Cloud, enabled: false, url: 'clouds_new' },
