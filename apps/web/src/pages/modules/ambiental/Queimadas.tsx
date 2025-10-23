@@ -14,7 +14,6 @@ import {
 
 import ModuleLayout from "@/components/ModuleLayout";
 import ModuleDemoBanner from "@/components/ModuleDemoBanner";
-import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import { MapLibreQueimadas } from "@/components/MapLibreQueimadas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
