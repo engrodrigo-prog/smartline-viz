@@ -14,11 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
 import { useFilters } from "@/context/FiltersContext";
-import { eventos } from "@/lib/mockData";
 import type { FeatureCollection } from "geojson";
 import { useFeatureStatuses, useSaveFeatureStatus } from "@/hooks/useFeatureStatus";
+import { useDatasetData } from "@/context/DatasetContext";
+import type { Evento } from "@/lib/mockData";
 
-type TravessiaItem = (typeof eventos)[number];
+type TravessiaItem = Evento;
 
 const STATUS_OPTIONS = ["Identificada", "Notificada", "Judicializada", "Regularizada"] as const;
 const STATUS_FILTERS = [...STATUS_OPTIONS, "Sem status"] as const;
@@ -53,8 +54,9 @@ const Travessias = () => {
   const [formNotes, setFormNotes] = useState<string>("");
   const [formCameraUrl, setFormCameraUrl] = useState<string>("");
   const [focusFilter, setFocusFilter] = useState<{ id: string; label: string; predicate: (item: TravessiaItem) => boolean } | null>(null);
+  const eventosDataset = useDatasetData((data) => data.eventos);
 
-  const travessias = useMemo(() => eventos.filter((evento) => evento.tipo === "Travessias"), []);
+  const travessias = useMemo(() => eventosDataset.filter((evento) => evento.tipo === "Travessias"), [eventosDataset]);
   const allIds = useMemo(() => travessias.map((item) => stableId(item)), [travessias]);
 
   const { data: statusList = [] } = useFeatureStatuses("travessias", allIds);

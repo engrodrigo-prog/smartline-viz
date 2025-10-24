@@ -5,18 +5,19 @@ import ModuleLayout from "@/components/ModuleLayout";
 import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import FiltersBar from "@/components/FiltersBar";
 import { useFilters } from "@/context/FiltersContext";
-import { emendas } from "@/lib/mockData";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import DetailDrawer from "@/components/DetailDrawer";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
 import type { FeatureCollection } from "geojson";
+import { useDatasetData } from "@/context/DatasetContext";
+import type { Emenda } from "@/lib/mockData";
 
 type TermografiaFocus = {
   id: string;
   label: string;
-  predicate: (item: (typeof emendas)[number]) => boolean;
+  predicate: (item: Emenda) => boolean;
 };
 
 const statusColors: Record<string, string> = {
@@ -28,10 +29,11 @@ const statusColors: Record<string, string> = {
 export default function InspecaoTermografica() {
   const { filters } = useFilters();
   const [focusFilter, setFocusFilter] = useState<TermografiaFocus | null>(null);
-  const [selected, setSelected] = useState<(typeof emendas)[number] | null>(null);
+  const [selected, setSelected] = useState<Emenda | null>(null);
+  const emendasDataset = useDatasetData((data) => data.emendas);
 
   const filteredData = useMemo(() => {
-    return emendas.filter((item) => {
+    return emendasDataset.filter((item) => {
       if (filters.linha && item.linha !== filters.linha) return false;
       if (filters.ramal && item.ramal !== filters.ramal) return false;
       if (filters.search) {
@@ -42,7 +44,7 @@ export default function InspecaoTermografica() {
       }
       return true;
     });
-  }, [filters]);
+  }, [emendasDataset, filters]);
 
   const focusCards = useMemo(() => {
     const total = filteredData.length;
@@ -61,25 +63,25 @@ export default function InspecaoTermografica() {
         id: "criticos",
         label: "Críticos",
         value: criticos,
-        predicate: (item: (typeof emendas)[number]) => item.statusTermico === "Crítico",
+        predicate: (item: Emenda) => item.statusTermico === "Crítico",
       },
       {
         id: "atencao",
         label: "Atenção",
         value: atencao,
-        predicate: (item: (typeof emendas)[number]) => item.statusTermico === "Atenção",
+        predicate: (item: Emenda) => item.statusTermico === "Atenção",
       },
       {
         id: "acima60",
         label: "≥ 60°C",
         value: acima60,
-        predicate: (item: (typeof emendas)[number]) => item.temperatura >= 60,
+        predicate: (item: Emenda) => item.temperatura >= 60,
       },
       {
         id: "normais",
         label: "Normais",
         value: normal,
-        predicate: (item: (typeof emendas)[number]) => item.statusTermico === "Normal",
+        predicate: (item: Emenda) => item.statusTermico === "Normal",
       },
     ];
   }, [filteredData]);

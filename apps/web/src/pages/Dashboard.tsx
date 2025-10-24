@@ -1,11 +1,12 @@
 import { Activity, AlertTriangle, CheckCircle, Clock, TrendingUp, Map, Network, Upload, MapPin, Database } from "lucide-react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import CardKPI from "@/components/CardKPI";
 import FilterPanel from "@/components/FilterPanel";
 import UnifiedMapView from "@/components/map/UnifiedMapView";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { mockSensors, mockAssets, mockChartData } from "@/lib/mockData";
+import { useDatasetData } from "@/context/DatasetContext";
 import {
   BarChart,
   Bar,
@@ -23,11 +24,26 @@ import {
 } from "recharts";
 
 const Dashboard = () => {
-  const operationalAssets = mockAssets.filter((a) => a.status === "operational").length;
-  const criticalAlerts = mockSensors.filter((s) => s.status === "critical").length;
-  const avgHealthScore = Math.round(
-    mockAssets.reduce((acc, a) => acc + a.healthScore, 0) / mockAssets.length
+  const { sensors, assets, chartData } = useDatasetData((data) => ({
+    sensors: data.mockSensors,
+    assets: data.mockAssets,
+    chartData: data.mockChartData,
+  }));
+
+  const sensorsWithDate = useMemo(
+    () =>
+      sensors.map((sensor) => ({
+        ...sensor,
+        lastUpdate: sensor.lastUpdate ? new Date(sensor.lastUpdate) : undefined,
+      })),
+    [sensors],
   );
+
+  const operationalAssets = assets.filter((a) => a.status === "operational").length;
+  const criticalAlerts = sensors.filter((s) => s.status === "critical").length;
+  const avgHealthScore = assets.length
+    ? Math.round(assets.reduce((acc, a) => acc + a.healthScore, 0) / assets.length)
+    : 0;
 
   const COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--accent))", "hsl(var(--destructive))"];
 
@@ -107,7 +123,7 @@ const Dashboard = () => {
           />
           <CardKPI
             title="Sensores Ativos"
-            value={mockSensors.length}
+            value={sensors.length}
             icon={Database}
           />
         </div>
@@ -121,7 +137,7 @@ const Dashboard = () => {
               Performance por Região
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={mockChartData.performance}>
+              <BarChart data={chartData.performance}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="region" stroke="hsl(var(--foreground))" />
                 <YAxis stroke="hsl(var(--foreground))" />
@@ -148,7 +164,7 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={mockChartData.alerts}
+                  data={chartData.alerts}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -157,7 +173,7 @@ const Dashboard = () => {
                   fill="hsl(var(--primary))"
                   dataKey="count"
                 >
-                  {mockChartData.alerts.map((entry, index) => (
+                  {chartData.alerts.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -180,7 +196,7 @@ const Dashboard = () => {
             Histórico de Status (Últimos 30 dias)
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={mockChartData.timeline}>
+            <LineChart data={chartData.timeline}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="day" stroke="hsl(var(--foreground))" />
               <YAxis stroke="hsl(var(--foreground))" />
@@ -235,7 +251,7 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {mockSensors.map((sensor) => (
+                {sensorsWithDate.map((sensor) => (
                   <tr key={sensor.id} className="border-b border-border/50 last:border-0">
                     <td className="py-3 font-mono text-sm">{sensor.id}</td>
                     <td className="py-3">{sensor.name}</td>
@@ -254,7 +270,7 @@ const Dashboard = () => {
                       </span>
                     </td>
                     <td className="py-3 text-sm text-muted-foreground">
-                      {sensor.lastUpdate.toLocaleString("pt-BR")}
+                      {sensor.lastUpdate ? sensor.lastUpdate.toLocaleString("pt-BR") : "Sem registro"}
                     </td>
                   </tr>
                 ))}

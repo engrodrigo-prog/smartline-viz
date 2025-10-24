@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const ProcessRasterSchema = z.object({
-  file_path: z.string().trim().max(500).regex(/^[a-zA-Z0-9\/_.-]+$/),
+  file_path: z.string().trim().max(500).regex(/^[a-zA-Z0-9/_.-]+$/),
   line_code: z.string().trim().max(50).optional(),
   corridor_id: z.string().uuid().optional(),
   ts_acquired: z.string().datetime(),

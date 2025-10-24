@@ -181,7 +181,7 @@ export interface SensorData {
   vibration?: number;
   luminosity?: number;
   status: "normal" | "warning" | "critical";
-  lastUpdate: Date;
+  lastUpdate: string;
 }
 
 export const mockSensors: SensorData[] = [
@@ -194,7 +194,7 @@ export const mockSensors: SensorData[] = [
     humidity: 65,
     wind: 15.2,
     status: "normal",
-    lastUpdate: new Date(),
+    lastUpdate: new Date().toISOString(),
   },
   {
     id: "S002",
@@ -204,7 +204,7 @@ export const mockSensors: SensorData[] = [
     corrosion: 12.3,
     vibration: 3.2,
     status: "warning",
-    lastUpdate: new Date(),
+    lastUpdate: new Date().toISOString(),
   },
   {
     id: "S003",
@@ -215,7 +215,7 @@ export const mockSensors: SensorData[] = [
     luminosity: 85000,
     vibration: 1.8,
     status: "normal",
-    lastUpdate: new Date(),
+    lastUpdate: new Date().toISOString(),
   },
   {
     id: "S004",
@@ -226,7 +226,7 @@ export const mockSensors: SensorData[] = [
     humidity: 72,
     wind: 22.5,
     status: "warning",
-    lastUpdate: new Date(),
+    lastUpdate: new Date().toISOString(),
   },
   {
     id: "S005",
@@ -236,7 +236,7 @@ export const mockSensors: SensorData[] = [
     corrosion: 45.7,
     vibration: 8.9,
     status: "critical",
-    lastUpdate: new Date(),
+    lastUpdate: new Date().toISOString(),
   },
 ];
 
@@ -247,7 +247,7 @@ export interface AssetData {
   status: "operational" | "maintenance" | "critical";
   location: { lat: number; lng: number };
   healthScore: number;
-  lastInspection: Date;
+  lastInspection: string;
 }
 
 export const mockAssets: AssetData[] = [
@@ -258,7 +258,7 @@ export const mockAssets: AssetData[] = [
     status: "operational",
     location: { lat: -23.5505, lng: -46.6333 },
     healthScore: 92,
-    lastInspection: new Date("2025-09-15"),
+    lastInspection: new Date("2025-09-15").toISOString(),
   },
   {
     id: "A002",
@@ -267,7 +267,7 @@ export const mockAssets: AssetData[] = [
     status: "operational",
     location: { lat: -23.5605, lng: -46.6433 },
     healthScore: 88,
-    lastInspection: new Date("2025-09-20"),
+    lastInspection: new Date("2025-09-20").toISOString(),
   },
   {
     id: "A003",
@@ -276,7 +276,7 @@ export const mockAssets: AssetData[] = [
     status: "maintenance",
     location: { lat: -23.5705, lng: -46.6533 },
     healthScore: 75,
-    lastInspection: new Date("2025-08-30"),
+    lastInspection: new Date("2025-08-30").toISOString(),
   },
   {
     id: "A004",
@@ -285,7 +285,7 @@ export const mockAssets: AssetData[] = [
     status: "operational",
     location: { lat: -23.5405, lng: -46.6233 },
     healthScore: 95,
-    lastInspection: new Date("2025-09-25"),
+    lastInspection: new Date("2025-09-25").toISOString(),
   },
   {
     id: "A005",
@@ -294,7 +294,7 @@ export const mockAssets: AssetData[] = [
     status: "critical",
     location: { lat: -23.5805, lng: -46.6633 },
     healthScore: 58,
-    lastInspection: new Date("2025-07-15"),
+    lastInspection: new Date("2025-07-15").toISOString(),
   },
 ];
 

@@ -5,7 +5,7 @@ import {
   Droplets, Trees, Mountain, Ruler, ShieldCheck, Building2,
   Link2, GitBranch, Shield, Skull, Camera, Gauge, ChartArea,
   Bell, Plane, Clock as ClockIcon, FileCheck, Settings, Users, Lock,
-  Award, HardHat, BrainCircuit, MapPin, Flame, Home, History, Truck, CloudRain, Thermometer, ClipboardList, BarChart3
+  Award, HardHat, BrainCircuit, MapPin, Flame, Home, History, Truck, CloudRain, Thermometer, ClipboardList, BarChart3, Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
@@ -101,6 +101,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Usuários", path: "/config/usuarios", icon: Users },
       { title: "Permissões", path: "/config/permissoes", icon: Lock },
       { title: "Gerenciar Camadas", path: "/config/layers", icon: MapPin },
+      { title: "Dataset Demo", path: "/config/dataset", icon: Database },
     ],
   },
 ];

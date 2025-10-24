@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LegalNotice from "@/components/LegalNotice";
 import { FiltersProvider } from "./context/FiltersContext";
+import { DatasetProvider } from "./context/DatasetContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
@@ -22,6 +23,7 @@ import UploadUnificado from "./pages/upload/UploadUnificado";
 import UploadHistorico from "./pages/upload/UploadHistorico";
 import LayerUpload from "./pages/upload/LayerUpload";
 import LayerManager from "./pages/settings/LayerManager";
+import DatasetManager from "./pages/settings/DatasetManager";
 import QueimadasModern from "./pages/modules/ambiental/Queimadas";
 import FirmsViewer from "./pages/modules/ambiental/FirmsViewer";
 import Vegetacao from "./pages/modules/Vegetacao";
@@ -55,8 +57,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ErrorBoundary>
-          <FiltersProvider>
-            <Routes>
+          <DatasetProvider>
+            <FiltersProvider>
+              <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/resultados" element={<Resultados />} />
           <Route path="/login" element={<Login />} />
@@ -123,11 +126,13 @@ const App = () => (
           <Route path="/config/usuarios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/config/permissoes" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/config/layers" element={<ProtectedRoute><LayerManager /></ProtectedRoute>} />
+          <Route path="/config/dataset" element={<ProtectedRoute><DatasetManager /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFound />} />
-            </Routes>
-            <LegalNotice />
-          </FiltersProvider>
+              </Routes>
+              <LegalNotice />
+            </FiltersProvider>
+          </DatasetProvider>
         </ErrorBoundary>
       </BrowserRouter>
     </TooltipProvider>

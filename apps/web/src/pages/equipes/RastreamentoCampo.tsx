@@ -3,21 +3,25 @@ import { MapPin, Users, Truck, Navigation } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import CardKPI from "@/components/CardKPI";
 import MapViewGeneric from "@/components/MapViewGeneric";
-import { membrosEquipe, veiculos } from "@/lib/mockData";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useDatasetData } from "@/context/DatasetContext";
 
 const RastreamentoCampo = () => {
   const [viewMode, setViewMode] = useState<'membros' | 'veiculos'>('membros');
+  const { membrosEquipe: membrosDataset, veiculos: veiculosDataset } = useDatasetData((data) => ({
+    membrosEquipe: data.membrosEquipe,
+    veiculos: data.veiculos,
+  }));
 
   // Filtrar apenas itens com localização
   const membrosEmCampo = useMemo(() => 
-    membrosEquipe.filter(m => m.localizacaoAtual && m.status === 'Em Campo')
-  , []);
+    membrosDataset.filter((m) => m.localizacaoAtual && m.status === "Em Campo"),
+  [membrosDataset]);
 
   const veiculosRastreados = useMemo(() => 
-    veiculos.filter(v => v.localizacaoAtual)
-  , []);
+    veiculosDataset.filter((v) => v.localizacaoAtual),
+  [veiculosDataset]);
 
   const kpis = useMemo(() => ({
     membrosAtivos: membrosEmCampo.length,

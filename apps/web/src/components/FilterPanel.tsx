@@ -2,10 +2,10 @@ import { Search, Pin, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useFilters } from "@/context/FiltersContext";
-import { linhas } from "@/lib/mockData";
 import { useEffect, useState } from "react";
 import { EMPRESAS, REGIOES_POR_EMPRESA, LINHAS_POR_REGIAO, TIPOS_MATERIAL, NIVEIS_TENSAO } from "@/lib/empresasRegioes";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDatasetData } from "@/context/DatasetContext";
 
 interface FilterPanelProps {
   onApplyFilters?: (filters: any) => void;
@@ -14,6 +14,7 @@ interface FilterPanelProps {
 
 const FilterPanel = ({ onApplyFilters, children }: FilterPanelProps) => {
   const { filters, setFilters } = useFilters();
+  const linhasDataset = useDatasetData((data) => data.linhas);
   const [ramais, setRamais] = useState<string[]>([]);
   const [availableRegioes, setAvailableRegioes] = useState<string[]>([]);
   const [availableLinhas, setAvailableLinhas] = useState<string[]>([]);
@@ -52,12 +53,12 @@ const FilterPanel = ({ onApplyFilters, children }: FilterPanelProps) => {
   // Update ramais when linha changes
   useEffect(() => {
     if (filters.linha) {
-      const linha = linhas.find(l => l.id === filters.linha);
+      const linha = linhasDataset.find((l) => l.id === filters.linha);
       setRamais(linha?.ramais || []);
     } else {
       setRamais([]);
     }
-  }, [filters.linha]);
+  }, [filters.linha, linhasDataset]);
 
   const handleTogglePin = () => {
     const newValue = !isPinned;

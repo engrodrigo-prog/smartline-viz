@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useFilters } from "@/context/FiltersContext";
-import { erosoes } from "@/lib/mockData";
 import { Mountain } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import ModuleDemoBanner from "@/components/ModuleDemoBanner";
@@ -18,6 +17,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import type { FeatureCollection } from "geojson";
+import { useDatasetData } from "@/context/DatasetContext";
+import type { Erosao as ErosaoItem } from "@/lib/mockData";
 
 type SoilSample = {
   id: string;
@@ -34,7 +35,7 @@ type SoilSample = {
 type FocusFilter = {
   id: string;
   label: string;
-  predicate: (item: (typeof erosoes)[number]) => boolean;
+  predicate: (item: ErosaoItem) => boolean;
 };
 
 const Erosao = () => {
@@ -59,6 +60,7 @@ const Erosao = () => {
   const [showSoilLayer, setShowSoilLayer] = useState(true);
   const [erosionLayerTop, setErosionLayerTop] = useState(true);
   const [soilLayerPosition, setSoilLayerPosition] = useState<'top' | 'middle' | 'bottom'>('top');
+  const erosoesDataset = useDatasetData((data) => data.erosoes);
 
   const handleSoilInputChange = (field: keyof typeof soilForm, value: string) => {
     setSoilForm((prev) => ({ ...prev, [field]: value }));
@@ -103,7 +105,7 @@ const Erosao = () => {
   };
   
   const filteredData = useMemo(() => {
-    let data = erosoes;
+    let data = erosoesDataset;
     
     if (filters.regiao) data = data.filter(e => e.regiao === filters.regiao);
     if (filters.linha) data = data.filter(e => e.linha === filters.linha);
@@ -115,7 +117,7 @@ const Erosao = () => {
     if (statusFilter) data = data.filter(e => e.status === statusFilter);
     
     return data;
-  }, [filters, tipoFilter, gravidadeFilter, statusFilter]);
+  }, [erosoesDataset, filters, tipoFilter, gravidadeFilter, statusFilter]);
   
   const kpis = useMemo(() => ({
     total: filteredData.length,
@@ -564,7 +566,7 @@ const Erosao = () => {
             title: "Críticas / Altas",
             value: kpis.criticas,
             color: "text-destructive",
-            predicate: (item: (typeof erosoes)[number]) => item.gravidadeErosao === "Crítica" || item.gravidadeErosao === "Alta",
+            predicate: (item: ErosaoItem) => item.gravidadeErosao === "Crítica" || item.gravidadeErosao === "Alta",
           }, {
             id: "area",
             title: "Área Total (m²)",
@@ -576,13 +578,13 @@ const Erosao = () => {
             title: "Torres em Risco",
             value: kpis.torresRisco,
             color: "text-amber-500",
-            predicate: (item: (typeof erosoes)[number]) => item.torres_proximas.length > 0,
+            predicate: (item: ErosaoItem) => item.torres_proximas.length > 0,
           }, {
             id: "intervencao",
             title: "Em Intervenção",
             value: kpis.emIntervencao,
             color: "text-sky-500",
-            predicate: (item: (typeof erosoes)[number]) => item.status === "Em Intervenção",
+            predicate: (item: ErosaoItem) => item.status === "Em Intervenção",
           }].map((card) => (
             <button
               key={card.id}
@@ -619,7 +621,7 @@ const Erosao = () => {
           
           <TabsContent value="mapa" className="mt-4">
             <div className="relative rounded-lg overflow-hidden border border-border bg-card/30 p-0 map-smooth">
-              {/* @ts-ignore */}
+              {/* @ts-expect-error MapLibreUnified possui tipagem restrita para dados customizados */}
               <MapLibreUnified
                 filterRegiao={filters.regiao}
                 filterEmpresa={filters.empresa}

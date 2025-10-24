@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useFilters } from "@/context/FiltersContext";
-import { emendas } from "@/lib/mockData";
 import { Zap } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import ModuleDemoBanner from "@/components/ModuleDemoBanner";
@@ -12,15 +11,18 @@ import DetailDrawer from "@/components/DetailDrawer";
 import CardKPI from "@/components/CardKPI";
 import StatusBadge from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { useDatasetData } from "@/context/DatasetContext";
+import type { Emenda } from "@/lib/mockData";
 
 const Emendas = () => {
   const { filters } = useFilters();
   const [selectedEmenda, setSelectedEmenda] = useState<any>(null);
   const [statusTermicoFilter, setStatusTermicoFilter] = useState<string>('');
   const [tipoFilter, setTipoFilter] = useState<string>('');
+  const emendasDataset = useDatasetData((data) => data.emendas);
   
   const filteredData = useMemo(() => {
-    let data = emendas;
+    let data = emendasDataset;
     
     if (filters.regiao) {
       data = data.filter(e => {
@@ -43,7 +45,7 @@ const Emendas = () => {
     if (tipoFilter) data = data.filter(e => e.tipo === tipoFilter);
     
     return data;
-  }, [filters, statusTermicoFilter, tipoFilter]);
+  }, [emendasDataset, filters, statusTermicoFilter, tipoFilter]);
   
   const kpis = useMemo(() => ({
     total: filteredData.length,
@@ -150,7 +152,7 @@ const Emendas = () => {
           
           <TabsContent value="mapa" className="mt-4">
             <div className="tech-card p-0 overflow-hidden">
-              {/* @ts-ignore */}
+              {/* @ts-expect-error MapLibreUnified utiliza props extras não modeladas no tipo padrão */}
               <MapLibreUnified
                 filterRegiao={filters.regiao}
                 filterEmpresa={filters.empresa}

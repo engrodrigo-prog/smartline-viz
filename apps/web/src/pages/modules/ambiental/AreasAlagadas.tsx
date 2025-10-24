@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useFilters } from "@/context/FiltersContext";
-import { areasAlagadas, protecoesPássaros } from "@/lib/mockData";
 import { Droplets } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import ModuleDemoBanner from "@/components/ModuleDemoBanner";
@@ -12,15 +11,20 @@ import DetailDrawer from "@/components/DetailDrawer";
 import CardKPI from "@/components/CardKPI";
 import StatusBadge from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { useDatasetData } from "@/context/DatasetContext";
 
 const AreasAlagadas = () => {
   const { filters } = useFilters();
   const [selectedArea, setSelectedArea] = useState<any>(null);
   const [protecaoFilter, setProtecaoFilter] = useState<string>('');
   const [nivelRiscoFilter, setNivelRiscoFilter] = useState<string>('');
+  const { areasAlagadas: areasDataset, protecoesPassaros } = useDatasetData((data) => ({
+    areasAlagadas: data.areasAlagadas,
+    protecoesPassaros: data.protecoesPassaros,
+  }));
   
   const filteredData = useMemo(() => {
-    let data = areasAlagadas;
+    let data = areasDataset;
     
     if (filters.regiao) data = data.filter(a => a.regiao === filters.regiao);
     if (filters.linha) data = data.filter(a => a.linha === filters.linha);
@@ -33,14 +37,14 @@ const AreasAlagadas = () => {
       data = data.filter(area => {
         const torresNaArea = area.torres_afetadas;
         const temProtecao = torresNaArea.some(torreId =>
-          protecoesPássaros.find(p => p.torre === torreId && p.status === 'Instalado')
+          protecoesPassaros.find(p => p.torre === torreId && p.status === 'Instalado')
         );
         return protecaoFilter === 'sim' ? temProtecao : !temProtecao;
       });
     }
     
     return data;
-  }, [filters, nivelRiscoFilter, protecaoFilter]);
+  }, [areasDataset, filters, nivelRiscoFilter, protecaoFilter, protecoesPassaros]);
   
   const kpis = useMemo(() => ({
     total: filteredData.length,
@@ -49,10 +53,10 @@ const AreasAlagadas = () => {
     torresRisco: new Set(filteredData.flatMap(a => a.torres_afetadas)).size,
     comProtecao: filteredData.filter(area => 
       area.torres_afetadas.some(torreId =>
-        protecoesPássaros.find(p => p.torre === torreId && p.status === 'Instalado')
+        protecoesPassaros.find(p => p.torre === torreId && p.status === 'Instalado')
       )
     ).length,
-  }), [filteredData]);
+  }), [filteredData, protecoesPassaros]);
 
   const columns = [
     { key: 'nome', label: 'Nome' },
@@ -170,7 +174,7 @@ const AreasAlagadas = () => {
           
           <TabsContent value="mapa" className="mt-4">
             <div className="tech-card p-0 overflow-hidden">
-              {/* @ts-ignore */}
+              {/* @ts-expect-error MapLibreUnified aceita propriedades específicas de mapa que não estão tipadas aqui */}
               <MapLibreUnified
                 filterRegiao={filters.regiao}
                 filterEmpresa={filters.empresa}

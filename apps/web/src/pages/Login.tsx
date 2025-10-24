@@ -40,7 +40,11 @@ const Login = () => {
           "/auth/demo/login",
           { display_name, email: email || undefined }
         );
-        try { localStorage.setItem("smartline-demo-user", JSON.stringify(user)); } catch {}
+        try {
+          localStorage.setItem("smartline-demo-user", JSON.stringify(user));
+        } catch (storageError) {
+          console.warn("Falha ao salvar sessão demo no localStorage.", storageError);
+        }
         toast({ title: "Sessão demo ativa", description: `Bem-vindo(a), ${user.display_name}!` });
         navigate("/dashboard");
         return;

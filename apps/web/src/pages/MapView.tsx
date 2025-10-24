@@ -108,13 +108,19 @@ const MapView = () => {
 
     map.on("mousemove", (event) => setHoverCoords(event.lngLat));
 
-    map.on("style.load", () => {
+    const runInitialStyleWork = () => {
       if (token && typeof style === "string") {
         applyTerrainAndBuildings(map, token);
       } else {
         resetTerrain(map);
       }
-    });
+    };
+
+    if (map.isStyleLoaded()) {
+      runInitialStyleWork();
+    } else {
+      map.once("style.load", runInitialStyleWork);
+    }
 
     const handleMapError = (event: mapboxgl.ErrorEvent & { error?: any }) => {
       if (!token || !(mapRef.current instanceof mapboxgl.Map)) {
@@ -171,11 +177,16 @@ const MapView = () => {
     return () => {
       map.off("click", handleClick);
     };
-  }, [isMeasuring]);
+  }, [isMeasuring, updateMeasurement]);
 
   const updateMeasurement = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
+
+    if (!map.isStyleLoaded()) {
+      map.once("style.load", updateMeasurement);
+      return;
+    }
 
     const points = measurementPoints.current;
     if (!points.length) {
@@ -266,19 +277,21 @@ const MapView = () => {
     const resolved = selectBasemap(next, token);
     const style = buildStyleForBasemap(resolved, token);
 
-    map.once("styledata", () => {
+    const runAfterStyleLoad = () => {
       if (token && typeof style === "string") {
         applyTerrainAndBuildings(map, token);
       } else {
         resetTerrain(map);
       }
-    });
+      updateMeasurement();
+    };
+
+    map.once("style.load", runAfterStyleLoad);
 
     map.setStyle(style, { diff: false });
     setCurrentBasemap(resolved);
     measurementPoints.current = [];
     setMeasurementKm(null);
-    updateMeasurement();
   }, [token, updateMeasurement]);
 
   const availableBasemaps = useMemo(() => basemapIds(), []);

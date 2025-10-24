@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
       const change_delta = delta + (Math.random() - 0.5) * 0.3;
       
       let change_type = 'vegetation_loss';
-      let class_from = 'dense_vegetation';
+      const class_from = 'dense_vegetation';
       let class_to = 'sparse_vegetation';
 
       if (context === 'vegetation_management') {

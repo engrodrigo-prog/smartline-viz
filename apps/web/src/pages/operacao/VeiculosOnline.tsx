@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { Truck, MapPin, Clock, Activity } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { VehicleMarker } from '@/components/vehicles/VehicleMarker';
 import { VehicleLegend } from '@/components/vehicles/VehicleLegend';
 import CardKPI from '@/components/CardKPI';
+import { useDatasetData } from "@/context/DatasetContext";
 
 const SKILL_COLORS = {
   electrician: 'hsl(217, 91%, 60%)',
@@ -26,29 +27,70 @@ export default function VeiculosOnline() {
     skill: 'all',
     status: 'active'
   });
+  const demoVehicles = useDatasetData((data) => data.veiculos);
 
-  useEffect(() => {
-    fetchVehicles();
+  const mapSkill = (tipo: string): string => {
+    switch (tipo) {
+      case "Caminhão Cesto":
+        return "electrician";
+      case "Caminhonete":
+        return "technician";
+      case "Van":
+        return "support";
+      default:
+        return "leadership";
+    }
+  };
 
-    if (!supabase) return;
-    const channel = supabase
-      .channel('vehicles-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
-        fetchVehicles();
-      })
-      .subscribe();
+  const mapStatus = (status: string): { code: string; label: string } => {
+    switch (status) {
+      case "Em Uso":
+        return { code: "active", label: "Em uso" };
+      case "Disponível":
+        return { code: "active", label: "Disponível" };
+      case "Manutenção":
+        return { code: "maintenance", label: "Manutenção" };
+      case "Indisponível":
+      default:
+        return { code: "inactive", label: status };
+    }
+  };
 
-    return () => {
-      try { supabase.removeChannel(channel); } catch {}
-    };
-  }, [filters]);
-
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     setLoading(true);
 
     if (!supabase) {
-      console.warn("[VeiculosOnline] Supabase ausente - modo DEMO.");
-      setVehicles([]);
+      const filtered = demoVehicles
+        .map((vehicle) => {
+          const status = mapStatus(vehicle.status);
+          return {
+            ...vehicle,
+            status: status.code,
+            statusLabel: status.label,
+            skill_type: mapSkill(vehicle.tipo),
+            region: vehicle.equipePrincipal ?? "N/D",
+            line_code: vehicle.equipePrincipal ?? "Linha demo",
+            latitude: vehicle.localizacaoAtual ? vehicle.localizacaoAtual[0] : undefined,
+            longitude: vehicle.localizacaoAtual ? vehicle.localizacaoAtual[1] : undefined,
+            plate: vehicle.placa,
+            brand: vehicle.tipo,
+            model: vehicle.modelo,
+            speed_kmh: vehicle.kmRodados ? Math.round((vehicle.kmRodados % 80) + 10) : 0,
+            fuel_level: 65,
+            assigned_team: vehicle.equipePrincipal ? { name: vehicle.equipePrincipal } : undefined,
+          };
+        })
+        .filter((vehicle) => {
+          if (filters.status !== "all" && vehicle.status !== filters.status) {
+            return false;
+          }
+          if (filters.skill !== "all" && vehicle.skill_type !== filters.skill) {
+            return false;
+          }
+          return true;
+        });
+
+      setVehicles(filtered);
       setLoading(false);
       return;
     }
@@ -72,7 +114,27 @@ export default function VeiculosOnline() {
     }
     
     setLoading(false);
-  };
+  }, [demoVehicles, filters]);
+
+  useEffect(() => {
+    fetchVehicles();
+
+    if (!supabase) return;
+    const channel = supabase
+      .channel('vehicles-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
+        fetchVehicles();
+      })
+      .subscribe();
+
+    return () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch (unsubscribeError) {
+        console.warn("[VeiculosOnline] Falha ao remover canal do supabase.", unsubscribeError);
+      }
+    };
+  }, [fetchVehicles]);
 
   const kpis = {
     total: vehicles.length,
@@ -240,10 +302,10 @@ export default function VeiculosOnline() {
                         <span className="text-muted-foreground">Combustível:</span>
                         <span className="font-semibold">{vehicle.fuel_level || 0}%</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center gap-2">
                         <span className="text-muted-foreground">Status:</span>
-                        <Badge variant={vehicle.status === 'active' ? 'default' : 'secondary'}>
-                          {vehicle.status}
+                        <Badge variant={vehicle.status === 'active' ? 'default' : vehicle.status === 'maintenance' ? 'secondary' : 'outline'}>
+                          {vehicle.statusLabel ?? vehicle.status}
                         </Badge>
                       </div>
                       {vehicle.assigned_team?.name && (

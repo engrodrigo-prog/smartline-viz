@@ -17,10 +17,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import MapViewGeneric from "@/components/MapViewGeneric";
 import { useFilters } from "@/context/FiltersContext";
-import { ocupacoesFaixa } from "@/lib/mockData";
 import { useFeatureStatuses, useSaveFeatureStatus } from "@/hooks/useFeatureStatus";
+import { useDatasetData } from "@/context/DatasetContext";
+import type { OcupacaoFaixa as OcupacaoFaixaItem } from "@/lib/mockData";
 
-type OcupacaoItem = (typeof ocupacoesFaixa)[number];
+type OcupacaoItem = OcupacaoFaixaItem;
 
 const STATUS_OPTIONS = ["Identificada", "Notificada", "Judicializada", "Regularizada"] as const;
 const STATUS_FILTERS = [...STATUS_OPTIONS, "Sem status"] as const;
@@ -55,8 +56,9 @@ const OcupacaoFaixa = () => {
   const [formStatus, setFormStatus] = useState<string>(STATUS_OPTIONS[0]);
   const [formNotes, setFormNotes] = useState<string>("");
   const [formCameraUrl, setFormCameraUrl] = useState<string>("");
+  const ocupacoesDataset = useDatasetData((data) => data.ocupacoesFaixa);
 
-  const allIds = useMemo(() => ocupacoesFaixa.map((item) => stableId(item)), []);
+  const allIds = useMemo(() => ocupacoesDataset.map((item) => stableId(item)), [ocupacoesDataset]);
   const { data: statusList = [] } = useFeatureStatuses("ocupacoes", allIds);
   const saveStatusMutation = useSaveFeatureStatus("ocupacoes");
 
@@ -67,7 +69,7 @@ const OcupacaoFaixa = () => {
   }, [statusList]);
 
   const filteredData = useMemo(() => {
-    let data = [...ocupacoesFaixa];
+    let data = [...ocupacoesDataset];
 
     if (filters.regiao) data = data.filter((item) => item.regiao === filters.regiao);
     if (filters.linha) data = data.filter((item) => item.linha === filters.linha);
@@ -86,7 +88,7 @@ const OcupacaoFaixa = () => {
     }
 
     return data;
-  }, [filters, tipoFilter, situacaoFilter, statusFilters, statusMap]);
+  }, [filters, tipoFilter, situacaoFilter, statusFilters, statusMap, ocupacoesDataset]);
 
   const tableData = useMemo(
     () =>

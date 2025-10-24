@@ -1,5 +1,5 @@
 import { useFilters } from "@/context/FiltersContext";
-import { eventos, ndviJundiai } from "@/lib/mockData";
+import { useDatasetData } from "@/context/DatasetContext";
 import { TreePine, MapPin } from "lucide-react";
 import FloatingFiltersBar from "@/components/FloatingFiltersBar";
 import ModuleLayout from "@/components/ModuleLayout";
@@ -9,11 +9,12 @@ import type { FeatureCollection } from "geojson";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
+import type { Evento } from "@/lib/mockData";
 
 type FocusFilter = {
   id: string;
   label: string;
-  predicate: (item: (typeof eventos)[number]) => boolean;
+  predicate: (item: Evento) => boolean;
 };
 
 const NDVI_LEGEND = [
@@ -27,11 +28,15 @@ const Vegetacao = () => {
   const { filters } = useFilters();
   const [activeTab, setActiveTab] = useState("lista");
   const [focusFilter, setFocusFilter] = useState<FocusFilter | null>(null);
+  const { eventos: eventosDataset, ndviJundiai: ndviDataset } = useDatasetData((data) => ({
+    eventos: data.eventos,
+    ndviJundiai: data.ndviJundiai,
+  }));
 
   const ndviBounds = useMemo(() => {
     const lngs: number[] = [];
     const lats: number[] = [];
-    ndviJundiai.features.forEach((feature) => {
+    ndviDataset.features.forEach((feature) => {
       if (feature.geometry?.type === "Polygon") {
         feature.geometry.coordinates[0]?.forEach(([lon, lat]) => {
           lngs.push(lon);
@@ -60,10 +65,10 @@ const Vegetacao = () => {
       maxLat,
       bounds: [[minLng, minLat], [maxLng, maxLat]] as [[number, number], [number, number]],
     };
-  }, []);
+  }, [ndviDataset]);
 
   const filteredData = useMemo(() => {
-    let data = eventos.filter(e => e.tipo === 'Vegetação');
+    let data = eventosDataset.filter((e) => e.tipo === "Vegetação");
 
     if (filters.regiao) data = data.filter(e => e.regiao === filters.regiao);
     if (filters.linha) data = data.filter(e => e.linha === filters.linha);
@@ -93,7 +98,7 @@ const Vegetacao = () => {
       }
       return { ...item, coords };
     });
-  }, [filters]);
+  }, [eventosDataset, filters, ndviBounds]);
 
   const now = Date.now();
   const prazoDias = 14;
@@ -329,7 +334,7 @@ const Vegetacao = () => {
               initialCenter={[-46.85, -23.20]}
               initialZoom={filters.linha ? 12 : 10}
               customPoints={points}
-              customPolygons={ndviJundiai}
+              customPolygons={ndviDataset}
               customLines={rsDemoLine as any}
               fitBounds={mapBounds ?? ndviBounds.bounds}
               height="600px"

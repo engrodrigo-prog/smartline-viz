@@ -1,5 +1,4 @@
 import { useFilters } from "@/context/FiltersContext";
-import { eventos } from "@/lib/mockData";
 import { Building2 } from "lucide-react";
 import FloatingFiltersBar from "@/components/FloatingFiltersBar";
 import ModuleLayout from "@/components/ModuleLayout";
@@ -9,6 +8,8 @@ import type { FeatureCollection } from "geojson";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
+import { useDatasetData } from "@/context/DatasetContext";
+import type { Evento } from "@/lib/mockData";
 
 const Estruturas = () => {
   const { filters } = useFilters();
@@ -16,11 +17,12 @@ const Estruturas = () => {
   const [focusFilter, setFocusFilter] = useState<{
     id: string;
     label: string;
-    predicate: (item: (typeof eventos)[number]) => boolean;
+    predicate: (item: Evento) => boolean;
   } | null>(null);
+  const eventosDataset = useDatasetData((data) => data.eventos);
 
   const filteredData = useMemo(() => {
-    let data = eventos.filter(e => e.tipo === 'Estruturas');
+    let data = eventosDataset.filter((e) => e.tipo === "Estruturas");
 
     if (filters.regiao) data = data.filter(e => e.regiao === filters.regiao);
     if (filters.linha) data = data.filter(e => e.linha === filters.linha);
@@ -28,7 +30,7 @@ const Estruturas = () => {
     if (filters.search) data = data.filter(e => e.nome.toLowerCase().includes(filters.search!.toLowerCase()));
 
     return data;
-  }, [filters]);
+  }, [eventosDataset, filters]);
 
   const now = Date.now();
   const prazoDias = 14;
@@ -49,7 +51,7 @@ const Estruturas = () => {
     critBaixa: filteredData.filter(e => e.criticidade === 'Baixa').length,
   };
 
-  const applyFocus = (id: string, label: string, predicate: (item: (typeof eventos)[number]) => boolean) => {
+  const applyFocus = (id: string, label: string, predicate: (item: Evento) => boolean) => {
     setFocusFilter({ id, label, predicate });
     setActiveTab('mapa');
   };
