@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import type { FeatureCollection } from "geojson";
 
 import { getJSON } from "@/services/api";
+import { SHOULD_USE_DEMO_API } from "@/lib/demoApi";
+import { demoFirmsResponse } from "@/data/demo/apiFallbacks";
 
 export type FirmsSensor = "ms:fires_noaa20_24hrs" | "ms:fires_noaa21_24hrs" | "ms:fires_npp_24hrs" | "ms:fires_modis_24hrs";
 
@@ -62,6 +64,9 @@ export const useFirmsData = (params: FirmsParams = {}) =>
     queryKey: ["firms:wfs", params],
     queryFn: async () => {
       const query = toQueryString(params);
+      if (SHOULD_USE_DEMO_API) {
+        return demoFirmsResponse;
+      }
       return getJSON<FirmsResponse>(`/firms/wfs?${query}`);
     },
     staleTime: 5 * 60_000,

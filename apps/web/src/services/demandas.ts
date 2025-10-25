@@ -1,4 +1,6 @@
 import { getJSON, postJSON, deleteJSON, putJSON } from "./api";
+import { SHOULD_USE_DEMO_API } from "@/lib/demoApi";
+import { demoDemandasAnalytics, getDemoDemandasResponse } from "@/data/demo/apiFallbacks";
 
 export const DEMANDA_STATUS = ["Aberta", "Em Execução", "Em Validação", "Concluída"] as const;
 export const DEMANDA_EXECUTORES = ["Própria", "Terceiros"] as const;
@@ -94,6 +96,9 @@ export const fetchDemandas = async (filters: DemandasFilters = {}) => {
   if (filters.tema) params.set("tema", filters.tema);
   const query = params.toString();
   const path = query ? `/demandas?${query}` : "/demandas";
+  if (SHOULD_USE_DEMO_API) {
+    return getDemoDemandasResponse(filters);
+  }
   return getJSON<DemandasResponse>(path);
 };
 
@@ -130,5 +135,9 @@ export interface DemandasAnalytics {
   mapaHeat: DemandasAnalyticsMapa[];
 }
 
-export const fetchDemandasAnalytics = () =>
-  getJSON<DemandasAnalytics>("/demandas/analytics/comparativo");
+export const fetchDemandasAnalytics = () => {
+  if (SHOULD_USE_DEMO_API) {
+    return Promise.resolve(demoDemandasAnalytics);
+  }
+  return getJSON<DemandasAnalytics>("/demandas/analytics/comparativo");
+};

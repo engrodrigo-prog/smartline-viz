@@ -1,4 +1,6 @@
 import { getJSON, postJSON } from "./api";
+import { SHOULD_USE_DEMO_API } from "@/lib/demoApi";
+import { demoMissoesStore } from "@/data/demo/apiFallbacks";
 
 export type MissaoTipoId = "LiDAR_Corredor" | "Circular_Torre" | "Eletromec_Fina" | "Express_Faixa";
 
@@ -43,9 +45,19 @@ export interface MissaoLista {
   items: MissaoRecord[];
 }
 
-export const fetchMissaoTipos = () => postJSON<{ tipos: MissaoTipo[] }>("/missoes/tipos");
+export const fetchMissaoTipos = () => {
+  if (SHOULD_USE_DEMO_API) {
+    return Promise.resolve({ tipos: demoMissoesStore.getTipos() });
+  }
+  return postJSON<{ tipos: MissaoTipo[] }>("/missoes/tipos");
+};
 
-export const fetchMissoes = () => getJSON<MissaoLista>("/missoes");
+export const fetchMissoes = () => {
+  if (SHOULD_USE_DEMO_API) {
+    return Promise.resolve(demoMissoesStore.getMissoes());
+  }
+  return getJSON<MissaoLista>("/missoes");
+};
 
 export const createMissao = (payload: {
   tipo: MissaoTipoId;
@@ -53,12 +65,24 @@ export const createMissao = (payload: {
   linha?: GeoJSON.FeatureCollection | GeoJSON.Feature;
   parametros?: Record<string, unknown>;
   waypoints?: GeoJSON.FeatureCollection;
-}) => postJSON<MissaoRecord>("/missoes/criar", payload);
+}) => {
+  if (SHOULD_USE_DEMO_API) {
+    return Promise.resolve(demoMissoesStore.createMissao(payload));
+  }
+  return postJSON<MissaoRecord>("/missoes/criar", payload);
+};
 
 export const fetchMissao = (id: string) => getJSON<MissaoRecord>(`/missoes/${encodeURIComponent(id)}`);
 
-export const exportMissao = (id: string, formato: string, email?: string) =>
-  postJSON<{ ok: boolean; downloadUrl: string; emailEnviado: boolean }>(`/missoes/${encodeURIComponent(id)}/export`, {
-    formato,
-    email
-  });
+export const exportMissao = (id: string, formato: string, email?: string) => {
+  if (SHOULD_USE_DEMO_API) {
+    return Promise.resolve(demoMissoesStore.exportMissao(id, formato, email));
+  }
+  return postJSON<{ ok: boolean; downloadUrl: string; emailEnviado: boolean }>(
+    `/missoes/${encodeURIComponent(id)}/export`,
+    {
+      formato,
+      email,
+    },
+  );
+};

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { getJSON, postJSON } from "@/services/api";
+import { SHOULD_USE_DEMO_API, nowIso } from "@/lib/demoApi";
 
 interface DemoUser {
   id: string;
@@ -44,6 +45,8 @@ const storeUser = (user: DemoUser | null) => {
   }
 };
 
+const randomId = () => `demo-${Math.random().toString(36).slice(2, 10)}`;
+
 export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -53,6 +56,14 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
   const [email, setEmail] = useState("");
 
   useEffect(() => {
+    if (SHOULD_USE_DEMO_API) {
+      const stored = loadStoredUser();
+      if (stored) {
+        setUser(stored);
+      }
+      return;
+    }
+
     const bootstrap = async () => {
       try {
         const response = await getJSON<{ user: DemoUser | null }>("/auth/demo/me");
@@ -93,15 +104,26 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
 
     try {
       setLoading(true);
-      const response = await postJSON<{ user: DemoUser }>("/auth/demo/login", {
-        display_name: displayName.trim(),
-        email: email.trim() || undefined
-      });
-      setUser(response.user);
-      storeUser(response.user);
+      if (SHOULD_USE_DEMO_API) {
+        const demoUser: DemoUser = {
+          id: randomId(),
+          display_name: displayName.trim(),
+          email: email.trim() || undefined,
+          issued_at: nowIso(),
+        };
+        setUser(demoUser);
+        storeUser(demoUser);
+      } else {
+        const response = await postJSON<{ user: DemoUser }>("/auth/demo/login", {
+          display_name: displayName.trim(),
+          email: email.trim() || undefined
+        });
+        setUser(response.user);
+        storeUser(response.user);
+      }
       toast({
         title: "Sessão iniciada",
-        description: `Bem-vindo(a), ${response.user.display_name}!`
+        description: `Bem-vindo(a), ${displayName.trim()}!`
       });
       setOpen(false);
     } catch (error: any) {
@@ -116,10 +138,12 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
   };
 
   const handleLogout = async () => {
-    try {
-      await postJSON("/auth/demo/logout", {});
-    } catch (error) {
-      console.warn("logout", error);
+    if (!SHOULD_USE_DEMO_API) {
+      try {
+        await postJSON("/auth/demo/logout", {});
+      } catch (error) {
+        console.warn("logout", error);
+      }
     }
     setUser(null);
     storeUser(null);
