@@ -86,8 +86,23 @@ export default defineConfig(({ mode }) => {
       dedupe: ["react", "react-dom", "react-router", "react-router-dom"],
     },
     build: {
+      // Forçar sourcemap também em produção para debugar em Vercel quando necessário
+      sourcemap: true,
+      // Usar terser quando disponível (evita alguns casos de rename agressivo do esbuild)
       minify: hasTerser ? "terser" : "esbuild",
-      sourcemap: mode === "development",
+      rollupOptions: {
+        output: {
+          // Quebra alguns vendors para reduzir bundles e facilitar debugging
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react')) return 'vendor-react';
+              if (id.includes('maplibre-gl') || id.includes('mapbox-gl')) return 'vendor-map';
+              if (id.includes('recharts')) return 'vendor-charts';
+              return 'vendor';
+            }
+          },
+        },
+      },
     },
   };
 });
