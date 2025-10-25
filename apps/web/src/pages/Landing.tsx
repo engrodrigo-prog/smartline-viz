@@ -41,6 +41,7 @@ import { useMediaSearch } from "@/hooks/useMedia";
 import { useDemandasAnalytics } from "@/hooks/useDemandas";
 import { useMissoes } from "@/hooks/useMissoes";
 import { ENV } from "@/config/env";
+import { SHOULD_USE_DEMO_API } from "@/lib/demoApi";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import logoSmartline from "@/assets/logo-smartline.png";
 import bgHero from "@/assets/bg-hero.png";
@@ -60,6 +61,11 @@ const Landing = () => {
       setApiAvailable(false);
       return;
     }
+    // Em modo demo, não tentar /health
+    if (SHOULD_USE_DEMO_API) {
+      setApiAvailable(false);
+      return;
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1500);
     const base = (ENV.API_BASE_URL || "").replace(/\/+$/, "");
@@ -73,10 +79,10 @@ const Landing = () => {
     };
   }, []);
 
-  const firmsQuery = useFirmsData({ count: 1000, enabled: apiAvailable });
+  const firmsQuery = useFirmsData({ count: 1000, enabled: apiAvailable || SHOULD_USE_DEMO_API });
   const mediaQuery = useMediaSearch({}, { enabled: apiAvailable });
-  const analyticsQuery = useDemandasAnalytics({ enabled: apiAvailable });
-  const missoesQuery = useMissoes({ enabled: apiAvailable });
+  const analyticsQuery = useDemandasAnalytics({ enabled: apiAvailable || SHOULD_USE_DEMO_API });
+  const missoesQuery = useMissoes({ enabled: apiAvailable || SHOULD_USE_DEMO_API });
 
   const automationCards = useMemo(() => {
     const cards: {

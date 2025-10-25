@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { postJSON } from "@/services/api";
+import { SHOULD_USE_DEMO_API, nowIso } from "@/lib/demoApi";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -34,17 +35,14 @@ const Login = () => {
 
     try {
       if (!supabase) {
-        // Demo mode without Supabase: fallback to API demo login and localStorage
-        const display_name = (fullName || email || "Convidado").trim();
-        const { user } = await postJSON<{ user: { id: string; display_name: string; email?: string; issued_at: string } }>(
-          "/auth/demo/login",
-          { display_name, email: email || undefined }
-        );
-        try {
-          localStorage.setItem("smartline-demo-user", JSON.stringify(user));
-        } catch (storageError) {
-          console.warn("Falha ao salvar sessão demo no localStorage.", storageError);
-        }
+        // Demo sem Supabase; evitar chamadas a /auth e salvar sessão local
+        const user = {
+          id: `demo-${Math.random().toString(36).slice(2,10)}`,
+          display_name: (fullName || email || "Convidado").trim(),
+          email: email || undefined,
+          issued_at: nowIso(),
+        };
+        try { localStorage.setItem("smartline-demo-user", JSON.stringify(user)); } catch {}
         toast({ title: "Sessão demo ativa", description: `Bem-vindo(a), ${user.display_name}!` });
         navigate("/dashboard");
         return;
