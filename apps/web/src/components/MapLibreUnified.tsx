@@ -238,9 +238,13 @@ export const MapLibreUnified = ({
       const mapInstance = mapRef.current;
       if (!mapInstance) return;
 
+      // Evita piscadas trocando apenas quando o estilo atual é diferente
+      const target = resolveBasemapId(basemapId, mapboxToken);
+      const current = getCurrentBasemap(mapInstance);
+      if (current === target) return;
       try {
-        changeBasemap(mapInstance, basemapId, { mapboxToken });
-        setCurrentBasemap(resolveBasemapId(basemapId, mapboxToken));
+        changeBasemap(mapInstance, target, { mapboxToken });
+        setCurrentBasemap(target);
       } catch (error) {
         console.error("Failed to change basemap", error);
       }
