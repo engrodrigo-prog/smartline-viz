@@ -44,8 +44,12 @@ export interface FirmsRiskFeatureCollection extends GeoJSON.FeatureCollection {
   meta?: FirmsRiskMeta;
 }
 
+import { ENV } from "@/config/env";
+import { SHOULD_USE_DEMO_API } from "@/lib/demoApi";
+import { demoFirmsResponse } from "@/data/demo/apiFallbacks";
+
 export const useFirmsRisk = (params: FirmsRiskParams) => {
-  const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  const base = ENV.API_BASE_URL || "";
   const defaultHeight = Number(import.meta.env.VITE_WIND_HEIGHT ?? 0) || undefined;
   const body = { ...params } as FirmsRiskParams;
   if (body.windHeight == null && defaultHeight != null) {
@@ -55,7 +59,10 @@ export const useFirmsRisk = (params: FirmsRiskParams) => {
   return useQuery({
     queryKey: ["firms-risk", params],
     queryFn: async () => {
-      const resp = await fetch(`${base}/firms/risk`, {
+      if (SHOULD_USE_DEMO_API || !base) {
+        return demoFirmsResponse as unknown as FirmsRiskFeatureCollection;
+      }
+      const resp = await fetch(`${base.replace(/\/+$/, "")}/firms/risk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
