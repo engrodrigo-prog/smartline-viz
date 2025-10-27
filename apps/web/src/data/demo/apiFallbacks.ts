@@ -315,6 +315,12 @@ export const demoFirmsResponse: FirmsResponse = {
         wind_dir_from_deg: 140,
         distance_to_line_m: 380,
         intersects_corridor: true,
+        wind_profile: {
+          10: { speed_ms: 6.4, deg_from: 135 },
+          50: { speed_ms: 7.8, deg_from: 138 },
+          100: { speed_ms: 8.1, deg_from: 140 },
+          200: { speed_ms: 9.2, deg_from: 142 },
+        },
       },
     },
     {
@@ -336,6 +342,12 @@ export const demoFirmsResponse: FirmsResponse = {
         wind_dir_from_deg: 190,
         distance_to_line_m: 1200,
         intersects_corridor: false,
+        wind_profile: {
+          10: { speed_ms: 4.7, deg_from: 188 },
+          50: { speed_ms: 5.0, deg_from: 189 },
+          100: { speed_ms: 5.2, deg_from: 190 },
+          200: { speed_ms: 6.1, deg_from: 192 },
+        },
       },
     },
   ],
@@ -347,5 +359,50 @@ export const demoFirmsResponse: FirmsResponse = {
     cached: true,
     lastFetchedAt: nowIso(),
     formatAttempt: ["geojson"],
+    wind: {
+      location: { lat: -29.9, lon: -53.1 },
+      height_used_for_risk: 100,
+      available_heights: [10, 50, 100, 200],
+      profile_by_horizon: {
+        "0": [
+          { height: 10, speed: 6.4, deg: 135, dt: Math.floor(Date.now()/1000) },
+          { height: 50, speed: 7.8, deg: 138, dt: Math.floor(Date.now()/1000) },
+          { height: 100, speed: 8.1, deg: 140, dt: Math.floor(Date.now()/1000) },
+          { height: 200, speed: 9.2, deg: 142, dt: Math.floor(Date.now()/1000) },
+        ],
+        "3": [
+          { height: 10, speed: 6.1, deg: 136, dt: Math.floor(Date.now()/1000)+3*3600 },
+          { height: 50, speed: 7.2, deg: 139, dt: Math.floor(Date.now()/1000)+3*3600 },
+          { height: 100, speed: 7.9, deg: 141, dt: Math.floor(Date.now()/1000)+3*3600 },
+          { height: 200, speed: 8.7, deg: 143, dt: Math.floor(Date.now()/1000)+3*3600 },
+        ],
+        "6": [
+          { height: 10, speed: 5.5, deg: 138, dt: Math.floor(Date.now()/1000)+6*3600 },
+          { height: 50, speed: 6.7, deg: 142, dt: Math.floor(Date.now()/1000)+6*3600 },
+          { height: 100, speed: 7.5, deg: 146, dt: Math.floor(Date.now()/1000)+6*3600 },
+          { height: 200, speed: 8.1, deg: 150, dt: Math.floor(Date.now()/1000)+6*3600 },
+        ],
+        "24": [
+          { height: 10, speed: 4.8, deg: 150, dt: Math.floor(Date.now()/1000)+24*3600 },
+          { height: 50, speed: 5.6, deg: 155, dt: Math.floor(Date.now()/1000)+24*3600 },
+          { height: 100, speed: 6.2, deg: 160, dt: Math.floor(Date.now()/1000)+24*3600 },
+          { height: 200, speed: 6.9, deg: 165, dt: Math.floor(Date.now()/1000)+24*3600 },
+        ],
+      },
+      timeline: Array.from({ length: 16 }, (_, i) => {
+        const dt = Math.floor(Date.now()/1000) - 3*3600 + i*3600; // 3h atrás até 12h à frente
+        const make = (speed: number, deg: number) => ({ speed, deg });
+        return {
+          dt,
+          isPast: i < 3,
+          heights: {
+            10: make(5 + Math.sin(i/2)*0.8, 140 + i),
+            50: make(6 + Math.sin(i/2)*0.9, 142 + i),
+            100: make(7 + Math.sin(i/2)*1.0, 145 + i),
+            200: make(8 + Math.sin(i/2)*1.1, 150 + i),
+          },
+        };
+      }),
+    },
   },
 };
