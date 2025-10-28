@@ -55,6 +55,7 @@ import controlRoom from "@/assets/control-room.png";
 const Landing = () => {
   const [apiAvailable, setApiAvailable] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const [surveyOpen, setSurveyOpen] = useState(false);
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -238,14 +239,13 @@ const Landing = () => {
                     </div>
                   </div>
                 </div>
-                <a
-                  href="https://form.jotform.com/251775321495058"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => setSurveyOpen(true)}
                   className="btn-secondary text-lg inline-block"
                 >
                   Pesquisa de Acesso Smartline
-                </a>
+                </button>
                 <button
                   type="button"
                   onClick={() => setContactOpen(true)}
@@ -982,6 +982,26 @@ const Landing = () => {
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             As respostas são armazenadas com segurança no Jotform para acompanhamento da equipe Smartline.
+          </p>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={surveyOpen} onOpenChange={setSurveyOpen}>
+        <DialogContent className="sm:max-w-2xl" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Pesquisa de Acesso Smartline</DialogTitle>
+          </DialogHeader>
+          <div className="h-[70vh]">
+            <iframe
+              title="Pesquisa de Acesso Smartline"
+              src="https://form.jotform.com/251775321495058"
+              className="w-full h-full rounded-md border"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Suas respostas ajudam a personalizar o acesso e a experiência no Smartline AssetHealth.
           </p>
         </DialogContent>
       </Dialog>

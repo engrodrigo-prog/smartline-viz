@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 const LandingHeader = () => {
   const [showContact, setShowContact] = useState(false);
   const { toast } = useToast();
+  const [showSurvey, setShowSurvey] = useState(false);
 
   const handleSubmitContact = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -32,14 +33,12 @@ const LandingHeader = () => {
           </div>
 
           <nav className="hidden md:flex justify-end items-center gap-10 text-base font-medium text-white/90">
-            <a
-              href="https://form.jotform.com/251775321495058"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => setShowSurvey(true)}
               className="hover:text-green-400 transition-colors"
             >
               Estude seus ativos conosco
-            </a>
+            </button>
 
             <button
               onClick={() => setShowContact(true)}
@@ -119,6 +118,23 @@ const LandingHeader = () => {
               Enviar Mensagem
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSurvey} onOpenChange={setShowSurvey}>
+        <DialogContent className="bg-card/95 backdrop-blur-xl border-border sm:max-w-2xl" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-2xl text-primary">Pesquisa de Acesso</DialogTitle>
+          </DialogHeader>
+          <div className="h-[70vh]">
+            <iframe
+              title="Pesquisa de Acesso Smartline"
+              src="https://form.jotform.com/251775321495058"
+              className="w-full h-full rounded-md border"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </>
