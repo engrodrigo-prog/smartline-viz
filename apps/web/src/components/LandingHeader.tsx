@@ -62,7 +62,7 @@ const LandingHeader = () => {
       </header>
 
       <Dialog open={showContact} onOpenChange={setShowContact}>
-        <DialogContent className="bg-card/95 backdrop-blur-xl border-border">
+        <DialogContent className="bg-card/95 backdrop-blur-xl border-border w-[95vw] sm:max-w-3xl lg:max-w-4xl">
           <DialogHeader>
             <DialogTitle className="text-2xl text-primary">Entre em Contato</DialogTitle>
           </DialogHeader>
@@ -122,11 +122,11 @@ const LandingHeader = () => {
       </Dialog>
 
       <Dialog open={showSurvey} onOpenChange={setShowSurvey}>
-        <DialogContent className="bg-card/95 backdrop-blur-xl border-border sm:max-w-2xl" aria-describedby={undefined}>
+        <DialogContent className="bg-card/95 backdrop-blur-xl border-border w-[95vw] sm:max-w-3xl lg:max-w-4xl" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="text-2xl text-primary">Pesquisa de Acesso</DialogTitle>
           </DialogHeader>
-          <div className="h-[70vh]">
+          <div className="h-[80vh]">
             <iframe
               title="Pesquisa de Acesso Smartline"
               src="https://form.jotform.com/251775321495058"

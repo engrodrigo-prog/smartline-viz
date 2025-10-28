@@ -967,11 +967,11 @@ const Landing = () => {
       </div>
 
       <Dialog open={contactOpen} onOpenChange={setContactOpen}>
-        <DialogContent className="sm:max-w-2xl" aria-describedby={undefined}>
+        <DialogContent className="w-[95vw] sm:max-w-3xl lg:max-w-4xl" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Contato Smartline</DialogTitle>
           </DialogHeader>
-          <div className="h-[70vh]">
+          <div className="h-[80vh]">
             <iframe
               title="Formulário de Contato Smartline"
               src="https://form.jotform.com/252925666837674"
@@ -987,11 +987,11 @@ const Landing = () => {
       </Dialog>
 
       <Dialog open={surveyOpen} onOpenChange={setSurveyOpen}>
-        <DialogContent className="sm:max-w-2xl" aria-describedby={undefined}>
+        <DialogContent className="w-[95vw] sm:max-w-3xl lg:max-w-4xl" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Pesquisa de Acesso Smartline</DialogTitle>
           </DialogHeader>
-          <div className="h-[70vh]">
+          <div className="h-[80vh]">
             <iframe
               title="Pesquisa de Acesso Smartline"
               src="https://form.jotform.com/251775321495058"
