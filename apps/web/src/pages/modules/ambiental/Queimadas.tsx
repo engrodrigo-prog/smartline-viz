@@ -492,6 +492,8 @@ const Queimadas = () => {
             <MapLibreQueimadas
               geojson={displayCollection}
               fitBounds={fitBounds}
+              corridor={rsDemoLine as any}
+              showWindOverlay
               onFeatureClick={(feature) => {
                 const id = getFeatureId(feature, 0);
                 setSelectedId(id);
