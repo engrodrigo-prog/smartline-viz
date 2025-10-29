@@ -136,7 +136,6 @@ const MAPBOX_TERRAIN_URL =
 const MAPBOX_DOMAIN = "https://api.mapbox.com";
 const MAP_STATE_KEY = "__smartlineBasemapId";
 
-const isMapboxBasemap = (id: string): id is MapboxBasemapId => id in MAPBOX_BASEMAPS;
 const shouldPreserve = (id: string) => CUSTOM_LAYER_PREFIXES.some((prefix) => id.startsWith(prefix));
 
 const buildMapboxStyleUrl = (style: string, token: string) => `${MAPBOX_DOMAIN}/styles/v1/${style}?access_token=${token}`;
@@ -219,73 +218,8 @@ const disableTerrain = (map: maplibregl.Map) => {
   }
 };
 
-const applyTerrainAndBuildings = (map: maplibregl.Map, token: string | undefined) => {
-  if (!token || (map as any).__terrainUnavailable) {
-    return;
-  }
+const applyTerrainAndBuildings = (_map: maplibregl.Map, _token?: string) => {}
 
-  const handleTerrainError = (event: any) => {
-    const message = String(event?.error?.message ?? "");
-    const resourceUrl = (event?.error as any)?.resource?.url ?? "";
-    if (message.includes("mapbox-terrain-dem-v1") || resourceUrl.includes("mapbox-terrain-dem-v1")) {
-      console.warn("[map] Mapbox terrain DEM indisponível. Desativando terreno para este mapa.");
-      (map as any).__terrainUnavailable = true;
-      disableTerrain(map);
-      try {
-        map.off("error", handleTerrainError);
-      } catch {/* ignore */}
-    }
-  };
-
-  map.on("error", handleTerrainError);
-
-  try {
-    if (!map.getSource(MAPBOX_TERRAIN_SOURCE)) {
-      map.addSource(MAPBOX_TERRAIN_SOURCE, {
-        type: "raster-dem",
-        tiles: [`${MAPBOX_TERRAIN_URL}${token}`],
-        tileSize: 512,
-        maxzoom: 14,
-      });
-    }
-
-    map.setTerrain({ source: MAPBOX_TERRAIN_SOURCE, exaggeration: 1.4 });
-
-    if (map.getSource("composite") && !map.getLayer("3d-buildings")) {
-      const labelLayerId =
-        map
-          .getStyle()
-          ?.layers?.find((layer) => layer.type === "symbol" && layer.layout && "text-field" in layer.layout)?.id ?? undefined;
-
-      map.addLayer(
-        {
-          id: "3d-buildings",
-          source: "composite",
-          "source-layer": "building",
-          type: "fill-extrusion",
-          minzoom: 15,
-          paint: {
-            "fill-extrusion-color": "#aaa",
-            "fill-extrusion-height": ["get", "height"],
-            "fill-extrusion-base": ["get", "min_height"],
-            "fill-extrusion-opacity": 0.6,
-          },
-        },
-        labelLayerId,
-      );
-    }
-  } catch (error) {
-    console.warn("[map] Falha ao aplicar terreno Mapbox, desativando.", error);
-    (map as any).__terrainUnavailable = true;
-    disableTerrain(map);
-  } finally {
-    map.once("styledata", () => {
-      try {
-        map.off("error", handleTerrainError);
-      } catch {/* ignore */}
-    });
-  }
-};
 
 const preserveCustomSources = (map: maplibregl.Map) => {
   if (!map.isStyleLoaded()) {
@@ -324,21 +258,16 @@ const setBasemapState = (map: maplibregl.Map, basemapId: BasemapId) => {
 
 export const getCurrentBasemap = (map: maplibregl.Map): BasemapId | undefined => (map as any)[MAP_STATE_KEY];
 
-export const resolveBasemapId = (requested: BasemapId | undefined, token?: string): BasemapId => {
-  if (requested && isMapboxBasemap(requested) && !token) {
-    console.warn(`Mapbox basemap "${requested}" requires VITE_MAPBOX_TOKEN. Falling back to ESRI imagery.`);
-    return "imagery";
-  }
-
-  if (requested && (requested in MAPBOX_BASEMAPS || requested in ESRI_BASEMAPS)) {
+export const resolveBasemapId = (requested: BasemapId | undefined, _token?: string): BasemapId => {
+  if (requested && requested in ESRI_BASEMAPS) {
     return requested;
   }
 
-  if (!token) {
-    return "imagery";
+  if (requested && requested in MAPBOX_BASEMAPS) {
+    console.warn(`Mapbox basemap "${requested}" não está disponível sem token. Utilizando ESRI imagery.`);
   }
 
-  return DEFAULT_BASEMAP;
+  return "imagery";
 };
 
 export const initializeSmartlineMap = (
@@ -358,25 +287,11 @@ export const initializeSmartlineMap = (
     basemap: requestedBasemap,
     pitch = 0,
     bearing = 0,
-    mapboxToken,
   } = options;
 
-  const basemapId = resolveBasemapId(requestedBasemap, mapboxToken);
-  const basemap = isMapboxBasemap(basemapId) ? MAPBOX_BASEMAPS[basemapId] : ESRI_BASEMAPS[basemapId];
-  const style =
-    basemap.provider === "mapbox" && basemap.style && mapboxToken
-      ? buildMapboxStyleUrl(basemap.style, mapboxToken)
-      : createESRIStyle(basemap, basemap.id === "imagery");
-
-  const transformRequest =
-    mapboxToken && basemap.provider === "mapbox"
-      ? (url: string) => {
-          if (url.startsWith(MAPBOX_DOMAIN) || url.startsWith("https://vectormaps-resources.mapbox.com")) {
-            return { url: appendAccessToken(url, mapboxToken) };
-          }
-          return { url };
-        }
-      : undefined;
+  const basemapId = resolveBasemapId(requestedBasemap);
+  const basemap = ESRI_BASEMAPS[basemapId] ?? ESRI_BASEMAPS.imagery;
+  const style = createESRIStyle(basemap, basemap.id === "imagery");
 
   const map = new maplibregl.Map({
     container,
@@ -391,24 +306,19 @@ export const initializeSmartlineMap = (
     antialias: true,
     attributionControl: { compact: false },
     validate: false,
-    transformRequest,
   });
 
   map.once("load", () => {
-    if (basemap.provider === "mapbox" && basemap.enableTerrain) {
-      applyTerrainAndBuildings(map, mapboxToken);
-      if (pitch === 0) {
-        map.easeTo({ pitch: 45, bearing: -17, duration: 2000 });
-      }
-    }
+    // Garantir ajuste inicial e evitar flicker ao carregar tiles
+    map.resize();
   });
 
   map.on("error", (event) => {
-    const message = (event.error && (event.error as Error).message) || "";
+    const message = (event?.error && (event.error as Error).message) || "";
     if (typeof message === "string" && message.includes('unknown property "name"')) {
       return;
     }
-    console.error("Map error:", event.error);
+    console.warn("[map] erro", event?.error ?? event);
   });
 
   setBasemapState(map, basemapId);
@@ -433,10 +343,9 @@ export const initializeESRIMap = (
 export const changeBasemap = (
   map: maplibregl.Map,
   basemapId: BasemapId,
-  options: { mapboxToken?: string } = {},
 ) => {
-  const targetBasemap = resolveBasemapId(basemapId, options.mapboxToken);
-  const basemap = isMapboxBasemap(targetBasemap) ? MAPBOX_BASEMAPS[targetBasemap] : ESRI_BASEMAPS[targetBasemap];
+  const targetBasemap = resolveBasemapId(basemapId);
+  const basemap = ESRI_BASEMAPS[targetBasemap] ?? ESRI_BASEMAPS.imagery;
   const current = getCurrentBasemap(map);
 
   if (current === targetBasemap) {
@@ -454,19 +363,12 @@ export const changeBasemap = (
   const preserved = preserveCustomSources(map);
   disableTerrain(map);
 
-  const newStyle =
-    basemap.provider === "mapbox" && basemap.style && options.mapboxToken
-      ? buildMapboxStyleUrl(basemap.style, options.mapboxToken)
-      : createESRIStyle(basemap, basemap.id === "imagery");
+  const newStyle = createESRIStyle(basemap, basemap.id === "imagery");
 
   map.fire("basemap-changing" as any);
-  map.setStyle(newStyle);
+  map.setStyle(newStyle as any, { diff: false } as any);
 
   map.once("style.load", () => {
-    if (basemap.provider === "mapbox" && basemap.enableTerrain) {
-      applyTerrainAndBuildings(map, options.mapboxToken);
-    }
-
     restoreCustomSources(map, preserved);
     map.jumpTo(camera);
     setBasemapState(map, targetBasemap);

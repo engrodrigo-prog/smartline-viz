@@ -1,17 +1,8 @@
-import mapboxgl from "mapbox-gl";
+import maplibregl from "maplibre-gl";
 import type { FeatureCollection, LngLatBoundsLike } from "geojson";
 
-import {
-  MAPBOX_BASEMAPS,
-  ESRI_BASEMAPS,
-  type BasemapId,
-  type BasemapOption,
-  resolveBasemapId
-} from "@/lib/mapConfig";
-
-const MAPBOX_TERRAIN_SOURCE = "mapbox-dem";
-
-const buildRasterStyle = (basemap: BasemapOption): mapboxgl.Style => ({
+import { ESRI_BASEMAPS, type BasemapId, type BasemapOption, resolveBasemapId } from "@/lib/mapConfig";
+const buildRasterStyle = (basemap: BasemapOption): maplibregl.StyleSpecification => ({
   version: 8,
   sources: {
     [basemap.id]: {
@@ -33,80 +24,25 @@ const buildRasterStyle = (basemap: BasemapOption): mapboxgl.Style => ({
   ]
 });
 
-export const buildStyleForBasemap = (basemapId: BasemapId, token?: string): mapboxgl.Style | string => {
-  const mapboxBasemap = MAPBOX_BASEMAPS[basemapId as keyof typeof MAPBOX_BASEMAPS];
-  if (mapboxBasemap && token) {
-    return `mapbox://styles/${mapboxBasemap.style}`;
-  }
-
-  const rasterBasemap = ESRI_BASEMAPS[basemapId as keyof typeof ESRI_BASEMAPS];
-  return buildRasterStyle(rasterBasemap ?? ESRI_BASEMAPS.imagery);
+// Always return an ESRI raster style (no Mapbox dependency/token required)
+export const buildStyleForBasemap = (basemapId: BasemapId): maplibregl.StyleSpecification => {
+  const rasterBasemap = ESRI_BASEMAPS[basemapId as keyof typeof ESRI_BASEMAPS] ?? ESRI_BASEMAPS.imagery;
+  return buildRasterStyle(rasterBasemap);
 };
 
-export const applyTerrainAndBuildings = (map: mapboxgl.Map, token?: string) => {
-  if (!token) {
-    return;
-  }
+// No-op on MapLibre + ESRI setup (kept for compatibility)
+export const applyTerrainAndBuildings = (_map: maplibregl.Map) => {};
 
-  if (!map.getSource(MAPBOX_TERRAIN_SOURCE)) {
-    map.addSource(MAPBOX_TERRAIN_SOURCE, {
-      type: "raster-dem",
-      url: "mapbox://mapbox.terrain-rgb",
-      tileSize: 512,
-      maxzoom: 14
-    });
-  }
-
-  map.setTerrain({ source: MAPBOX_TERRAIN_SOURCE, exaggeration: 1.4 });
-
-  const layers = map.getStyle()?.layers ?? [];
-  const labelLayerId = layers.find((layer) => layer.type === "symbol" && layer.layout && "text-field" in layer.layout)?.id;
-
-  if (!map.getLayer("3d-buildings") && map.getSource("composite")) {
-    map.addLayer(
-      {
-        id: "3d-buildings",
-        source: "composite",
-        "source-layer": "building",
-        type: "fill-extrusion",
-        minzoom: 15,
-        paint: {
-          "fill-extrusion-color": "#aaa",
-          "fill-extrusion-height": ["get", "height"],
-          "fill-extrusion-base": ["get", "min_height"],
-          "fill-extrusion-opacity": 0.6
-        }
-      },
-      labelLayerId
-    );
-  }
-};
-
-export const resetTerrain = (map: mapboxgl.Map) => {
-  try {
-    // @ts-expect-error - null terrain supported at runtime
-    map.setTerrain(null);
-  } catch (error) {
-    // ignore
-  }
-
-  if (map.getLayer("3d-buildings")) {
-    map.removeLayer("3d-buildings");
-  }
-
-  if (map.getSource(MAPBOX_TERRAIN_SOURCE)) {
-    map.removeSource(MAPBOX_TERRAIN_SOURCE);
-  }
-};
+export const resetTerrain = (_map: maplibregl.Map) => {};
 
 export const addOrUpdateGeoJsonSource = (
-  map: mapboxgl.Map,
+  map: maplibregl.Map,
   sourceId: string,
   data: FeatureCollection,
-  options: Omit<mapboxgl.GeoJSONSourceSpecification, "type" | "data"> = {}
+  options: Omit<maplibregl.GeoJSONSourceSpecification, "type" | "data"> = {}
 ) => {
   if (map.getSource(sourceId)) {
-    const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
+    const source = map.getSource(sourceId) as maplibregl.GeoJSONSource;
     source.setData(data);
     return;
   }
@@ -119,7 +55,7 @@ export const addOrUpdateGeoJsonSource = (
 };
 
 export const addClusterLayers = (
-  map: mapboxgl.Map,
+  map: maplibregl.Map,
   sourceId: string,
   options: { circleColor?: string; circleRadius?: [number, number][] } = {}
 ) => {
@@ -188,7 +124,7 @@ export const addClusterLayers = (
   }
 };
 
-export const fitBoundsToCollection = (map: mapboxgl.Map, collection: FeatureCollection, padding = 40) => {
+export const fitBoundsToCollection = (map: maplibregl.Map, collection: FeatureCollection, padding = 40) => {
   if (!collection.features.length) {
     return;
   }
@@ -201,7 +137,7 @@ export const fitBoundsToCollection = (map: mapboxgl.Map, collection: FeatureColl
       feature.geometry.coordinates[0].forEach(([lng, lat]) => acc.extend([lng, lat]));
     }
     return acc;
-  }, new mapboxgl.LngLatBounds(collection.features[0].geometry?.type === "Point"
+  }, new maplibregl.LngLatBounds(collection.features[0].geometry?.type === "Point"
     ? (collection.features[0].geometry.coordinates as [number, number])
     : [0, 0]));
 
@@ -209,9 +145,8 @@ export const fitBoundsToCollection = (map: mapboxgl.Map, collection: FeatureColl
 };
 
 export const basemapIds = (): BasemapId[] => {
-  const mapboxKeys = Object.keys(MAPBOX_BASEMAPS) as BasemapId[];
   const rasterKeys = (Object.keys(ESRI_BASEMAPS) as BasemapId[]).filter((id) => id !== "hillshade");
-  return Array.from(new Set([...mapboxKeys, ...rasterKeys]));
+  return rasterKeys;
 };
 
 export const selectBasemap = (current: BasemapId | undefined, token?: string): BasemapId =>

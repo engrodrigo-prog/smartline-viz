@@ -80,6 +80,11 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
     const speed = spd / n;
     return { vx, vy, speed } as const;
   }, [geojson]);
+  const windVectorRef = useRef(windVector);
+  useEffect(() => {
+    windVectorRef.current = windVector;
+  }, [windVector]);
+
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -166,6 +171,10 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
         canvas.style.pointerEvents = 'none';
         canvas.width = mapContainer.current.clientWidth;
         canvas.height = mapContainer.current.clientHeight;
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        canvas.style.mixBlendMode = "screen";
+        canvas.style.opacity = "0.65";
         windCanvasRef.current = canvas;
         mapContainer.current.appendChild(canvas);
 
@@ -179,27 +188,33 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
         setupParticles();
 
         const ctx = canvas.getContext('2d')!;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
         const step = () => {
-          const { vx, vy, speed } = windVector;
-          // escala de pixels por frame
-          const scale = 0.5 + Math.min(2, speed / 6);
-          ctx.fillStyle = 'rgba(15,23,42,0.08)';
+          const { vx, vy, speed } = windVectorRef.current;
+          const scale = 0.35 + Math.min(1.5, Math.abs(speed) / 5);
+          ctx.globalCompositeOperation = "source-over";
+          ctx.fillStyle = "rgba(15,23,42,0.02)";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.strokeStyle = 'rgba(34,197,94,0.8)';
+          ctx.globalCompositeOperation = "lighter";
+          ctx.strokeStyle = "rgba(56,189,248,0.55)";
           ctx.lineWidth = 1;
           ctx.beginPath();
-          for (const p of particlesRef.current) {
-            const ox = p.x, oy = p.y;
-            p.x += vx * scale;
-            p.y += vy * scale;
-            if (p.x < 0 || p.x >= canvas.width || p.y < 0 || p.y >= canvas.height) {
-              p.x = Math.random() * canvas.width;
-              p.y = Math.random() * canvas.height;
+          for (const particle of particlesRef.current) {
+            const ox = particle.x;
+            const oy = particle.y;
+            particle.x += vx * scale;
+            particle.y += vy * scale;
+            if (particle.x < 0 || particle.x >= canvas.width || particle.y < 0 || particle.y >= canvas.height) {
+              particle.x = Math.random() * canvas.width;
+              particle.y = Math.random() * canvas.height;
             }
             ctx.moveTo(ox, oy);
-            ctx.lineTo(p.x, p.y);
+            ctx.lineTo(particle.x, particle.y);
           }
           ctx.stroke();
+          ctx.globalCompositeOperation = "source-over";
           rafRef.current = requestAnimationFrame(step);
         };
         rafRef.current = requestAnimationFrame(step);
@@ -208,6 +223,7 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
           if (!mapContainer.current || !windCanvasRef.current) return;
           windCanvasRef.current.width = mapContainer.current.clientWidth;
           windCanvasRef.current.height = mapContainer.current.clientHeight;
+          setupParticles();
         };
         window.addEventListener('resize', handleResize);
         map.current.on('move', handleResize);

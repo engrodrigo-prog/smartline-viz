@@ -7,6 +7,7 @@ import {
   erosoes,
   escalas,
   eventos,
+  eventosEnergia,
   extensoesLinhas,
   kpiData,
   linhas,
@@ -22,6 +23,7 @@ import {
   regioes,
   uploads,
   veiculos,
+  unifilarDiagramas,
 } from "@/lib/mockData";
 
 /**
@@ -53,6 +55,8 @@ export const defaultDataset = {
   escalas,
   veiculos,
   checklists,
+  eventosEnergia,
+  unifilarDiagramas,
 } as const;
 
 export type Dataset = typeof defaultDataset;

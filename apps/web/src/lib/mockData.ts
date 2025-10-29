@@ -1062,3 +1062,377 @@ export const checklists: ChecklistOperacional[] = [
     responsavel: 'MBR-002',
   },
 ];
+
+export type EventoEnergiaTipo = 'Pisca' | 'Interrupção';
+
+export interface EventoEnergia {
+  id: string;
+  tipo: EventoEnergiaTipo;
+  severidade: 'Baixa' | 'Média' | 'Alta';
+  status: 'Resolvido' | 'Em andamento';
+  inicio: string;
+  fim?: string;
+  duracaoMin?: number;
+  regiao: string;
+  linha: string;
+  subestacao?: string;
+  causaProvavel: string;
+  coords: [number, number];
+}
+
+export const eventosEnergia: EventoEnergia[] = [
+  {
+    id: 'EV-ENER-001',
+    tipo: 'Pisca',
+    severidade: 'Baixa',
+    status: 'Resolvido',
+    inicio: '2025-01-18T08:12:00-03:00',
+    fim: '2025-01-18T08:20:00-03:00',
+    duracaoMin: 8,
+    regiao: 'A',
+    linha: 'LT-001',
+    subestacao: 'SE Jaguaré',
+    causaProvavel: 'Oscilação de carga devido a chaveamento industrial',
+    coords: [-46.733, -23.503],
+  },
+  {
+    id: 'EV-ENER-002',
+    tipo: 'Interrupção',
+    severidade: 'Alta',
+    status: 'Em andamento',
+    inicio: '2025-01-18T07:45:00-03:00',
+    regiao: 'B',
+    linha: 'LT-002',
+    subestacao: 'SE Ipiranga',
+    causaProvavel: 'Curto-circuito fase-terra detectado por proteção diferencial',
+    coords: [-46.612, -23.615],
+  },
+  {
+    id: 'EV-ENER-003',
+    tipo: 'Pisca',
+    severidade: 'Média',
+    status: 'Resolvido',
+    inicio: '2025-01-17T19:22:00-03:00',
+    fim: '2025-01-17T19:35:00-03:00',
+    duracaoMin: 13,
+    regiao: 'C',
+    linha: 'LT-003',
+    subestacao: 'SE Campos Elíseos',
+    causaProvavel: 'Descarga atmosférica com religamento automático',
+    coords: [-46.676, -23.545],
+  },
+  {
+    id: 'EV-ENER-004',
+    tipo: 'Interrupção',
+    severidade: 'Alta',
+    status: 'Resolvido',
+    inicio: '2025-01-16T22:10:00-03:00',
+    fim: '2025-01-16T23:02:00-03:00',
+    duracaoMin: 52,
+    regiao: 'A',
+    linha: 'LT-001',
+    subestacao: 'SE Bandeirantes',
+    causaProvavel: 'Queda de árvore em trecho compartilhado',
+    coords: [-46.804, -23.561],
+  },
+  {
+    id: 'EV-ENER-005',
+    tipo: 'Pisca',
+    severidade: 'Baixa',
+    status: 'Resolvido',
+    inicio: '2025-01-16T06:55:00-03:00',
+    fim: '2025-01-16T07:05:00-03:00',
+    duracaoMin: 10,
+    regiao: 'B',
+    linha: 'LT-002',
+    subestacao: 'SE São Bernardo',
+    causaProvavel: 'Teste de religadores programado',
+    coords: [-46.553, -23.75],
+  },
+  {
+    id: 'EV-ENER-006',
+    tipo: 'Interrupção',
+    severidade: 'Média',
+    status: 'Resolvido',
+    inicio: '2025-01-15T14:40:00-03:00',
+    fim: '2025-01-15T15:05:00-03:00',
+    duracaoMin: 25,
+    regiao: 'C',
+    linha: 'LT-003',
+    subestacao: 'SE Praia Grande',
+    causaProvavel: 'Sobrecorrente devido a vandalismo em cabos de guarda',
+    coords: [-46.401, -23.998],
+  },
+  {
+    id: 'EV-ENER-007',
+    tipo: 'Pisca',
+    severidade: 'Média',
+    status: 'Resolvido',
+    inicio: '2025-01-14T11:32:00-03:00',
+    fim: '2025-01-14T11:40:00-03:00',
+    duracaoMin: 8,
+    regiao: 'A',
+    linha: 'LT-001',
+    subestacao: 'SE Jaguaré',
+    causaProvavel: 'Oscilação de tensão por transferência de carga',
+    coords: [-46.729, -23.536],
+  },
+  {
+    id: 'EV-ENER-008',
+    tipo: 'Interrupção',
+    severidade: 'Alta',
+    status: 'Em andamento',
+    inicio: '2025-01-18T09:05:00-03:00',
+    regiao: 'B',
+    linha: 'LT-002',
+    subestacao: 'SE Santo André',
+    causaProvavel: 'Proteção diferencial atuada - investigação em curso',
+    coords: [-46.52, -23.66],
+  },
+  {
+    id: 'EV-ENER-009',
+    tipo: 'Pisca',
+    severidade: 'Baixa',
+    status: 'Resolvido',
+    inicio: '2025-01-13T17:15:00-03:00',
+    fim: '2025-01-13T17:22:00-03:00',
+    duracaoMin: 7,
+    regiao: 'C',
+    linha: 'LT-003',
+    subestacao: 'SE Cubatão',
+    causaProvavel: 'Interferência marítima e religamento automático',
+    coords: [-46.413, -23.89],
+  },
+  {
+    id: 'EV-ENER-010',
+    tipo: 'Interrupção',
+    severidade: 'Média',
+    status: 'Resolvido',
+    inicio: '2025-01-12T21:40:00-03:00',
+    fim: '2025-01-12T22:05:00-03:00',
+    duracaoMin: 25,
+    regiao: 'A',
+    linha: 'LT-001',
+    subestacao: 'SE Lapa',
+    causaProvavel: 'Falha em isolador durante tempestade',
+    coords: [-46.706, -23.528],
+  },
+  {
+    id: 'EV-ENER-011',
+    tipo: 'Pisca',
+    severidade: 'Média',
+    status: 'Resolvido',
+    inicio: '2025-01-11T10:10:00-03:00',
+    fim: '2025-01-11T10:18:00-03:00',
+    duracaoMin: 8,
+    regiao: 'B',
+    linha: 'LT-002',
+    subestacao: 'SE Mauá',
+    causaProvavel: 'Teste de religadores em campo',
+    coords: [-46.456, -23.67],
+  },
+  {
+    id: 'EV-ENER-012',
+    tipo: 'Interrupção',
+    severidade: 'Alta',
+    status: 'Em andamento',
+    inicio: '2025-01-18T08:48:00-03:00',
+    regiao: 'C',
+    linha: 'LT-003',
+    subestacao: 'SE Mongaguá',
+    causaProvavel: 'Queda de árvore em faixa de servidão após chuvas',
+    coords: [-46.62, -24.0],
+  },
+];
+
+export type DiagramaRegime = 'Normal' | 'Contingência' | 'Manutenção Programada';
+
+export type UnifilarBarraStatus = 'Energizada' | 'Sob Vigilância' | 'Desligada';
+export type UnifilarLinhaStatus = 'Normal' | 'Sobrecarga' | 'Desligada';
+export type UnifilarAlimentadorStatus = 'Normal' | 'Restrição' | 'Desligado';
+
+export interface UnifilarBarra {
+  id: string;
+  nome: string;
+  tensao: string;
+  status: UnifilarBarraStatus;
+  x: number;
+  y: number;
+}
+
+export interface UnifilarLinha {
+  id: string;
+  nome: string;
+  origem: string;
+  destino: string;
+  status: UnifilarLinhaStatus;
+  cargaMW: number;
+  correnteA: number;
+}
+
+export interface UnifilarAlimentador {
+  id: string;
+  nome: string;
+  status: UnifilarAlimentadorStatus;
+  cargaMW: number;
+  conectadoABarra: string;
+}
+
+export interface UnifilarAlarme {
+  id: string;
+  severidade: 'Alta' | 'Média' | 'Baixa';
+  mensagem: string;
+  timestamp: string;
+}
+
+export interface UnifilarSugestao {
+  id: string;
+  titulo: string;
+  descricao: string;
+  impacto: string;
+  tempoEstimadoMin?: number;
+}
+
+export interface UnifilarIndicadores {
+  cargaTotalMW: number;
+  correnteMaximaA: number;
+  disponibilidade: number;
+  perdasPercentual: number;
+}
+
+export interface UnifilarDiagram {
+  id: string;
+  titulo: string;
+  subestacao: string;
+  linhaPrincipal: string;
+  tensao: string;
+  regimeOperacao: DiagramaRegime;
+  descricao: string;
+  barras: UnifilarBarra[];
+  linhas: UnifilarLinha[];
+  alimentadores: UnifilarAlimentador[];
+  alarmes: UnifilarAlarme[];
+  sugestoes: UnifilarSugestao[];
+  indicadores: UnifilarIndicadores;
+}
+
+export const unifilarDiagramas: UnifilarDiagram[] = [
+  {
+    id: 'UF-TRS-230',
+    titulo: 'SE Transmissão Norte - Contingência 230kV',
+    subestacao: 'SE Transmissão Norte',
+    linhaPrincipal: 'LT-TRS-230',
+    tensao: '230 kV',
+    regimeOperacao: 'Contingência',
+    descricao: 'Redistribuição de carga após desligamento de religador na LT-TRS-17.',
+    barras: [
+      { id: 'B1', nome: 'BARRA A1', tensao: '230 kV', status: 'Energizada', x: 12, y: 30 },
+      { id: 'B2', nome: 'BARRA B2', tensao: '230 kV', status: 'Sob Vigilância', x: 48, y: 30 },
+      { id: 'B3', nome: 'BARRA C3', tensao: '230 kV', status: 'Energizada', x: 82, y: 30 },
+      { id: 'B4', nome: 'BARRA Distribuição', tensao: '69 kV', status: 'Energizada', x: 48, y: 65 },
+    ],
+    linhas: [
+      { id: 'L1', nome: 'LT-TRS-17', origem: 'B1', destino: 'B2', status: 'Sobrecarga', cargaMW: 135, correnteA: 420 },
+      { id: 'L2', nome: 'LT-TRS-09', origem: 'B2', destino: 'B3', status: 'Normal', cargaMW: 118, correnteA: 365 },
+      { id: 'L3', nome: 'LT-TRS-Distrib', origem: 'B2', destino: 'B4', status: 'Normal', cargaMW: 96, correnteA: 310 },
+      { id: 'L4', nome: 'LT-Rede de Reserva', origem: 'B1', destino: 'B4', status: 'Desligada', cargaMW: 0, correnteA: 0 },
+    ],
+    alimentadores: [
+      { id: 'F1', nome: 'Alimentador Centro', status: 'Restrição', cargaMW: 38, conectadoABarra: 'B4' },
+      { id: 'F2', nome: 'Alimentador Oeste', status: 'Normal', cargaMW: 27, conectadoABarra: 'B2' },
+      { id: 'F3', nome: 'Alimentador Leste', status: 'Normal', cargaMW: 31, conectadoABarra: 'B3' },
+    ],
+    alarmes: [
+      { id: 'ALM-TRS-01', severidade: 'Alta', mensagem: 'Sobrecarga 112% na LT-TRS-17', timestamp: '2025-01-18T09:12:00-03:00' },
+      { id: 'ALM-TRS-02', severidade: 'Média', mensagem: 'Transferência automática concluída para Barra C3', timestamp: '2025-01-18T09:05:00-03:00' },
+    ],
+    sugestoes: [
+      { id: 'SG-TRS-01', titulo: 'Redistribuir carga para Barra C3', descricao: 'Recomenda-se manobra da chave CH-23 para aliviar a LT-TRS-17.', impacto: 'Reduz a sobrecarga para 93%', tempoEstimadoMin: 8 },
+      { id: 'SG-TRS-02', titulo: 'Ativar plano de contingência', descricao: 'Equipes de campo devem confirmar condições da faixa de servidão no trecho Sul.', impacto: 'Confirma integridade antes de reenergizar', tempoEstimadoMin: 25 },
+    ],
+    indicadores: {
+      cargaTotalMW: 349,
+      correnteMaximaA: 420,
+      disponibilidade: 0.92,
+      perdasPercentual: 2.6,
+    },
+  },
+  {
+    id: 'UF-MTR-138',
+    titulo: 'SE Metropolitana - Operação Normal 138kV',
+    subestacao: 'SE Metropolitana',
+    linhaPrincipal: 'LT-MTR-138',
+    tensao: '138 kV',
+    regimeOperacao: 'Normal',
+    descricao: 'Operação com fluxo balanceado entre alimentadores urbanos.',
+    barras: [
+      { id: 'B10', nome: 'BARRA Principal', tensao: '138 kV', status: 'Energizada', x: 20, y: 28 },
+      { id: 'B11', nome: 'BARRA Transferência', tensao: '138 kV', status: 'Energizada', x: 50, y: 28 },
+      { id: 'B12', nome: 'BARRA Industrial', tensao: '69 kV', status: 'Energizada', x: 80, y: 28 },
+      { id: 'B13', nome: 'BARRA Reserva', tensao: '13.8 kV', status: 'Energizada', x: 50, y: 65 },
+    ],
+    linhas: [
+      { id: 'L10', nome: 'LT-MTR-01', origem: 'B10', destino: 'B11', status: 'Normal', cargaMW: 102, correnteA: 290 },
+      { id: 'L11', nome: 'LT-MTR-06', origem: 'B11', destino: 'B12', status: 'Normal', cargaMW: 88, correnteA: 260 },
+      { id: 'L12', nome: 'LT-MTR-Backup', origem: 'B10', destino: 'B12', status: 'Normal', cargaMW: 54, correnteA: 180 },
+      { id: 'L13', nome: 'LT-Reserva', origem: 'B11', destino: 'B13', status: 'Desligada', cargaMW: 0, correnteA: 0 },
+    ],
+    alimentadores: [
+      { id: 'F10', nome: 'Hospital Central', status: 'Normal', cargaMW: 22, conectadoABarra: 'B13' },
+      { id: 'F11', nome: 'Distrito Industrial', status: 'Normal', cargaMW: 41, conectadoABarra: 'B12' },
+      { id: 'F12', nome: 'Zona Norte', status: 'Normal', cargaMW: 33, conectadoABarra: 'B11' },
+    ],
+    alarmes: [
+      { id: 'ALM-MTR-01', severidade: 'Baixa', mensagem: 'Manutenção preventiva agendada para chave CH-11', timestamp: '2025-01-19T08:00:00-03:00' },
+    ],
+    sugestoes: [
+      { id: 'SG-MTR-01', titulo: 'Testar religamento automático', descricao: 'Execução em janela noturna para validar L13.', impacto: 'Assegura redundância na reserva', tempoEstimadoMin: 15 },
+    ],
+    indicadores: {
+      cargaTotalMW: 247,
+      correnteMaximaA: 290,
+      disponibilidade: 0.99,
+      perdasPercentual: 1.4,
+    },
+  },
+  {
+    id: 'UF-LIT-69',
+    titulo: 'SE Litoral Sul - Manutenção 69kV',
+    subestacao: 'SE Litoral Sul',
+    linhaPrincipal: 'LT-LIT-69',
+    tensao: '69 kV',
+    regimeOperacao: 'Manutenção Programada',
+    descricao: 'Configuração reduzida para inspeção das estruturas de ancoragem.',
+    barras: [
+      { id: 'B20', nome: 'BARRA Principal', tensao: '69 kV', status: 'Sob Vigilância', x: 18, y: 32 },
+      { id: 'B21', nome: 'BARRA Secundária', tensao: '69 kV', status: 'Energizada', x: 50, y: 32 },
+      { id: 'B22', nome: 'BARRA Portuária', tensao: '34.5 kV', status: 'Energizada', x: 82, y: 32 },
+      { id: 'B23', nome: 'BARRA Rural', tensao: '13.8 kV', status: 'Desligada', x: 50, y: 68 },
+    ],
+    linhas: [
+      { id: 'L20', nome: 'LT-LIT-03', origem: 'B20', destino: 'B21', status: 'Normal', cargaMW: 64, correnteA: 210 },
+      { id: 'L21', nome: 'LT-LIT-09', origem: 'B21', destino: 'B22', status: 'Normal', cargaMW: 52, correnteA: 180 },
+      { id: 'L22', nome: 'LT-LIT-Rural', origem: 'B21', destino: 'B23', status: 'Desligada', cargaMW: 0, correnteA: 0 },
+      { id: 'L23', nome: 'LT-LIT-Reserva', origem: 'B20', destino: 'B22', status: 'Sobrecarga', cargaMW: 71, correnteA: 235 },
+    ],
+    alimentadores: [
+      { id: 'F20', nome: 'Porto de Santos', status: 'Restrição', cargaMW: 36, conectadoABarra: 'B22' },
+      { id: 'F21', nome: 'Polo Pesqueiro', status: 'Normal', cargaMW: 18, conectadoABarra: 'B22' },
+      { id: 'F22', nome: 'Comunidades Rurais', status: 'Desligado', cargaMW: 0, conectadoABarra: 'B23' },
+    ],
+    alarmes: [
+      { id: 'ALM-LIT-01', severidade: 'Média', mensagem: 'Contato à terra detectado na LT-LIT-Rural (recloser aberto)', timestamp: '2025-01-18T05:45:00-03:00' },
+      { id: 'ALM-LIT-02', severidade: 'Baixa', mensagem: 'Velocidade do vento acima de 45 km/h no trecho costeiro', timestamp: '2025-01-18T06:05:00-03:00' },
+    ],
+    sugestoes: [
+      { id: 'SG-LIT-01', titulo: 'Manter circuito rural isolado', descricao: 'Aguardar inspeção térmica antes de reenergizar o alimentador B23.', impacto: 'Evita atuação repetitiva de proteção', tempoEstimadoMin: 40 },
+      { id: 'SG-LIT-02', titulo: 'Ajustar controle de tensão', descricao: 'Elevar tap do transformador T-02 em 1% para compensar queda no alimentador portuário.', impacto: 'Estabiliza tensão nas cargas prioritárias', tempoEstimadoMin: 12 },
+    ],
+    indicadores: {
+      cargaTotalMW: 187,
+      correnteMaximaA: 235,
+      disponibilidade: 0.86,
+      perdasPercentual: 3.1,
+    },
+  },
+];
