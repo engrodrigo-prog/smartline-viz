@@ -252,7 +252,8 @@ export const MapLibreUnified = ({
   );
 
   // Helper to remove a source/layer pair
-  const removeLayerAndSource = useCallback((map: maplibregl.Map, layerId: string, sourceId: string) => {
+  const removeLayerAndSource = useCallback((map: maplibregl.Map | null | undefined, layerId: string, sourceId: string) => {
+    if (!map) return;
     if (map.getLayer(layerId)) {
       map.removeLayer(layerId);
     }

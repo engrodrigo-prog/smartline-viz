@@ -6,6 +6,7 @@ import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import { useMemo, useState } from "react";
 import type { FeatureCollection } from "geojson";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
 import { useDatasetData } from "@/context/DatasetContext";
@@ -14,6 +15,7 @@ import type { Evento } from "@/lib/mockData";
 const Estruturas = () => {
   const { filters } = useFilters();
   const [activeTab, setActiveTab] = useState("corrosao");
+  const [weights, setWeights] = useState({ vao: 50, corrosao: 30, furto: 20 });
   const [focusFilter, setFocusFilter] = useState<{
     id: string;
     label: string;
@@ -44,7 +46,9 @@ const Estruturas = () => {
 
   const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
-  type EnrichedEvento = Evento & {
+  type WeightKey = "vao" | "corrosao" | "furto";
+
+type EnrichedEvento = Evento & {
     vaoFrente: number;
     vaoRe: number;
     vaoMaior: number;
@@ -52,6 +56,15 @@ const Estruturas = () => {
     corrosaoIndex: number; // 0..1
     effortScore: number;   // 0..1 consolidado
   };
+
+  const normalizedWeights = useMemo(() => {
+    const total = weights.vao + weights.corrosao + weights.furto || 1;
+    return {
+      vao: weights.vao / total,
+      corrosao: weights.corrosao / total,
+      furto: weights.furto / total,
+    };
+  }, [weights]);
 
   const enriched: EnrichedEvento[] = useMemo(() => {
     const mapped = filteredData.map((e) => {
@@ -73,12 +86,12 @@ const Estruturas = () => {
 
       // Consolidado (0..1): 50% vão, 30% corrosão, 20% furto
       const vaoNorm = (vaoMaior - 80) / (450 - 80);
-      const effortScore = clamp(vaoNorm * 0.5 + corrosaoIndex * 0.3 + (furtoFlag ? 1 : 0) * 0.2, 0, 1);
+      const effortScore = clamp(vaoNorm * normalizedWeights.vao + corrosaoIndex * normalizedWeights.corrosao + (furtoFlag ? 1 : 0) * normalizedWeights.furto, 0, 1);
 
       return { ...e, vaoFrente, vaoRe, vaoMaior, furtoFlag, corrosaoIndex, effortScore };
     });
     return mapped;
-  }, [filteredData]);
+  }, [filteredData, normalizedWeights]);
 
   // Top 10% por maior vão como pontos de atenção
   const percentil90 = useMemo(() => {
@@ -301,7 +314,7 @@ const Estruturas = () => {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-sm text-muted-foreground">
-                  Consolidado: 50% vão + 30% corrosão + 20% furto. Top 10% por vão marcados como pontos de atenção.
+                  Ajuste os pesos da análise: vão, corrosão e furto. Top 10% por vão marcados como pontos de atenção.
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -316,6 +329,38 @@ const Estruturas = () => {
                   >
                     Focar Top 10% no mapa
                   </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(
+                  [
+                    { id: "vao" as WeightKey, label: "Peso Vão", color: "text-orange-400" },
+                    { id: "corrosao" as WeightKey, label: "Peso Corrosão", color: "text-amber-300" },
+                    { id: "furto" as WeightKey, label: "Peso Furto", color: "text-emerald-300" },
+                  ]
+                ).map(({ id, label, color }) => (
+                  <div key={id} className="bg-muted/10 border border-border rounded-lg px-3 py-4">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className={`font-medium ${color}`}>{label}</span>
+                      <span className="font-semibold text-foreground">{Math.round(weights[id])}%</span>
+                    </div>
+                    <Slider
+                      className="mt-3"
+                      max={100}
+                      step={1}
+                      value={[weights[id]]}
+                      onValueChange={(val) => setWeights((prev) => ({ ...prev, [id]: val[0] ?? prev[id] }))}
+                    />
+                  </div>
+                ))}
+                <div className="bg-muted/5 border border-border rounded-lg px-3 py-4 text-xs text-muted-foreground">
+                  <div className="font-semibold text-foreground">Pesos normalizados</div>
+                  <div className="mt-2 space-y-1">
+                    <div>Vão: {Math.round(normalizedWeights.vao * 100)}%</div>
+                    <div>Corrosão: {Math.round(normalizedWeights.corrosao * 100)}%</div>
+                    <div>Furto: {Math.round(normalizedWeights.furto * 100)}%</div>
+                  </div>
                 </div>
               </div>
 
