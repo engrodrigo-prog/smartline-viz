@@ -85,8 +85,8 @@ export const MapLibreUnified = ({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const fallbackAppliedRef = useRef(false);
 
-  const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
-  const mapboxAvailable = Boolean(mapboxToken);
+  const mapboxToken: string | undefined = undefined;
+  const mapboxAvailable = false;
   const preferredBasemapId = initialBasemapId ?? DEFAULT_BASEMAP;
   const resolvedInitialBasemap = useMemo(
     () => resolveBasemapId(preferredBasemapId),
@@ -114,7 +114,6 @@ export const MapLibreUnified = ({
         center: initialCenter || [-46.333, -23.96],
         zoom: initialZoom || 12,
         basemap: resolvedInitialBasemap,
-        mapboxToken,
       });
 
       instance.addControl(new maplibregl.NavigationControl(), "top-right");
