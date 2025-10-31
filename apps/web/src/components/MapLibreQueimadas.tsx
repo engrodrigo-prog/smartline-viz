@@ -55,6 +55,7 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
   const windCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const particlesRef = useRef<Array<{ x: number; y: number }>>([]);
+  const dprRef = useRef<number>(1);
 
   const buildVectors = (src: GeoJSON.FeatureCollection): FeatureCollection<LineString> => {
     const features: Array<Feature<LineString>> = [];
@@ -150,6 +151,33 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
           }
         });
 
+        // Ícone de chama para hotpots (símbolo)
+        const svg = encodeURIComponent(`<?xml version="1.0" encoding="UTF-8"?><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f97316"/><stop offset="100%" stop-color="#ef4444"/></linearGradient></defs><path d="M32 6c2 8 8 11 8 19 0 6-4 10-8 10s-8-4-8-10c0-6 3-9 8-19z" fill="#facc15"/><path d="M32 12c6 8 13 12 13 22 0 9-7 15-13 15s-13-6-13-15c0-9 6-12 13-22z" fill="url(#g)"/><path d="M32 30c3 3 6 5 6 9 0 4-3 6-6 6s-6-2-6-6c0-4 3-6 6-9z" fill="#fff" opacity=".3"/></svg>`);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try { map.current!.addImage('flame-icon', img, { pixelRatio: 2 }); } catch {}
+          if (!map.current!.getLayer('risk-icons')) {
+            map.current!.addLayer({
+              id: 'risk-icons',
+              type: 'symbol',
+              source: 'queimadas',
+              layout: {
+                'icon-image': 'flame-icon',
+                'icon-allow-overlap': true,
+                'icon-size': [
+                  'interpolate', ['linear'], ['coalesce', ['get', 'frp'], ['get', 'FRP'], 1],
+                  1, 0.4,
+                  5, 0.6,
+                  10, 0.8,
+                  20, 1.0
+                ]
+              }
+            });
+          }
+        };
+        img.src = `data:image/svg+xml;charset=UTF-8,${svg}`;
+
         // Vetores de direção (vento/propagação)
         map.current.addLayer({
           id: 'risk-vectors',
@@ -214,18 +242,20 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
         canvas.style.top = '0';
         canvas.style.left = '0';
         canvas.style.pointerEvents = 'none';
-        canvas.width = mapContainer.current.clientWidth;
-        canvas.height = mapContainer.current.clientHeight;
+        const dpr = window.devicePixelRatio || 1;
+        dprRef.current = dpr;
+        canvas.width = Math.floor(mapContainer.current.clientWidth * dpr);
+        canvas.height = Math.floor(mapContainer.current.clientHeight * dpr);
         canvas.style.width = "100%";
         canvas.style.height = "100%";
         canvas.style.mixBlendMode = "screen";
-        canvas.style.opacity = "0.65";
+        canvas.style.opacity = "0.8";
         windCanvasRef.current = canvas;
         mapContainer.current.appendChild(canvas);
 
         const setupParticles = () => {
-          const count = Math.floor((canvas.width * canvas.height) / 20000);
-          particlesRef.current = Array.from({ length: Math.max(150, count) }, () => ({
+          const count = Math.floor((canvas.width * canvas.height) / (16000 * dpr));
+          particlesRef.current = Array.from({ length: Math.max(300, count) }, () => ({
             x: Math.random() * canvas.width,
             y: Math.random() * canvas.height,
           }));
@@ -235,39 +265,57 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
         const ctx = canvas.getContext('2d')!;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
+        ctx.scale(dpr, dpr);
 
         const step = () => {
           const { vx, vy, speed } = windVectorRef.current;
-          const scale = 0.35 + Math.min(1.5, Math.abs(speed) / 5);
-          ctx.globalCompositeOperation = "source-over";
-          ctx.fillStyle = "rgba(15,23,42,0.02)";
+          const base = Math.max(0.5, Math.min(2, Math.abs(speed) / 3));
+          // leve "memória" para rastro (motion blur)
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.fillStyle = 'rgba(2, 6, 23, 0.04)';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.globalCompositeOperation = "lighter";
-          ctx.strokeStyle = "rgba(56,189,248,0.55)";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          for (const particle of particlesRef.current) {
-            const ox = particle.x;
-            const oy = particle.y;
-            particle.x += vx * scale;
-            particle.y += vy * scale;
-            if (particle.x < 0 || particle.x >= canvas.width || particle.y < 0 || particle.y >= canvas.height) {
-              particle.x = Math.random() * canvas.width;
-              particle.y = Math.random() * canvas.height;
+          ctx.globalCompositeOperation = 'lighter';
+          const t = performance.now() * 0.0007;
+          for (const p of particlesRef.current) {
+            const x = p.x / dpr;
+            const y = p.y / dpr;
+            // pseudo-noise para ondular as trajetórias
+            const n = Math.sin(x * 0.015 + t) * Math.cos(y * 0.01 - t * 1.3);
+            const ang = Math.atan2(vy, vx) + n * 0.6;
+            const sp = base * (0.6 + 0.4 * Math.abs(n));
+            const nx = x + Math.cos(ang) * sp;
+            const ny = y + Math.sin(ang) * sp;
+
+            // cor por velocidade local
+            const c = Math.min(1, sp / 2.2);
+            const r = Math.floor(56 + c * (239 - 56)); // 56 -> 239
+            const g = Math.floor(189 + c * (68 - 189)); // 189 -> 68
+            const b = Math.floor(248 + c * (35 - 248)); // 248 -> 35
+            ctx.strokeStyle = `rgba(${r},${g},${b},${0.75})`;
+            ctx.lineWidth = 0.9 + c * 0.8;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(nx, ny);
+            ctx.stroke();
+
+            p.x = nx * dpr;
+            p.y = ny * dpr;
+            if (p.x < 0 || p.x >= canvas.width || p.y < 0 || p.y >= canvas.height) {
+              p.x = Math.random() * canvas.width;
+              p.y = Math.random() * canvas.height;
             }
-            ctx.moveTo(ox, oy);
-            ctx.lineTo(particle.x, particle.y);
           }
-          ctx.stroke();
-          ctx.globalCompositeOperation = "source-over";
+          ctx.globalCompositeOperation = 'source-over';
           rafRef.current = requestAnimationFrame(step);
         };
         rafRef.current = requestAnimationFrame(step);
 
         const handleResize = () => {
           if (!mapContainer.current || !windCanvasRef.current) return;
-          windCanvasRef.current.width = mapContainer.current.clientWidth;
-          windCanvasRef.current.height = mapContainer.current.clientHeight;
+          const dpr2 = window.devicePixelRatio || 1;
+          dprRef.current = dpr2;
+          windCanvasRef.current.width = Math.floor(mapContainer.current.clientWidth * dpr2);
+          windCanvasRef.current.height = Math.floor(mapContainer.current.clientHeight * dpr2);
           setupParticles();
         };
         window.addEventListener('resize', handleResize);
