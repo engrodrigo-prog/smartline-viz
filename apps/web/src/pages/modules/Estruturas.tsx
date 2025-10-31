@@ -32,6 +32,66 @@ const Estruturas = () => {
     return data;
   }, [eventosDataset, filters]);
 
+  // Utilidades determinísticas para simular métricas mecânicas de esforço por estrutura
+  const hash = (s: string) => {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  };
+
+  const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+
+  type EnrichedEvento = Evento & {
+    vaoFrente: number;
+    vaoRe: number;
+    vaoMaior: number;
+    furtoFlag: boolean;
+    corrosaoIndex: number; // 0..1
+    effortScore: number;   // 0..1 consolidado
+  };
+
+  const enriched: EnrichedEvento[] = useMemo(() => {
+    const mapped = filteredData.map((e) => {
+      const h = hash(e.id + (e.nome || ""));
+      // Simula vãos (m): 80..450m
+      const randA = (h % 1000) / 1000; // 0..1
+      const randB = ((h >>> 10) % 1000) / 1000;
+      const vaoFrente = Math.round(80 + randA * 370);
+      const vaoRe = Math.round(80 + randB * 370);
+      const vaoMaior = Math.max(vaoFrente, vaoRe);
+
+      // Simula furto (ausência de peças): ~15% prob.
+      const furtoFlag = ((h >>> 20) % 100) < 15;
+
+      // Índice de corrosão a partir da criticidade/status (0..1)
+      const critW = e.criticidade === 'Alta' ? 1 : e.criticidade === 'Média' ? 0.55 : 0.25;
+      const statW = e.status === 'Crítico' ? 0.35 : e.status === 'Alerta' ? 0.2 : e.status === 'Pendente' ? 0.25 : 0.05;
+      const corrosaoIndex = clamp(critW + statW, 0, 1);
+
+      // Consolidado (0..1): 50% vão, 30% corrosão, 20% furto
+      const vaoNorm = (vaoMaior - 80) / (450 - 80);
+      const effortScore = clamp(vaoNorm * 0.5 + corrosaoIndex * 0.3 + (furtoFlag ? 1 : 0) * 0.2, 0, 1);
+
+      return { ...e, vaoFrente, vaoRe, vaoMaior, furtoFlag, corrosaoIndex, effortScore };
+    });
+    return mapped;
+  }, [filteredData]);
+
+  // Top 10% por maior vão como pontos de atenção
+  const percentil90 = useMemo(() => {
+    if (!enriched.length) return 0;
+    const vs = [...enriched.map((e) => e.vaoMaior)].sort((a, b) => a - b);
+    const idx = Math.floor(0.9 * (vs.length - 1));
+    return vs[idx] ?? 0;
+  }, [enriched]);
+
+  const topAttentionIds = useMemo(() => new Set(enriched.filter((e) => e.vaoMaior >= percentil90).map((e) => e.id)), [enriched, percentil90]);
+
+  const topConsolidated = useMemo(() => [...enriched].sort((a, b) => b.effortScore - a.effortScore).slice(0, Math.max(10, Math.ceil(enriched.length * 0.1))), [enriched]);
+
   const now = Date.now();
   const prazoDias = 14;
   const emAtraso = filteredData.filter(e => {
@@ -66,23 +126,35 @@ const Estruturas = () => {
   const points: FeatureCollection = useMemo(
     () => ({
       type: "FeatureCollection",
-      features: filteredData.map(item => ({
+      features: enriched.map(item => ({
         type: "Feature",
         geometry: { type: "Point", coordinates: item.coords ?? [-46.633, -23.55] },
         properties: {
           id: item.id,
           status: item.status,
           criticidade: item.criticidade,
-          color: item.status === 'OK' ? '#22c55e' : item.status === 'Crítico' ? '#ef4444' : item.status === 'Alerta' ? '#f97316' : '#38bdf8',
-          isFocus: focusFilter ? focusFilter.predicate(item) : false,
+          effortScore: item.effortScore,
+          vaoMaior: item.vaoMaior,
+          furto: item.furtoFlag,
+          corrosao: item.corrosaoIndex,
+          color: topAttentionIds.has(item.id)
+            ? '#f97316'
+            : item.status === 'OK'
+              ? '#22c55e'
+              : item.status === 'Crítico'
+                ? '#ef4444'
+                : item.status === 'Alerta'
+                  ? '#f97316'
+                  : '#38bdf8',
+          isFocus: focusFilter ? focusFilter.predicate(item as any) : topAttentionIds.has(item.id),
         }
       }))
     }),
-    [filteredData, focusFilter]
+    [enriched, focusFilter, topAttentionIds]
   );
 
   const bounds = useMemo(() => {
-    const src = focusFilter ? focusedData : filteredData;
+    const src = focusFilter ? focusedData : enriched;
     if (src.length === 0) return null;
     const lngs = src.map(item => (item.coords ? item.coords[0] : -46.63));
     const lats = src.map(item => (item.coords ? item.coords[1] : -23.55));
@@ -90,7 +162,7 @@ const Estruturas = () => {
       [Math.min(...lngs), Math.min(...lats)],
       [Math.max(...lngs), Math.max(...lats)],
     ] as [[number, number], [number, number]];
-  }, [filteredData, focusedData, focusFilter]);
+  }, [enriched, focusedData, focusFilter]);
 
   const rsDemoLine = useMemo(() => ({
     type: "FeatureCollection" as const,
@@ -173,10 +245,11 @@ const Estruturas = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="tech-card p-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="corrosao">Corrosão</TabsTrigger>
             <TabsTrigger value="furto">Furto</TabsTrigger>
             <TabsTrigger value="integridade">Integridade</TabsTrigger>
+            <TabsTrigger value="esforco">Análise de Esforço</TabsTrigger>
             <TabsTrigger value="mapa">🗺️ Mapa</TabsTrigger>
           </TabsList>
 
@@ -245,3 +318,44 @@ const Estruturas = () => {
 };
 
 export default Estruturas;
+          <TabsContent value="esforco" className="mt-4">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm text-muted-foreground">
+                  Consolidado: 50% vão + 30% corrosão + 20% furto. Top 10% por vão marcados como pontos de atenção.
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="text-xs underline-offset-2 hover:underline"
+                    onClick={() => setActiveTab('mapa')}
+                  >
+                    Ir para o mapa
+                  </button>
+                  <button
+                    className="btn-secondary text-xs px-3 py-1.5 rounded-md"
+                    onClick={() => applyFocus('esforco-top', 'Top 10% por vão', (it) => topAttentionIds.has((it as any).id))}
+                  >
+                    Focar Top 10% no mapa
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {topConsolidated.map((item, idx) => (
+                  <div key={item.id} className="p-4 bg-muted/10 border border-border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium">{item.nome}</div>
+                      <Badge variant={topAttentionIds.has(item.id) ? 'destructive' : 'outline'}>
+                        {Math.round(item.effortScore * 100)}%
+                      </Badge>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Vão maior: <span className="font-semibold text-foreground">{item.vaoMaior} m</span>
+                      {' · '}Corrosão: <span className="font-semibold text-foreground">{Math.round(item.corrosaoIndex * 100)}%</span>
+                      {' · '}Furto: <span className="font-semibold text-foreground">{item.furtoFlag ? 'Sim' : 'Não'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
