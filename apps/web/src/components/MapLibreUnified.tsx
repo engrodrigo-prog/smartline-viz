@@ -89,8 +89,8 @@ export const MapLibreUnified = ({
   const mapboxAvailable = Boolean(mapboxToken);
   const preferredBasemapId = initialBasemapId ?? DEFAULT_BASEMAP;
   const resolvedInitialBasemap = useMemo(
-    () => resolveBasemapId(preferredBasemapId, mapboxToken),
-    [preferredBasemapId, mapboxToken],
+    () => resolveBasemapId(preferredBasemapId),
+    [preferredBasemapId],
   );
   const fallbackBasemapIdResolved: BasemapId = fallbackBasemapId ?? "imagery";
 
@@ -131,7 +131,7 @@ export const MapLibreUnified = ({
         }
         try {
           console.warn("[map] Aplicando fallback de mapa base para", fallbackBasemapIdResolved);
-          changeBasemap(instance, fallbackBasemapIdResolved, { mapboxToken });
+          changeBasemap(instance, fallbackBasemapIdResolved);
           setCurrentBasemap(fallbackBasemapIdResolved);
           onMapLoad?.(instance);
         } catch (err) {
@@ -204,7 +204,7 @@ export const MapLibreUnified = ({
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [resolvedInitialBasemap, fallbackBasemapIdResolved, initialCenter, initialZoom, mapboxToken, onMapLoad]);
+  }, [resolvedInitialBasemap, fallbackBasemapIdResolved, initialCenter, initialZoom, onMapLoad]);
 
   // Desbloqueia troca de basemap somente após interação do usuário
   useEffect(() => {
@@ -239,17 +239,17 @@ export const MapLibreUnified = ({
       if (!mapInstance) return;
 
       // Evita piscadas trocando apenas quando o estilo atual é diferente
-      const target = resolveBasemapId(basemapId, mapboxToken);
+      const target = resolveBasemapId(basemapId);
       const current = getCurrentBasemap(mapInstance);
       if (current === target) return;
       try {
-        changeBasemap(mapInstance, target, { mapboxToken });
+        changeBasemap(mapInstance, target);
         setCurrentBasemap(target);
       } catch (error) {
         console.error("Failed to change basemap", error);
       }
     },
-    [mapboxToken],
+    [],
   );
 
   // Helper to remove a source/layer pair
@@ -801,7 +801,7 @@ export const MapLibreUnified = ({
     <div className="relative w-full h-full map-smooth" style={outerStyle}>
       {/* Sem overlay/blur durante o load para evitar flicker */}
       {hasInteracted && (
-        <BasemapSelector value={currentBasemap} onChange={handleBasemapChange} mapboxAvailable={mapboxAvailable} />
+        <BasemapSelector value={currentBasemap} onChange={handleBasemapChange} mapboxAvailable={false} />
       )}
 
       <div ref={mapContainer} className="w-full h-full" />

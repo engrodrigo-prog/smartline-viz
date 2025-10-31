@@ -594,6 +594,7 @@ const MapView = () => {
         resetTerrain(map);
         updateMeasurement();
         syncEventsSource();
+        map.resize();
       };
 
       map.once("style.load", runAfterStyleLoad);
@@ -659,6 +660,7 @@ const MapView = () => {
     const runInitialStyleWork = () => {
       resetTerrain(map);
       syncEventsSource();
+      map.resize();
     };
 
     if (map.isStyleLoaded()) {
@@ -764,7 +766,7 @@ const MapView = () => {
             subtitle="Base ESRI + MapLibre (sem token). Medição e eventos com heatmap."
           />
           <main className="flex-1 relative">
-            <div ref={containerRef} className="absolute inset-0" />
+            <div ref={containerRef} className="absolute inset-0 map-smooth" />
 
             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
               <Button size="icon" variant="secondary" className="h-9 w-9" onClick={() => mapRef.current?.zoomIn()}>

@@ -56,6 +56,33 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
   const rafRef = useRef<number | null>(null);
   const particlesRef = useRef<Array<{ x: number; y: number }>>([]);
 
+  const buildVectors = (src: GeoJSON.FeatureCollection): FeatureCollection<LineString> => {
+    const features: Array<Feature<LineString>> = [];
+    for (const f of src.features) {
+      if (f.geometry?.type !== 'Point') continue;
+      const props: any = f.properties || {};
+      const [lon, lat] = f.geometry.coordinates as [number, number];
+      const speed = typeof props.wind_speed_ms === 'number' ? props.wind_speed_ms : 3;
+      const degFrom = typeof props.wind_dir_from_deg === 'number' ? props.wind_dir_from_deg : 0;
+      // vetor para onde o vento sopra (from -> to)
+      const rad = ((degFrom + 180) * Math.PI) / 180;
+      // comprimento em graus aproximado (escala simples para visual)
+      const k = Math.min(0.02, 0.004 + speed * 0.0015);
+      const dx = Math.cos(rad) * k;
+      const dy = Math.sin(rad) * k;
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: [ [lon, lat], [lon + dx, lat + dy] ] },
+        properties: {
+          speed,
+          dir: degFrom,
+          color: props.isFocus ? '#fb923c' : '#f97316',
+        },
+      });
+    }
+    return { type: 'FeatureCollection', features };
+  };
+
   // Calcula um vetor de vento médio a partir dos hotspots (demo), caso não exista grid
   const windVector = useMemo(() => {
     const feats = geojson.features || [];
@@ -105,6 +132,12 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
           data: geojson
         });
 
+        // set inicial de vetores direção (vento/fogo)
+        map.current.addSource('queimadas-vectors', {
+          type: 'geojson',
+          data: buildVectors(geojson) as any
+        });
+
         map.current.addLayer({
           id: 'risk-points',
           type: 'circle',
@@ -114,6 +147,18 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
             'circle-radius': riskRadiusExpression as any,
             'circle-stroke-width': 1.5,
             'circle-stroke-color': '#0f172a'
+          }
+        });
+
+        // Vetores de direção (vento/propagação)
+        map.current.addLayer({
+          id: 'risk-vectors',
+          type: 'line',
+          source: 'queimadas-vectors',
+          paint: {
+            'line-color': ['coalesce', ['get', 'color'], '#f97316'],
+            'line-width': 1.5,
+            'line-opacity': 0.85
           }
         });
 
@@ -260,6 +305,10 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
   useEffect(() => {
     if (map.current && map.current.getSource('queimadas')) {
       (map.current.getSource('queimadas') as maplibregl.GeoJSONSource).setData(geojson);
+      const vectors = buildVectors(geojson) as any;
+      if (map.current.getSource('queimadas-vectors')) {
+        (map.current.getSource('queimadas-vectors') as maplibregl.GeoJSONSource).setData(vectors);
+      }
 
       if (fitBounds) {
         try {
