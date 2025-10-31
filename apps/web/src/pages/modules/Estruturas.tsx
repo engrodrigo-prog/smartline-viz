@@ -297,27 +297,6 @@ const Estruturas = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="mapa" className="mt-4">
-            <div className="h-[600px]">
-              <MapLibreUnified
-                filterRegiao={filters.regiao}
-                filterEmpresa={filters.empresa}
-                filterLinha={filters.linha}
-                showEstruturas={true}
-                initialZoom={filters.linha ? 12 : 7}
-                customPoints={points}
-                customLines={rsDemoLine as any}
-                fitBounds={bounds}
-              />
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </ModuleLayout>
-  );
-};
-
-export default Estruturas;
           <TabsContent value="esforco" className="mt-4">
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -341,7 +320,7 @@ export default Estruturas;
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {topConsolidated.map((item, idx) => (
+                {topConsolidated.map((item) => (
                   <div key={item.id} className="p-4 bg-muted/10 border border-border rounded-lg">
                     <div className="flex items-center justify-between">
                       <div className="font-medium">{item.nome}</div>
@@ -359,3 +338,25 @@ export default Estruturas;
               </div>
             </div>
           </TabsContent>
+          <TabsContent value="mapa" className="mt-4">
+            <div className="h-[600px]">
+              <MapLibreUnified
+                filterRegiao={filters.regiao}
+                filterEmpresa={filters.empresa}
+                filterLinha={filters.linha}
+                showEstruturas={true}
+                initialZoom={filters.linha ? 12 : 7}
+                customPoints={points}
+                customLines={rsDemoLine as any}
+                fitBounds={bounds}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </ModuleLayout>
+  );
+};
+
+export default Estruturas;
+          
