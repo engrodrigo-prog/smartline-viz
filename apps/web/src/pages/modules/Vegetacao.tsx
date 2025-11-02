@@ -28,6 +28,9 @@ const Vegetacao = () => {
   const { filters } = useFilters();
   const [activeTab, setActiveTab] = useState("lista");
   const [focusFilter, setFocusFilter] = useState<FocusFilter | null>(null);
+  const [cycleMode, setCycleMode] = useState<"T0" | "T1" | "Diff">("T0");
+  const [dispatchFilter, setDispatchFilter] = useState<"Todos" | "Propria" | "Terceiros">("Todos");
+  const [onlyPoda, setOnlyPoda] = useState(false);
   const { eventos: eventosDataset, ndviJundiai: ndviDataset } = useDatasetData((data) => ({
     eventos: data.eventos,
     ndviJundiai: data.ndviJundiai,
@@ -67,13 +70,33 @@ const Vegetacao = () => {
     };
   }, [ndviDataset]);
 
+  // Enriquecimento: meta de poda e despacho (simulado deterministicamente)
+  const hash = (s: string) => {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  };
+
+  const enrichedEventos = useMemo(() => {
+    return eventosDataset
+      .filter((e) => e.tipo === "Vegetação")
+      .map((e) => {
+        const h = hash(e.id + (e.nome || ""));
+        const podaRealizada = ((h >>> 10) % 100) < 55; // ~55% com poda
+        const dispatch = ((h >>> 20) % 100) < 60 ? "Propria" : "Terceiros" as const;
+        return { ...e, podaRealizada, dispatch } as Evento & { podaRealizada: boolean; dispatch: "Propria" | "Terceiros" };
+      });
+  }, [eventosDataset]);
+
   const filteredData = useMemo(() => {
-    let data = eventosDataset.filter((e) => e.tipo === "Vegetação");
+    let data = enrichedEventos;
 
     if (filters.regiao) data = data.filter(e => e.regiao === filters.regiao);
     if (filters.linha) data = data.filter(e => e.linha === filters.linha);
     if (filters.ramal) data = data.filter(e => e.ramal === filters.ramal);
     if (filters.search) data = data.filter(e => e.nome.toLowerCase().includes(filters.search!.toLowerCase()));
+    if (dispatchFilter !== 'Todos') data = data.filter(e => e.dispatch === dispatchFilter);
+    if (onlyPoda) data = data.filter(e => e.podaRealizada);
 
     const hasAreaFilters = Boolean(filters.regiao || filters.linha || filters.ramal);
     if (!hasAreaFilters) {
@@ -98,7 +121,7 @@ const Vegetacao = () => {
       }
       return { ...item, coords };
     });
-  }, [eventosDataset, filters, ndviBounds]);
+  }, [enrichedEventos, filters, ndviBounds, dispatchFilter, onlyPoda]);
 
   const now = Date.now();
   const prazoDias = 14;
@@ -189,12 +212,72 @@ const Vegetacao = () => {
     ]
   }), []);
 
+  // Ciclos NDVI simulados e mapa de diferença
+  const ndviT1: FeatureCollection = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: ndviDataset.features.map((f) => {
+      const id = (f.properties?.area as string) || JSON.stringify(f.geometry);
+      const h = hash(id);
+      const delta = ((h % 1000) / 1000 - 0.5) * 0.4; // -0.2..+0.2
+      const ndvi0 = (f.properties as any)?.ndvi ?? 0.3;
+      const ndvi1 = Math.max(-0.2, Math.min(0.9, ndvi0 + delta));
+      return { type: 'Feature', geometry: f.geometry, properties: { ...(f.properties || {}), ndvi: ndvi1 } } as any;
+    }),
+  }), [ndviDataset]);
+
+  const ndviDiffPolygons: FeatureCollection = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: ndviDataset.features.map((f) => {
+      const id = (f.properties?.area as string) || JSON.stringify(f.geometry);
+      const h = hash(id);
+      const delta = ((h % 1000) / 1000 - 0.5) * 0.4; // -0.2..+0.2
+      // Cor de -0.2 (vermelho) a +0.2 (verde)
+      const t = (delta + 0.2) / 0.4; // 0..1
+      const r = Math.round(239 + (34 - 239) * t); // 239->34 (vermelho->verde)
+      const g = Math.round(68 + (197 - 68) * t);  // 68->197
+      const b = Math.round(68 + (62 - 68) * t);   // 68->62
+      const color = `rgb(${r}, ${g}, ${b})`;
+      return { type: 'Feature', geometry: f.geometry, properties: { ...(f.properties || {}), color } } as any;
+    }),
+  }), [ndviDataset]);
+
   return (
     <ModuleLayout title="Gestão de Vegetação" icon={TreePine}>
       <div className="p-6 space-y-6">
         <ModuleDemoBanner />
 
         <FloatingFiltersBar />
+
+        <div className="tech-card p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-center gap-3 text-sm">
+            <label className="text-muted-foreground">Ciclo NDVI:</label>
+            <select
+              className="h-9 rounded-md border border-border bg-input px-2 text-sm"
+              value={cycleMode}
+              onChange={(e) => setCycleMode(e.target.value as any)}
+            >
+              <option value="T0">T0 (antes)</option>
+              <option value="T1">T1 (depois)</option>
+              <option value="Diff">Diferença (T1 - T0)</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-3 text-sm">
+            <label className="text-muted-foreground">Despacho:</label>
+            <select
+              className="h-9 rounded-md border border-border bg-input px-2 text-sm"
+              value={dispatchFilter}
+              onChange={(e) => setDispatchFilter(e.target.value as any)}
+            >
+              <option>Todos</option>
+              <option value="Propria">Equipe própria</option>
+              <option value="Terceiros">Terceiros</option>
+            </select>
+            <label className="inline-flex items-center gap-2 ml-2">
+              <input type="checkbox" className="accent-primary" checked={onlyPoda} onChange={(e) => setOnlyPoda(e.target.checked)} />
+              <span className="text-muted-foreground">Apenas com poda realizada</span>
+            </label>
+          </div>
+        </div>
 
         {/* KPIs - Status e Criticidade */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -283,7 +366,7 @@ const Vegetacao = () => {
             <div className="tech-card p-6">
               <h2 className="text-xl font-semibold mb-4">Interferências de Vegetação</h2>
               <div className="space-y-3">
-                {focusedData.slice(0, 30).map(item => (
+                {focusedData.slice(0, 30).map((item: any) => (
                   <div key={item.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-4">
                       <TreePine className="w-5 h-5 text-primary" />
@@ -302,6 +385,12 @@ const Vegetacao = () => {
                       <Badge variant={item.status === 'OK' ? 'default' : 'outline'}>
                         {item.status}
                       </Badge>
+                      <Badge variant={item.podaRealizada ? 'default' : 'outline'}>
+                        {item.podaRealizada ? 'Poda' : 'Sem poda'}
+                      </Badge>
+                      <Badge variant='secondary'>
+                        {item.dispatch === 'Propria' ? 'Própria' : 'Terceiros'}
+                      </Badge>
                     </div>
                   </div>
                 ))}
@@ -314,7 +403,7 @@ const Vegetacao = () => {
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">NDVI – Município de Jundiaí</h3>
                 <p className="text-xs text-muted-foreground">
-                  Mapa demonstrativo com valores NDVI simulados para análise rápida de stress hídrico e cobertura vegetal.
+                  {cycleMode === 'Diff' ? 'Diferença entre ciclos (T1 - T0): vermelho = redução de vegetação, verde = aumento.' : 'Mapa demonstrativo com valores NDVI simulados para análise rápida de stress hídrico e cobertura vegetal.'}
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -326,7 +415,10 @@ const Vegetacao = () => {
                 ))}
               </div>
             </div>
-            <MapLibreUnified
+            {(() => {
+              const polygonsForMap: FeatureCollection = cycleMode === 'T0' ? ndviDataset : cycleMode === 'T1' ? ndviT1 : ndviDiffPolygons;
+              return (
+                <MapLibreUnified
               filterRegiao={filters.regiao}
               filterEmpresa={filters.empresa}
               showVegetacao={true}
@@ -334,11 +426,13 @@ const Vegetacao = () => {
               initialCenter={[-46.85, -23.20]}
               initialZoom={filters.linha ? 12 : 10}
               customPoints={points}
-              customPolygons={ndviDataset}
+              customPolygons={polygonsForMap}
               customLines={rsDemoLine as any}
               fitBounds={mapBounds ?? ndviBounds.bounds}
               height="600px"
             />
+              );
+            })()}
           </TabsContent>
         </Tabs>
       </div>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Cable, Camera, MapPin } from "lucide-react";
+import { Cable, Camera, MapPin, Route, TrainTrack } from "lucide-react";
 import { toast } from "sonner";
 
 import ModuleLayout from "@/components/ModuleLayout";
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
 import { useFilters } from "@/context/FiltersContext";
-import type { FeatureCollection } from "geojson";
+import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import { useFeatureStatuses, useSaveFeatureStatus } from "@/hooks/useFeatureStatus";
 import { useDatasetData } from "@/context/DatasetContext";
 import type { Evento } from "@/lib/mockData";
@@ -54,6 +54,8 @@ const Travessias = () => {
   const [formNotes, setFormNotes] = useState<string>("");
   const [formCameraUrl, setFormCameraUrl] = useState<string>("");
   const [focusFilter, setFocusFilter] = useState<{ id: string; label: string; predicate: (item: TravessiaItem) => boolean } | null>(null);
+  const [showRodovias, setShowRodovias] = useState(true);
+  const [showFerrovias, setShowFerrovias] = useState(true);
   const eventosDataset = useDatasetData((data) => data.eventos);
 
   const travessias = useMemo(() => eventosDataset.filter((evento) => evento.tipo === "Travessias"), [eventosDataset]);
@@ -166,6 +168,130 @@ const Travessias = () => {
     ]
   }), []);
 
+  // Camadas OSM simuladas (rodovias/ferrovias) e detecção de cruzamentos com o corredor acima
+  const rodovias = useMemo<FeatureCollection<LineString>>(() => ({
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [-56.8, -29.6],
+            [-55.0, -29.55],
+            [-53.6, -29.85],
+            [-51.4, -29.7],
+          ],
+        },
+        properties: { name: 'BR-XYZ', color: '#f59e0b', width: 2.5, opacity: 0.8 },
+      },
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [-56.2, -29.9],
+            [-54.8, -29.4],
+            [-52.8, -29.9],
+          ],
+        },
+        properties: { name: 'SP-123', color: '#fbbf24', width: 2, opacity: 0.75 },
+      },
+    ],
+  }), []);
+
+  const ferrovias = useMemo<FeatureCollection<LineString>>(() => ({
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [-56.9, -29.2],
+            [-55.7, -29.8],
+            [-54.2, -30.05],
+            [-52.2, -29.95],
+          ],
+        },
+        properties: { name: 'ALL Ramal 7', color: '#7c3aed', width: 2.2, opacity: 0.75 },
+      },
+    ],
+  }), []);
+
+  // Helpers geométricos mínimos para intersecção de segmentos
+  type XY = [number, number];
+  const segIntersect = (a: XY, b: XY, c: XY, d: XY): XY | null => {
+    const x1 = a[0], y1 = a[1];
+    const x2 = b[0], y2 = b[1];
+    const x3 = c[0], y3 = c[1];
+    const x4 = d[0], y4 = d[1];
+    const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (denom === 0) return null;
+    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+    const u = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denom;
+    if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+    return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+  };
+
+  const lineSegments = (line: LineString): XY[][] => {
+    const coords = line.coordinates as XY[];
+    const segs: XY[][] = [];
+    for (let i = 0; i < coords.length - 1; i++) segs.push([coords[i], coords[i + 1]]);
+    return segs;
+  };
+
+  const collectIntersections = (
+    base: FeatureCollection<LineString>,
+    target: FeatureCollection<LineString>,
+    tag: 'rodovia' | 'ferrovia',
+  ): FeatureCollection<Point> => {
+    const features: Feature<Point, { tipo: string }>[] = [];
+    base.features.forEach((bf) => {
+      target.features.forEach((tf) => {
+        lineSegments(bf.geometry).forEach(([a, b]) => {
+          lineSegments(tf.geometry).forEach(([c, d]) => {
+            const p = segIntersect(a, b, c, d);
+            if (p) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: p }, properties: { tipo: tag } });
+          });
+        });
+      });
+    });
+    return { type: 'FeatureCollection', features };
+  };
+
+  const cruzRodovias = useMemo(() => collectIntersections(rsDemoLine as any, rodovias, 'rodovia'), [rsDemoLine, rodovias]);
+  const cruzFerrovias = useMemo(() => collectIntersections(rsDemoLine as any, ferrovias, 'ferrovia'), [rsDemoLine, ferrovias]);
+
+  // Score de risco por travessia: vão (simulado), corrosão (derivado), proximidade de cruzamentos
+  const hash = (s: string) => {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  };
+  const dist2 = (p: XY, q: XY) => { const dx = p[0] - q[0]; const dy = p[1] - q[1]; return dx * dx + dy * dy; };
+  const nearestCrossingFactor = (coord: XY): number => {
+    const all = [...cruzRodovias.features, ...cruzFerrovias.features];
+    if (!all.length) return 0;
+    let best = Infinity;
+    for (const f of all) { const q = f.geometry.coordinates as XY; const d = dist2(coord, q); if (d < best) best = d; }
+    const approx = 1 / Math.max(1e-8, best * 5);
+    return Math.min(1, approx);
+  };
+
+  const enriched = useMemo(() => {
+    return filteredData.map((e) => {
+      const h = hash(e.id + (e.nome || ''));
+      const randA = (h % 1000) / 1000; const randB = ((h >>> 10) % 1000) / 1000;
+      const vaoMaior = Math.round(80 + Math.max(randA, randB) * 370);
+      const corrosaoIndex = (e.criticidade === 'Alta' ? 0.75 : e.criticidade === 'Média' ? 0.45 : 0.2) + (e.status === 'Crítico' ? 0.2 : e.status === 'Alerta' ? 0.1 : 0);
+      const crossFactor = nearestCrossingFactor((e.coords ?? [-46.63, -23.55]) as XY);
+      const vaoNorm = (vaoMaior - 80) / (450 - 80);
+      const score = Math.min(1, vaoNorm * 0.4 + Math.min(1, corrosaoIndex) * 0.35 + crossFactor * 0.25);
+      return { ...e, vaoMaior, corrosaoIndex: Math.min(1, corrosaoIndex), crossFactor, riskScore: score } as TravessiaItem & { vaoMaior: number; corrosaoIndex: number; crossFactor: number; riskScore: number };
+    });
+  }, [filteredData, cruzRodovias, cruzFerrovias]);
+
   const statusCounts = useMemo(() => {
     const now = Date.now();
     const prazoDias = 30;
@@ -258,6 +384,18 @@ const Travessias = () => {
               );
             })}
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Sobreposições OSM (simuladas):</span>
+            <Button size="sm" variant={showRodovias ? 'default' : 'outline'} onClick={() => setShowRodovias(v => !v)}>
+              <Route className="w-4 h-4 mr-1" /> Rodovias
+            </Button>
+            <Button size="sm" variant={showFerrovias ? 'default' : 'outline'} onClick={() => setShowFerrovias(v => !v)}>
+              <TrainTrack className="w-4 h-4 mr-1" /> Ferrovias
+            </Button>
+            <div className="text-xs text-muted-foreground ml-2">
+              Cruzamentos: <span className="text-foreground font-medium">{(showRodovias ? cruzRodovias.features.length : 0) + (showFerrovias ? cruzFerrovias.features.length : 0)}</span>
+            </div>
+          </div>
         </FiltersBar>
 
         {/* KPIs - Status e Criticidade */}
@@ -312,6 +450,33 @@ const Travessias = () => {
             <button className="underline-offset-2 hover:underline" onClick={clearFocus}>Limpar seleção</button>
           </div>
         )}
+
+        {/* Ranking de risco consolidado (vão + corrosão + cruzamentos) */}
+        <div className="tech-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm text-muted-foreground">Pontos de atenção ranqueados por risco consolidado</div>
+            <div className="text-xs text-muted-foreground">Critérios: vão, corrosão, cruzamentos próximos</div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {enriched
+              .slice()
+              .sort((a, b) => b.riskScore - a.riskScore)
+              .slice(0, 9)
+              .map((it) => (
+                <div key={it.id} className="p-3 border border-border/70 rounded-md bg-muted/10">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-sm">{it.nome}</div>
+                    <Badge variant={it.riskScore > 0.7 ? 'destructive' : it.riskScore > 0.45 ? 'default' : 'secondary'}>
+                      {Math.round(it.riskScore * 100)}%
+                    </Badge>
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Vão: <span className="text-foreground font-medium">{it.vaoMaior}m</span> · Corrosão: <span className="text-foreground font-medium">{Math.round(it.corrosaoIndex * 100)}%</span> · Cruzamentos prox.: <span className="text-foreground font-medium">{it.crossFactor > 0.01 ? 'sim' : 'não'}</span>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="tech-card p-6">
           <TabsList className="grid w-full grid-cols-2 max-w-md">
@@ -393,8 +558,22 @@ const Travessias = () => {
                 filterLinha={filters.linha}
                 showTravessias
                 initialZoom={filters.linha ? 12 : 7}
-                customPoints={points}
-                customLines={rsDemoLine as any}
+                customPoints={{
+                  type: 'FeatureCollection',
+                  features: [
+                    ...points.features,
+                    ...(showRodovias ? cruzRodovias.features.map(f => ({ type: 'Feature', geometry: f.geometry, properties: { color: '#f97316', size: 10 } })) : []),
+                    ...(showFerrovias ? cruzFerrovias.features.map(f => ({ type: 'Feature', geometry: f.geometry, properties: { color: '#7c3aed', size: 10 } })) : []),
+                  ],
+                } as FeatureCollection}
+                customLines={{
+                  type: 'FeatureCollection',
+                  features: [
+                    ...(rsDemoLine.features as Feature<LineString, any>[]),
+                    ...(showRodovias ? (rodovias.features as Feature<LineString, any>[]) : []).map(g => ({ ...g, properties: { ...(g.properties || {}), color: '#f59e0b', width: 2.5, opacity: 0.8 } })),
+                    ...(showFerrovias ? (ferrovias.features as Feature<LineString, any>[]) : []).map(g => ({ ...g, properties: { ...(g.properties || {}), color: '#7c3aed', width: 2.2, opacity: 0.75 } })),
+                  ],
+                } as FeatureCollection}
                 fitBounds={bounds}
               />
             </div>

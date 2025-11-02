@@ -103,6 +103,7 @@ All colors MUST be HSL.
     transform: translateZ(0);
     backface-visibility: hidden;
     will-change: transform;
+    contain: layout paint size;
   }
   .postit {
     @apply absolute top-2 right-2 bg-yellow-300/95 text-slate-900 shadow border border-yellow-500/60 px-2 py-0.5 rounded-sm text-[10px] font-semibold rotate-2;
@@ -137,16 +138,16 @@ All colors MUST be HSL.
   .maplibregl-map,
   .maplibregl-canvas,
   .maplibregl-canvas-container {
-    background-color: transparent !important;
+    background-color: hsl(var(--background)) !important;
   }
 }
 
 @layer components {
   .maplibregl-control-container .maplibregl-ctrl {
-    background-color: hsl(var(--background) / 0.85) !important;
+    background-color: hsl(var(--background) / 0.9) !important;
     color: hsl(var(--foreground));
     border: 1px solid hsl(var(--border) / 0.6);
-    backdrop-filter: blur(12px);
+    backdrop-filter: none !important;
     box-shadow: var(--shadow-soft);
   }
   .maplibregl-control-container .maplibregl-ctrl-group > button {

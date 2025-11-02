@@ -251,15 +251,50 @@ export const MapLibreUnified = ({
     [],
   );
 
+  // Helper utilities to avoid calling getLayer/getSource before style is ready
+  const isStyleReady = (map?: maplibregl.Map | null) => {
+    try {
+      return !!map && typeof map.isStyleLoaded === 'function' && map.isStyleLoaded();
+    } catch {
+      return false;
+    }
+  };
+
+  const hasLayer = (map: maplibregl.Map | null | undefined, layerId: string) => {
+    try {
+      if (!map || !isStyleReady(map)) return false;
+      return !!map.getLayer(layerId);
+    } catch {
+      return false;
+    }
+  };
+
+  const hasSource = (map: maplibregl.Map | null | undefined, sourceId: string) => {
+    try {
+      if (!map || !isStyleReady(map)) return false;
+      return !!map.getSource(sourceId);
+    } catch {
+      return false;
+    }
+  };
+
+  const safeRemoveLayer = (map: maplibregl.Map | null | undefined, layerId: string) => {
+    try {
+      if (hasLayer(map, layerId)) map!.removeLayer(layerId);
+    } catch {/* ignore */}
+  };
+
+  const safeRemoveSource = (map: maplibregl.Map | null | undefined, sourceId: string) => {
+    try {
+      if (hasSource(map, sourceId)) map!.removeSource(sourceId);
+    } catch {/* ignore */}
+  };
+
   // Helper to remove a source/layer pair
   const removeLayerAndSource = useCallback((map: maplibregl.Map | null | undefined, layerId: string, sourceId: string) => {
     if (!map) return;
-    if (map.getLayer(layerId)) {
-      map.removeLayer(layerId);
-    }
-    if (map.getSource(sourceId)) {
-      map.removeSource(sourceId);
-    }
+    safeRemoveLayer(map, layerId);
+    safeRemoveSource(map, sourceId);
   }, []);
 
   // Custom points layer for case analytics overlays
@@ -337,9 +372,7 @@ export const MapLibreUnified = ({
     const outlineLayerId = "custom-polygons-outline";
 
     if (!customPolygons || customPolygons.features.length === 0) {
-      if (mapInstance.getLayer(outlineLayerId)) {
-        mapInstance.removeLayer(outlineLayerId);
-      }
+      safeRemoveLayer(mapInstance, outlineLayerId);
       removeLayerAndSource(mapInstance, fillLayerId, sourceId);
       return;
     }
@@ -356,13 +389,9 @@ export const MapLibreUnified = ({
     };
 
     const addLayers = () => {
-      if (mapInstance.getLayer(outlineLayerId)) {
-        mapInstance.removeLayer(outlineLayerId);
-      }
-      if (mapInstance.getLayer(fillLayerId)) {
-        mapInstance.removeLayer(fillLayerId);
-      }
-      if (mapInstance.getSource(sourceId)) {
+      safeRemoveLayer(mapInstance, outlineLayerId);
+      safeRemoveLayer(mapInstance, fillLayerId);
+      if (hasSource(mapInstance, sourceId)) {
         (mapInstance.getSource(sourceId) as maplibregl.GeoJSONSource).setData(data);
       } else {
         mapInstance.addSource(sourceId, { type: "geojson", data });
@@ -410,9 +439,7 @@ export const MapLibreUnified = ({
     }
 
     return () => {
-      if (mapInstance.getLayer(outlineLayerId)) {
-        mapInstance.removeLayer(outlineLayerId);
-      }
+      safeRemoveLayer(mapInstance, outlineLayerId);
       removeLayerAndSource(mapInstance, fillLayerId, sourceId);
     };
   }, [customPolygons, removeLayerAndSource]);
@@ -427,7 +454,7 @@ export const MapLibreUnified = ({
     const mainId = "custom-lines";
 
     if (!customLines || customLines.features.length === 0) {
-      if (mapInstance.getLayer(corridorId)) mapInstance.removeLayer(corridorId);
+      safeRemoveLayer(mapInstance, corridorId);
       removeLayerAndSource(mapInstance, mainId, sourceId);
       return;
     }
@@ -447,13 +474,13 @@ export const MapLibreUnified = ({
     };
 
     const addOrUpdate = () => {
-      if (mapInstance.getSource(sourceId)) {
+      if (hasSource(mapInstance, sourceId)) {
         (mapInstance.getSource(sourceId) as maplibregl.GeoJSONSource).setData(data);
       } else {
         mapInstance.addSource(sourceId, { type: "geojson", data });
       }
 
-      if (!mapInstance.getLayer(corridorId)) {
+      if (!hasLayer(mapInstance, corridorId)) {
         mapInstance.addLayer({
           id: corridorId,
           type: "line",
@@ -466,7 +493,7 @@ export const MapLibreUnified = ({
         });
       }
 
-      if (!mapInstance.getLayer(mainId)) {
+      if (!hasLayer(mapInstance, mainId)) {
         mapInstance.addLayer({
           id: mainId,
           type: "line",
@@ -484,7 +511,7 @@ export const MapLibreUnified = ({
     else mapInstance.once("style.load", addOrUpdate);
 
     return () => {
-      if (mapInstance.getLayer(corridorId)) mapInstance.removeLayer(corridorId);
+      safeRemoveLayer(mapInstance, corridorId);
       removeLayerAndSource(mapInstance, mainId, sourceId);
     };
   }, [customLines, removeLayerAndSource]);
@@ -646,13 +673,9 @@ export const MapLibreUnified = ({
 
     const clearLayers = () => {
       ["queimadas-points", "queimadas-clusters", "queimadas-cluster-count"].forEach((layerId) => {
-        if (mapInstance.getLayer(layerId)) {
-          mapInstance.removeLayer(layerId);
-        }
+        safeRemoveLayer(mapInstance, layerId);
       });
-      if (mapInstance.getSource("queimadas")) {
-        mapInstance.removeSource("queimadas");
-      }
+      safeRemoveSource(mapInstance, "queimadas");
     };
 
     if (!showQueimadas) {
@@ -759,17 +782,19 @@ export const MapLibreUnified = ({
   useEffect(() => {
     if (!mapRef.current || !showQueimadas || !queimadasData) return;
 
-    const source = mapRef.current.getSource("queimadas") as maplibregl.GeoJSONSource | undefined;
-    if (source) {
-      source.setData(queimadasData);
-    }
+    try {
+      const source = mapRef.current.getSource("queimadas") as maplibregl.GeoJSONSource | undefined;
+      if (source) {
+        source.setData(queimadasData);
+      }
+    } catch {/* ignore */}
   }, [queimadasData, showQueimadas]);
 
   // Apply layer ordering (array from bottom to top)
   useEffect(() => {
     const mapInstance = mapRef.current;
     if (!mapInstance || !layerOrder || layerOrder.length === 0) return;
-    const existing = layerOrder.filter((layerId) => mapInstance.getLayer(layerId));
+    const existing = layerOrder.filter((layerId) => hasLayer(mapInstance, layerId));
     existing.forEach((layerId, index) => {
       const before = existing[index + 1];
       try {

@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -60,6 +61,7 @@ const Erosao = () => {
   const [showSoilLayer, setShowSoilLayer] = useState(true);
   const [erosionLayerTop, setErosionLayerTop] = useState(true);
   const [soilLayerPosition, setSoilLayerPosition] = useState<'top' | 'middle' | 'bottom'>('top');
+  const [soilDialogOpen, setSoilDialogOpen] = useState(false);
   const erosoesDataset = useDatasetData((data) => data.erosoes);
 
   const handleSoilInputChange = (field: keyof typeof soilForm, value: string) => {
@@ -102,6 +104,30 @@ const Erosao = () => {
 
   const handleRemoveSoilSample = (id: string) => {
     setSoilSamples((prev) => prev.filter((sample) => sample.id !== id));
+  };
+  
+  const handleGenerateDemoSoil = () => {
+    const gen: SoilSample[] = [];
+    const take = Math.min(10, filteredData.length);
+    for (let i = 0; i < take; i++) {
+      const e = filteredData[i];
+      const [lat, lon] = e.coords;
+      const jitterLat = lat + (Math.random() - 0.5) * 0.02;
+      const jitterLon = lon + (Math.random() - 0.5) * 0.02;
+      gen.push({
+        id: crypto.randomUUID(),
+        latitude: jitterLat,
+        longitude: jitterLon,
+        depth: Math.round(0.5 + Math.random() * 2 * 10) / 10,
+        soilType: ["Argiloso", "Arenoso", "Siltoso"][Math.floor(Math.random() * 3)],
+        cohesion: Math.round((0.2 + Math.random() * 0.8) * 100) / 100,
+        permeability: Math.round((0.1 + Math.random() * 1.3) * 100) / 100,
+        moisture: Math.round((5 + Math.random() * 35) * 10) / 10,
+        notes: "amostra simulada",
+      });
+    }
+    setSoilSamples((prev) => [...prev, ...gen]);
+    toast.success(`${gen.length} amostras simuladas geradas`);
   };
   
   const filteredData = useMemo(() => {
@@ -376,124 +402,30 @@ const Erosao = () => {
               </select>
             </div>
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={() => setSoilDialogOpen(true)}>Amostras de Solo</Button>
+            <Button size="sm" variant="outline" onClick={handleGenerateDemoSoil}>Gerar amostras demo</Button>
+            <div className="text-xs text-muted-foreground ml-2">
+              <label className="inline-flex items-center gap-2">
+                <Switch checked={showSoilLayer} onCheckedChange={setShowSoilLayer} />
+                Exibir amostras no mapa ({soilSamples.length})
+              </label>
+            </div>
+          </div>
         </FiltersBar>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 space-y-4 border border-border rounded-lg bg-card/60 p-4">
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados detalhados de solo</h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                Registre amostras de solo para complementar o diagnóstico das erosões e gerar camadas específicas no mapa.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="soil-lat">Latitude *</Label>
-                <Input
-                  id="soil-lat"
-                  type="number"
-                  step="0.0001"
-                  value={soilForm.latitude}
-                  onChange={(e) => handleSoilInputChange('latitude', e.target.value)}
-                  placeholder="-23.5500"
-                />
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Erosões e Amostras</h3>
+                <p className="text-xs text-muted-foreground mt-1">Acesse o cadastro de amostras de solo pelo botão acima. Os pontos cadastrados aparecerão no mapa.</p>
               </div>
-              <div>
-                <Label htmlFor="soil-lon">Longitude *</Label>
-                <Input
-                  id="soil-lon"
-                  type="number"
-                  step="0.0001"
-                  value={soilForm.longitude}
-                  onChange={(e) => handleSoilInputChange('longitude', e.target.value)}
-                  placeholder="-46.6300"
-                />
-              </div>
-              <div>
-                <Label htmlFor="soil-type">Tipo de Solo *</Label>
-                <Input
-                  id="soil-type"
-                  value={soilForm.soilType}
-                  onChange={(e) => handleSoilInputChange('soilType', e.target.value)}
-                  placeholder="Argiloso, arenoso, etc."
-                />
-              </div>
-              <div>
-                <Label htmlFor="soil-depth">Profundidade (m)</Label>
-                <Input
-                  id="soil-depth"
-                  type="number"
-                  step="0.1"
-                  value={soilForm.depth}
-                  onChange={(e) => handleSoilInputChange('depth', e.target.value)}
-                  placeholder="2.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="soil-cohesion">Coesão (kPa)</Label>
-                <Input
-                  id="soil-cohesion"
-                  type="number"
-                  step="0.1"
-                  value={soilForm.cohesion}
-                  onChange={(e) => handleSoilInputChange('cohesion', e.target.value)}
-                  placeholder="45"
-                />
-              </div>
-              <div>
-                <Label htmlFor="soil-permeability">Permeabilidade (cm/s)</Label>
-                <Input
-                  id="soil-permeability"
-                  type="number"
-                  step="0.0001"
-                  value={soilForm.permeability}
-                  onChange={(e) => handleSoilInputChange('permeability', e.target.value)}
-                  placeholder="0.001"
-                />
-              </div>
-              <div>
-                <Label htmlFor="soil-moisture">Umidade (%)</Label>
-                <Input
-                  id="soil-moisture"
-                  type="number"
-                  step="0.1"
-                  value={soilForm.moisture}
-                  onChange={(e) => handleSoilInputChange('moisture', e.target.value)}
-                  placeholder="18"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="soil-notes">Observações</Label>
-                <Textarea
-                  id="soil-notes"
-                  value={soilForm.notes}
-                  onChange={(e) => handleSoilInputChange('notes', e.target.value)}
-                  placeholder="Condições adicionais do ponto, presença de lençol freático, etc."
-                  rows={3}
-                />
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => setSoilDialogOpen(true)}>Amostras de Solo</Button>
+                <Button size="sm" variant="outline" onClick={handleGenerateDemoSoil}>Gerar amostras demo</Button>
               </div>
             </div>
-            <div className="flex justify-end">
-              <Button size="sm" onClick={handleAddSoilSample}>Adicionar amostra</Button>
-            </div>
-            {soilSamples.length > 0 ? (
-              <div className="space-y-2 max-h-48 overflow-auto border border-dashed border-border rounded-md p-3 bg-background/80">
-                {soilSamples.map((sample) => (
-                  <div key={sample.id} className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <div className="font-semibold text-foreground">{sample.soilType}</div>
-                      <div>Lat/Lon: {sample.latitude.toFixed(4)}, {sample.longitude.toFixed(4)}</div>
-                      <div>Profundidade: {sample.depth} m • Coesão: {sample.cohesion} kPa • Umidade: {sample.moisture}%</div>
-                      <div>Permeabilidade: {sample.permeability} cm/s</div>
-                      {sample.notes && <div className="italic">{sample.notes}</div>}
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => handleRemoveSoilSample(sample.id)}>Remover</Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">Nenhuma amostra cadastrada até o momento.</p>
-            )}
           </div>
 
           <div className="space-y-4 border border-border rounded-lg bg-card/60 p-4">
@@ -719,6 +651,76 @@ const Erosao = () => {
         </DetailDrawer>
         
       </div>
+
+      {/* Dialog de Amostras de Solo */}
+      <Dialog open={soilDialogOpen} onOpenChange={setSoilDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Amostras de Solo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="soil-lat2">Latitude *</Label>
+                <Input id="soil-lat2" type="number" step="0.0001" value={soilForm.latitude} onChange={(e) => handleSoilInputChange('latitude', e.target.value)} placeholder="-23.5500" />
+              </div>
+              <div>
+                <Label htmlFor="soil-lon2">Longitude *</Label>
+                <Input id="soil-lon2" type="number" step="0.0001" value={soilForm.longitude} onChange={(e) => handleSoilInputChange('longitude', e.target.value)} placeholder="-46.6300" />
+              </div>
+              <div>
+                <Label htmlFor="soil-type2">Tipo de Solo *</Label>
+                <Input id="soil-type2" value={soilForm.soilType} onChange={(e) => handleSoilInputChange('soilType', e.target.value)} placeholder="Argiloso, arenoso, etc." />
+              </div>
+              <div>
+                <Label htmlFor="soil-depth2">Profundidade (m)</Label>
+                <Input id="soil-depth2" type="number" step="0.1" value={soilForm.depth} onChange={(e) => handleSoilInputChange('depth', e.target.value)} placeholder="2.5" />
+              </div>
+              <div>
+                <Label htmlFor="soil-cohesion2">Coesão (kPa)</Label>
+                <Input id="soil-cohesion2" type="number" step="0.1" value={soilForm.cohesion} onChange={(e) => handleSoilInputChange('cohesion', e.target.value)} placeholder="45" />
+              </div>
+              <div>
+                <Label htmlFor="soil-permeability2">Permeabilidade (cm/s)</Label>
+                <Input id="soil-permeability2" type="number" step="0.0001" value={soilForm.permeability} onChange={(e) => handleSoilInputChange('permeability', e.target.value)} placeholder="0.001" />
+              </div>
+              <div>
+                <Label htmlFor="soil-moisture2">Umidade (%)</Label>
+                <Input id="soil-moisture2" type="number" step="0.1" value={soilForm.moisture} onChange={(e) => handleSoilInputChange('moisture', e.target.value)} placeholder="18" />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="soil-notes2">Observações</Label>
+                <Textarea id="soil-notes2" value={soilForm.notes} onChange={(e) => handleSoilInputChange('notes', e.target.value)} placeholder="Condições adicionais do ponto, presença de lençol freático, etc." rows={3} />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleAddSoilSample}>Adicionar amostra</Button>
+              <Button variant="outline" onClick={handleGenerateDemoSoil}>Gerar amostras demo</Button>
+            </div>
+            <div className="space-y-2 max-h-60 overflow-auto border border-dashed border-border rounded-md p-3 bg-background/80">
+              {soilSamples.length > 0 ? (
+                soilSamples.map((sample) => (
+                  <div key={sample.id} className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-0 last:pb-0">
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div className="font-semibold text-foreground">{sample.soilType}</div>
+                      <div>Lat/Lon: {sample.latitude.toFixed(4)}, {sample.longitude.toFixed(4)}</div>
+                      <div>Profundidade: {sample.depth} m • Coesão: {sample.cohesion} kPa • Umidade: {sample.moisture}%</div>
+                      <div>Permeabilidade: {sample.permeability} cm/s</div>
+                      {sample.notes && <div className="italic">{sample.notes}</div>}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleRemoveSoilSample(sample.id)}>Remover</Button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhuma amostra cadastrada até o momento.</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSoilDialogOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ModuleLayout>
   );
 };

@@ -303,7 +303,7 @@ export const initializeSmartlineMap = (
     bearing,
     maxZoom: 19,
     minZoom: 4,
-    antialias: true,
+    antialias: false,
     attributionControl: { compact: false },
     validate: false,
   });
