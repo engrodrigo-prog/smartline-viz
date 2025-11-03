@@ -1,27 +1,121 @@
-import { useState, useMemo } from "react";
-import { MapPin, Users, Truck, Navigation } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { MapPin, Users, Truck, Navigation, Trophy } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import CardKPI from "@/components/CardKPI";
 import MapViewGeneric from "@/components/MapViewGeneric";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDatasetData } from "@/context/DatasetContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+
+type DemoUser = { id: string; display_name: string } | null;
+
+const DEMO_USER_STORAGE_KEY = "smartline-demo-user";
+
+const loadDemoUser = (): DemoUser => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(DEMO_USER_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as DemoUser) : null;
+  } catch {
+    return null;
+  }
+};
 
 const RastreamentoCampo = () => {
   const [viewMode, setViewMode] = useState<'membros' | 'veiculos'>('membros');
-  const { membrosEquipe: membrosDataset, veiculos: veiculosDataset } = useDatasetData((data) => ({
+  const { membrosEquipe: membrosDataset, veiculos: veiculosDataset, equipes: equipesDataset, checklists: checklistsDataset } = useDatasetData((data) => ({
     membrosEquipe: data.membrosEquipe,
     veiculos: data.veiculos,
+    equipes: data.equipes,
+    checklists: data.checklists,
   }));
 
-  // Filtrar apenas itens com localização
-  const membrosEmCampo = useMemo(() => 
-    membrosDataset.filter((m) => m.localizacaoAtual && m.status === "Em Campo"),
-  [membrosDataset]);
+  // Filtros por hierarquia (Região -> Equipe) + visibilidade
+  const [selectedRegiao, setSelectedRegiao] = useState<string>("all");
+  const [selectedEquipe, setSelectedEquipe] = useState<string>("auto");
+  const [verOutrasEquipes, setVerOutrasEquipes] = useState<boolean>(true);
 
-  const veiculosRastreados = useMemo(() => 
-    veiculosDataset.filter((v) => v.localizacaoAtual),
-  [veiculosDataset]);
+  // Detectar "minha equipe" a partir do usuário demo (se houver)
+  const [myEquipeId, setMyEquipeId] = useState<string | null>(null);
+  useEffect(() => {
+    const user = loadDemoUser();
+    if (!user) {
+      setMyEquipeId(equipesDataset?.[0]?.id ?? null);
+      return;
+    }
+    // Encontrar membro por nome aproximado e inferir equipe
+    const membro = membrosDataset.find((m) =>
+      m.nome.toLowerCase().includes(user.display_name?.split(" ")[0]?.toLowerCase() || "")
+    );
+    const equipe = membro
+      ? equipesDataset.find((e) => e.membros.includes(membro.id))
+      : equipesDataset?.[0];
+    setMyEquipeId(equipe?.id ?? null);
+  }, [membrosDataset, equipesDataset]);
+
+  // Equipes disponíveis por região
+  const regioes = useMemo(() => Array.from(new Set(equipesDataset.map((e) => e.regiao))), [equipesDataset]);
+  const equipesFiltradasPorRegiao = useMemo(
+    () => equipesDataset.filter((e) => selectedRegiao === "all" || e.regiao === selectedRegiao),
+    [equipesDataset, selectedRegiao]
+  );
+
+  // Equipe efetiva selecionada
+  const effectiveEquipeId = useMemo(() => {
+    if (selectedEquipe === "auto") return myEquipeId || equipesDataset?.[0]?.id || null;
+    if (selectedEquipe === "all") return null; // todas
+    return selectedEquipe;
+  }, [selectedEquipe, myEquipeId, equipesDataset]);
+
+  // Cálculo de XP por equipe (demo): horas de membros + checklists aprovadas + veículos em uso + status
+  const xpPorEquipe = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const eq of equipesDataset) {
+      const membrosIds = new Set(eq.membros);
+      const horas = membrosDataset
+        .filter((m) => membrosIds.has(m.id))
+        .reduce((acc, m) => acc + (m.horasTrabalhadas?.mes || 0), 0);
+      const checklistsAprovadas = checklistsDataset.filter((c) => c.equipe === eq.id && c.aprovado).length;
+      const veiculosEmUso = veiculosDataset.filter((v) => v.equipePrincipal === eq.id && v.status === 'Em Uso').length;
+      const statusBonus = eq.status === 'Em Missão' ? 50 : eq.status === 'Ativa' ? 20 : 0;
+      const xp = Math.round(horas + checklistsAprovadas * 30 + veiculosEmUso * 20 + statusBonus);
+      map.set(eq.id, xp);
+    }
+    return map;
+  }, [equipesDataset, membrosDataset, checklistsDataset, veiculosDataset]);
+
+  const xpEquipeSelecionada = effectiveEquipeId ? xpPorEquipe.get(effectiveEquipeId) || 0 : 0;
+
+  // Filtrar apenas itens com localização
+  const membrosEmCampo = useMemo(() => {
+    let data = membrosDataset.filter((m) => m.localizacaoAtual && m.status === "Em Campo");
+    // Se não pode ver outras equipes, restringe à minha equipe
+    if (!verOutrasEquipes && myEquipeId) {
+      const eq = equipesDataset.find((e) => e.id === myEquipeId);
+      if (eq) data = data.filter((m) => eq.membros.includes(m.id));
+      return data;
+    }
+    // Caso contrário, aplica filtros de hierarquia
+    const eqIdsElegiveis = new Set(
+      equipesFiltradasPorRegiao
+        .filter((e) => !effectiveEquipeId || e.id === effectiveEquipeId)
+        .map((e) => e.membros)
+        .flat(),
+    );
+    return data.filter((m) => eqIdsElegiveis.size === 0 || eqIdsElegiveis.has(m.id));
+  }, [membrosDataset, verOutrasEquipes, myEquipeId, equipesDataset, equipesFiltradasPorRegiao, effectiveEquipeId]);
+
+  const veiculosRastreados = useMemo(() => {
+    let data = veiculosDataset.filter((v) => v.localizacaoAtual);
+    if (!verOutrasEquipes && myEquipeId) return data.filter((v) => v.equipePrincipal === myEquipeId);
+    return data.filter((v) => {
+      const eqOkRegiao = selectedRegiao === "all" || !!equipesDataset.find((e) => e.id === v.equipePrincipal && e.regiao === selectedRegiao);
+      const eqOk = !effectiveEquipeId || v.equipePrincipal === effectiveEquipeId;
+      return eqOkRegiao && eqOk;
+    });
+  }, [veiculosDataset, verOutrasEquipes, myEquipeId, selectedRegiao, effectiveEquipeId, equipesDataset]);
 
   const kpis = useMemo(() => ({
     membrosAtivos: membrosEmCampo.length,
@@ -32,6 +126,59 @@ const RastreamentoCampo = () => {
   return (
     <ModuleLayout title="Rastreamento em Campo" icon={MapPin}>
       <div className="p-6 space-y-6">
+        {/* Barra de filtros por hierarquia */}
+        <div className="tech-card p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">Região</label>
+              <Select value={selectedRegiao} onValueChange={setSelectedRegiao}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {regioes.map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">Equipe</label>
+              <Select value={selectedEquipe} onValueChange={setSelectedEquipe}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Minha equipe</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {equipesFiltradasPorRegiao.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-3">
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Ver outras equipes</label>
+                <div className="flex items-center gap-2">
+                  <Switch checked={verOutrasEquipes} onCheckedChange={setVerOutrasEquipes} id="ver-outras-equipes" />
+                  <span className="text-xs text-muted-foreground">Líderes podem visualizar equipes da hierarquia</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">XP da Equipe</label>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
+                <Trophy className="w-4 h-4 text-primary" />
+                <div className="text-sm">
+                  <span className="font-semibold">{xpEquipeSelecionada} XP</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <CardKPI title="Membros em Campo" value={kpis.membrosAtivos} icon={Users} />

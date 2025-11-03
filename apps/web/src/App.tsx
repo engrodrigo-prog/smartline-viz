@@ -35,6 +35,7 @@ import Erosao from "./pages/modules/ambiental/Erosao";
 import OcupacaoFaixa from "./pages/modules/ambiental/OcupacaoFaixa";
 import Emendas from "./pages/modules/estrutura/Emendas";
 import VeiculosOnline from "./pages/operacao/VeiculosOnline";
+import RastreamentoCampo from "./pages/equipes/RastreamentoCampo";
 import PainelSensores from "./pages/sensores/PainelSensores";
 import Cameras from "./pages/sensores/Cameras";
 import SensorDashboard from "./pages/sensores/SensorDashboard";
@@ -114,6 +115,9 @@ const App = () => (
           <Route path="/operacao/veiculos" element={<ProtectedRoute><VeiculosOnline /></ProtectedRoute>} />
           <Route path="/operacao/compliance" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/operacao/relatorios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+
+          {/* Equipes */}
+          <Route path="/equipes/rastreamento" element={<ProtectedRoute><RastreamentoCampo /></ProtectedRoute>} />
           
           {/* Análises Avançadas */}
           <Route path="/analytics/comparativo" element={<ProtectedRoute><ComparativoExecucao /></ProtectedRoute>} />
