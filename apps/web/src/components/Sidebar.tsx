@@ -78,6 +78,7 @@ const menuGroups: MenuGroup[] = [
     category: "Operações",
     items: [
       { title: "Missões de Drones", path: "/operacao/missoes", icon: Plane },
+      { title: "Rastreamento de Equipes", path: "/equipes/rastreamento", icon: Users },
       { title: "Gestão de Demandas", path: "/operacao/demandas", icon: ClipboardList },
       { title: "Eventos Históricos", path: "/operacao/eventos", icon: ClockIcon },
       { title: "Veículos On-Line", path: "/operacao/veiculos", icon: Truck },

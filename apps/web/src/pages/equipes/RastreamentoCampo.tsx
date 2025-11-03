@@ -79,8 +79,8 @@ const RastreamentoCampo = () => {
         .reduce((acc, m) => acc + (m.horasTrabalhadas?.mes || 0), 0);
       const checklistsAprovadas = checklistsDataset.filter((c) => c.equipe === eq.id && c.aprovado).length;
       const veiculosEmUso = veiculosDataset.filter((v) => v.equipePrincipal === eq.id && v.status === 'Em Uso').length;
-      const statusBonus = eq.status === 'Em Missão' ? 50 : eq.status === 'Ativa' ? 20 : 0;
-      const xp = Math.round(horas + checklistsAprovadas * 30 + veiculosEmUso * 20 + statusBonus);
+      const statusBonus = eq.status === 'Em Missão' ? 50 : eq.status === 'Ativa' ? 20 : eq.status === 'Stand-by' ? -10 : eq.status === 'Inativa' ? -30 : 0;
+      const xp = Math.round(horas * 1 + checklistsAprovadas * 30 + veiculosEmUso * 20 + statusBonus);
       map.set(eq.id, xp);
     }
     return map;
@@ -122,6 +122,19 @@ const RastreamentoCampo = () => {
     veiculosAtivos: veiculosRastreados.length,
     totalRastreado: membrosEmCampo.length + veiculosRastreados.length,
   }), [membrosEmCampo, veiculosRastreados]);
+
+  const rankingEquipes = useMemo(() => {
+    const base = equipesFiltradasPorRegiao
+      .filter((e) => verOutrasEquipes || (!verOutrasEquipes && (!myEquipeId || e.id === myEquipeId)))
+      .map((e) => ({ id: e.id, nome: e.nome, xp: xpPorEquipe.get(e.id) || 0 }));
+    return base.sort((a, b) => b.xp - a.xp);
+  }, [equipesFiltradasPorRegiao, verOutrasEquipes, myEquipeId, xpPorEquipe]);
+
+  const minhaPosicao = useMemo(() => {
+    if (!myEquipeId) return null;
+    const idx = rankingEquipes.findIndex((r) => r.id === myEquipeId);
+    return idx >= 0 ? idx + 1 : null;
+  }, [rankingEquipes, myEquipeId]);
 
   return (
     <ModuleLayout title="Rastreamento em Campo" icon={MapPin}>
@@ -189,6 +202,41 @@ const RastreamentoCampo = () => {
             value={veiculosRastreados.length > 0 ? "Ativa" : "Inativa"} 
             icon={MapPin} 
           />
+        </div>
+
+        {/* Ranking de Equipes */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="tech-card p-4 lg:col-span-2">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-primary" />
+              Ranking de Equipes (XP)
+            </h3>
+            <div className="grid md:grid-cols-2 gap-3">
+              {rankingEquipes.slice(0, 6).map((item, idx) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border ${item.id === myEquipeId ? 'bg-primary/10 border-primary/30' : 'bg-muted/20 border-border/50'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : idx === 1 ? 'bg-gray-400/20 text-gray-400' : idx === 2 ? 'bg-amber-700/20 text-amber-700' : 'bg-foreground/10 text-foreground/70'}`}>{idx + 1}</div>
+                    <div className="text-sm">
+                      <div className="font-medium">{item.nome}</div>
+                      <div className="text-xs text-muted-foreground">{item.id}</div>
+                    </div>
+                  </div>
+                  <div className="text-sm font-semibold">{item.xp} XP</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="tech-card p-4">
+            <h4 className="font-semibold mb-2">Minha Posição</h4>
+            <div className="text-sm">
+              <div className="mb-2">Equipe: <span className="font-medium">{equipesDataset.find(e => e.id === (myEquipeId || ''))?.nome || '—'}</span></div>
+              <div className="mb-2">XP: <span className="font-semibold">{xpEquipeSelecionada}</span></div>
+              <div>Posição: <span className="font-semibold">{minhaPosicao ?? '—'}</span></div>
+            </div>
+          </div>
         </div>
 
         {/* Tabs */}
