@@ -19,7 +19,10 @@ function buildSignaturePlugin() {
       const vercelConfig = {
         version: 2,
         rewrites: [
-          { source: "/(.*)", destination: "/index.html" },
+          {
+            source: "/((?!api/|@vite/|@react-refresh|__vite_ping|src/|node_modules/|assets/|public/|dist/|_next/|\\.well-known/|.*\\.[\\w]+$).*)",
+            destination: "/index.html",
+          },
         ],
         headers: [
           {
@@ -86,10 +89,9 @@ export default defineConfig(({ mode }) => {
       dedupe: ["react", "react-dom", "react-router", "react-router-dom"],
     },
     build: {
-      // Mantém sourcemaps para diagnósticos em produção
       sourcemap: true,
-      // Desativar minificação temporariamente elimina possíveis erros de TDZ em bundles
-      minify: false,
+      // Reativar minificação para demos mais leves
+      minify: hasTerser ? "terser" : "esbuild",
     },
   };
 });

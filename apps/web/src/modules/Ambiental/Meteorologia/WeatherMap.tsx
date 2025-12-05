@@ -31,6 +31,17 @@ const WeatherMap = ({
   useEffect(() => {
     if (!mapContainer.current) return;
 
+    // Se o mapa já existe, apenas atualiza centro/zoom
+    if (map.current) {
+      try {
+        map.current.setCenter(center);
+        map.current.setZoom(zoom);
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
     const mapInstance = initializeESRIMap(mapContainer.current, {
       center,
       zoom,
@@ -38,10 +49,10 @@ const WeatherMap = ({
 
     map.current = mapInstance;
 
-    map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
-    map.current.addControl(new maplibregl.FullscreenControl(), 'top-right');
+    map.current.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.current.addControl(new maplibregl.FullscreenControl(), "top-right");
 
-    map.current.on('load', () => {
+    map.current.on("load", () => {
       setIsLoading(false);
       if (loadTimeoutRef.current) {
         clearTimeout(loadTimeoutRef.current);
@@ -50,10 +61,8 @@ const WeatherMap = ({
 
     // Timeout de segurança: forçar remoção do loading após 5s
     loadTimeoutRef.current = setTimeout(() => {
-      if (isLoading) {
-        console.warn('Map load timeout - forcing loading state to false');
-        setIsLoading(false);
-      }
+      console.warn("Map load timeout - forcing loading state to false");
+      setIsLoading(false);
     }, 5000);
 
     return () => {
@@ -61,8 +70,9 @@ const WeatherMap = ({
         clearTimeout(loadTimeoutRef.current);
       }
       map.current?.remove();
+      map.current = null;
     };
-  }, []);
+  }, [center, zoom]);
 
   // Adicionar camadas meteorológicas
   useEffect(() => {

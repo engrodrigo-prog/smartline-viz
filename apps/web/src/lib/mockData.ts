@@ -1063,6 +1063,85 @@ export const checklists: ChecklistOperacional[] = [
   },
 ];
 
+// ================= QUIZZES (DEMO) =================
+import type { Quiz } from "@/lib/quizTypes";
+
+export const quizzes: Quiz[] = [
+  {
+    id: 'QZ-001',
+    title: 'Segurança em Campo – NR-10/NR-35',
+    description: 'Boas práticas de segurança em trabalhos elétricos e em altura.',
+    tags: ['segurança', 'normas'],
+    pointsPerQuestion: 10,
+    randomized: true,
+    questions: [
+      {
+        id: 'Q1',
+        text: 'Qual EPI é indispensável em trabalho em altura (NR-35)?',
+        choices: [
+          { id: 'Q1A', text: 'Capacete com jugular', correct: true },
+          { id: 'Q1B', text: 'Protetor auricular' },
+          { id: 'Q1C', text: 'Óculos escuros' },
+          { id: 'Q1D', text: 'Luvas nitrílicas' },
+        ],
+        explanation: 'O capacete com jugular evita a perda do EPI e protege a cabeça em quedas ou impactos.',
+      },
+      {
+        id: 'Q2',
+        text: 'Antes de iniciar serviço elétrico (NR-10), deve-se:',
+        choices: [
+          { id: 'Q2A', text: 'Sinalizar área e desenergizar circuito', correct: true },
+          { id: 'Q2B', text: 'Manter circuitos energizados para testar ao vivo' },
+          { id: 'Q2C', text: 'Usar apenas luvas comuns' },
+          { id: 'Q2D', text: 'Ignorar a análise de risco' },
+        ],
+        explanation: 'Sinalização e desenergização com bloqueio/etiquetagem (LOTO) reduzem significativamente o risco.',
+      },
+      {
+        id: 'Q3',
+        text: 'Em inspeções perto de LT, o distanciamento mínimo serve para:',
+        choices: [
+          { id: 'Q3A', text: 'Reduzir risco de arco elétrico', correct: true },
+          { id: 'Q3B', text: 'Economizar EPIs' },
+          { id: 'Q3C', text: 'Acelerar o serviço' },
+          { id: 'Q3D', text: 'Facilitar o transporte' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'QZ-002',
+    title: 'Operação de Drones – Boas Práticas',
+    description: 'Procedimentos padrão e segurança em missões com drones.',
+    tags: ['drones', 'operação'],
+    pointsPerQuestion: 10,
+    randomized: true,
+    questions: [
+      {
+        id: 'Q1',
+        text: 'Checklist pré-voo deve incluir:',
+        choices: [
+          { id: 'A', text: 'Checar baterias e link de rádio', correct: true },
+          { id: 'B', text: 'Usar qualquer firmware' },
+          { id: 'C', text: 'Ignorar clima' },
+          { id: 'D', text: 'Voar sem plano' },
+        ],
+      },
+      {
+        id: 'Q2',
+        text: 'Ventos fortes requerem:',
+        choices: [
+          { id: 'A', text: 'Avaliar limites e ajustar o plano', correct: true },
+          { id: 'B', text: 'Voar acima do teto operacional' },
+          { id: 'C', text: 'Desativar sensores' },
+          { id: 'D', text: 'Aproximar de cabos' },
+        ],
+      },
+    ],
+  },
+];
+
+
 export type EventoEnergiaTipo = 'Pisca' | 'Interrupção';
 
 export interface EventoEnergia {

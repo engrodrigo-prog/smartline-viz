@@ -2,23 +2,16 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 export default function LegalNotice() {
+  const year = new Date().getFullYear();
+
   return (
-    <footer
-      className="legal-notice"
-      style={{
-        padding: "16px",
-        fontSize: 12,
-        color: "#666",
-        borderTop: "1px solid #eee",
-        marginTop: 24,
-      }}
-    >
-      <div>© {new Date().getFullYear()} SmartLine™. Todos os direitos reservados.</div>
-      <div style={{ marginTop: 4 }}>
+    <footer className="mt-6 border-t border-border/60 px-6 py-4 text-xs text-muted-foreground">
+      <div>© {year} SmartLine™. Todos os direitos reservados.</div>
+      <div className="mt-2 leading-relaxed">
         O conteúdo, imagens e dados apresentados são protegidos por direitos autorais e, quando aplicável, por segredo de negócio.
         O uso não autorizado, cópia, engenharia reversa, scraping ou redistribuição é proibido.
         Ao acessar, você concorda com os{" "}
-        <Link to="/legal" style={{ textDecoration: "underline" }}>
+        <Link to="/legal" className="underline hover:text-foreground transition-colors">
           Termos de Uso e Aviso Legal
         </Link>
         .

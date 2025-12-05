@@ -4,7 +4,7 @@ export const PrototypeBadge: React.FC<{ className?: string }> = ({ className }) 
   return (
     <div
       className={
-        "pointer-events-none fixed top-3 right-3 z-50 select-none " +
+        "pointer-events-none fixed bottom-3 left-3 z-50 select-none " +
         (className ?? "")
       }
     >
@@ -19,4 +19,3 @@ export const PrototypeBadge: React.FC<{ className?: string }> = ({ className }) 
 };
 
 export default PrototypeBadge;
-

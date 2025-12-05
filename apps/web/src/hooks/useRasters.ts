@@ -11,6 +11,10 @@ export const useRasters = (options: UseRastersOptions = {}) => {
   return useQuery({
     queryKey: ['rasters', options],
     queryFn: async () => {
+      if (!supabase) {
+        console.warn('[useRasters] Supabase não configurado; retornando lista vazia de rasters.');
+        return [];
+      }
       let query = (supabase as any)
         .from('rasters')
         .select('*')

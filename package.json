@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "dev:web": "pnpm -C apps/web dev",
+    "dev:web:4000": "pnpm -C apps/web dev:4000",
     "dev:api": "pnpm -C apps/api dev",
     "dev:worker": "python workers/media/python/main.py",
     "dev:all": "bash -c 'pnpm -C apps/api dev & pnpm -C apps/web dev & python workers/media/python/main.py'",
@@ -16,6 +17,12 @@
     "build:api": "pnpm -C apps/api build",
     "deploy:dist": "npx vercel --prod --yes --cwd ./apps/web/dist",
     "pub": "pnpm build:web && pnpm deploy:dist",
-    "deploy:web:auto": "node scripts/deploy-web.mjs"
+    "deploy:web:auto": "node scripts/deploy-web.mjs",
+    "test:e2e": "pnpm playwright test --config=playwright.config.ts",
+    "seed:admins": "pnpm tsx scripts/seed-admins.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "tsx": "^4.19.2"
   }
 }

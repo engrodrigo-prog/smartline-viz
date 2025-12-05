@@ -56,6 +56,7 @@ const Landing = () => {
   const [apiAvailable, setApiAvailable] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [surveyOpen, setSurveyOpen] = useState(false);
+  const contactMailto = `mailto:${ENV.CONTACT_EMAIL}?subject=Contato%20Smartline&body=Olá,%0A%0AGostaria de falar com a equipe sobre o Smartline AssetHealth.%0A%0AObrigado!`;
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -229,14 +230,12 @@ const Landing = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <div className="relative inline-block">
+                <div className="flex flex-col items-center gap-1">
                   <Link to="/dashboard" className="btn-primary text-lg inline-block">
                     Acessar Sistema
                   </Link>
-                  <div className="pointer-events-none absolute -top-3 -right-3 rotate-2">
-                    <div className="bg-yellow-300/95 text-slate-900 shadow border border-yellow-500/60 px-2 py-0.5 rounded-sm text-[10px] font-semibold">
-                      Em desenvolvimento
-                    </div>
+                  <div className="text-[11px] text-yellow-200/80 px-2 py-0.5 bg-yellow-500/10 border border-yellow-400/40 rounded-md">
+                    Em desenvolvimento
                   </div>
                 </div>
                 <button
@@ -253,6 +252,12 @@ const Landing = () => {
                 >
                   Falar com a equipe
                 </button>
+                <Link
+                  to="/signup-request"
+                  className="btn-secondary text-lg inline-block"
+                >
+                  Solicitar acesso direto
+                </Link>
               </div>
             </motion.div>
 
@@ -982,6 +987,7 @@ const Landing = () => {
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             As respostas são armazenadas com segurança no Jotform para acompanhamento da equipe Smartline.
+            Preferir e-mail direto? <a className="text-primary underline" href={contactMailto}>Envie para {ENV.CONTACT_EMAIL}</a>.
           </p>
         </DialogContent>
       </Dialog>

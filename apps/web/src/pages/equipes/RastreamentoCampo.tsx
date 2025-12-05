@@ -90,12 +90,12 @@ const RastreamentoCampo = () => {
 
   // Filtrar apenas itens com localização
   const membrosEmCampo = useMemo(() => {
-    let data = membrosDataset.filter((m) => m.localizacaoAtual && m.status === "Em Campo");
+    const base = membrosDataset.filter((m) => m.localizacaoAtual && m.status === "Em Campo");
     // Se não pode ver outras equipes, restringe à minha equipe
     if (!verOutrasEquipes && myEquipeId) {
       const eq = equipesDataset.find((e) => e.id === myEquipeId);
-      if (eq) data = data.filter((m) => eq.membros.includes(m.id));
-      return data;
+      if (!eq) return base;
+      return base.filter((m) => eq.membros.includes(m.id));
     }
     // Caso contrário, aplica filtros de hierarquia
     const eqIdsElegiveis = new Set(
@@ -104,13 +104,13 @@ const RastreamentoCampo = () => {
         .map((e) => e.membros)
         .flat(),
     );
-    return data.filter((m) => eqIdsElegiveis.size === 0 || eqIdsElegiveis.has(m.id));
+    return base.filter((m) => eqIdsElegiveis.size === 0 || eqIdsElegiveis.has(m.id));
   }, [membrosDataset, verOutrasEquipes, myEquipeId, equipesDataset, equipesFiltradasPorRegiao, effectiveEquipeId]);
 
   const veiculosRastreados = useMemo(() => {
-    let data = veiculosDataset.filter((v) => v.localizacaoAtual);
-    if (!verOutrasEquipes && myEquipeId) return data.filter((v) => v.equipePrincipal === myEquipeId);
-    return data.filter((v) => {
+    const base = veiculosDataset.filter((v) => v.localizacaoAtual);
+    if (!verOutrasEquipes && myEquipeId) return base.filter((v) => v.equipePrincipal === myEquipeId);
+    return base.filter((v) => {
       const eqOkRegiao = selectedRegiao === "all" || !!equipesDataset.find((e) => e.id === v.equipePrincipal && e.regiao === selectedRegiao);
       const eqOk = !effectiveEquipeId || v.equipePrincipal === effectiveEquipeId;
       return eqOkRegiao && eqOk;

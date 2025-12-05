@@ -1,11 +1,47 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { 
-  ChevronDown, ChevronRight, LayoutDashboard, Map, Network, FileText, Upload,
-  Droplets, Trees, Mountain, Ruler, ShieldCheck, Building2,
-  Link2, GitBranch, Shield, Skull, Camera, Gauge, ChartArea,
-  Bell, Plane, Clock as ClockIcon, FileCheck, Settings, Users, Lock,
-  Award, HardHat, BrainCircuit, MapPin, Flame, Home, History, Truck, CloudRain, Thermometer, ClipboardList, BarChart3, Database
+  ChevronDown,
+  ChevronRight,
+  LayoutDashboard,
+  Map,
+  Network,
+  FileText,
+  Upload,
+  Droplets,
+  Trees,
+  Mountain,
+  Ruler,
+  ShieldCheck,
+  Building2,
+  Link2,
+  GitBranch,
+  Shield,
+  Skull,
+  Camera,
+  Gauge,
+  ChartArea,
+  Bell,
+  Plane,
+  Clock as ClockIcon,
+  FileCheck,
+  Settings,
+  Users,
+  Lock,
+  Award,
+  HardHat,
+  BrainCircuit,
+  MapPin,
+  Flame,
+  Home,
+  History,
+  Truck,
+  CloudRain,
+  Thermometer,
+  ClipboardList,
+  BarChart3,
+  Database,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
@@ -96,6 +132,12 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    category: "Treinamento",
+    items: [
+      { title: "Quizzes", path: "/treinamento/quizzes", icon: GraduationCap },
+    ],
+  },
+  {
     category: "Configurações",
     items: [
       { title: "Configurações Gerais", path: "/config/geral", icon: Settings },
@@ -166,18 +208,16 @@ const Sidebar = () => {
 
   // Initialize: open the group containing the current route
   useEffect(() => {
-    const savedState = localStorage.getItem('sidebar-groups');
+    const savedState = localStorage.getItem("sidebar-groups");
     if (savedState) {
       setOpenGroups(JSON.parse(savedState));
     } else {
-      const currentGroup = menuGroups.find(g => 
-        g.items.some(item => location.pathname === item.path)
-      );
+      const currentGroup = menuGroups.find((g) => g.items.some((item) => location.pathname === item.path));
       if (currentGroup) {
         setOpenGroups({ [currentGroup.category]: true });
       }
     }
-  }, []);
+  }, [location.pathname, setOpenGroups]);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -188,16 +228,14 @@ const Sidebar = () => {
 
   // Auto-open group when navigating to a route
   useEffect(() => {
-    const currentGroup = menuGroups.find(g => 
-      g.items.some(item => location.pathname === item.path)
-    );
+    const currentGroup = menuGroups.find((g) => g.items.some((item) => location.pathname === item.path));
     if (currentGroup && !openGroups[currentGroup.category]) {
-      setOpenGroups(prev => ({
+      setOpenGroups((prev) => ({
         ...prev,
-        [currentGroup.category]: true
+        [currentGroup.category]: true,
       }));
     }
-  }, [location.pathname]);
+  }, [location.pathname, openGroups]);
 
   const toggleGroup = (category: string) => {
     setOpenGroups(prev => ({

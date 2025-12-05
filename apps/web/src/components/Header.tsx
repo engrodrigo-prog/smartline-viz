@@ -1,4 +1,5 @@
-import { Bell, User, Settings, LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bell, User, Settings, LogOut, RefreshCw, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +12,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useDatasetContext } from "@/context/DatasetContext";
+import { ENV } from "@/config/env";
+import { useQuery } from "@tanstack/react-query";
 
 interface HeaderProps {
   title: string;
@@ -20,22 +24,65 @@ interface HeaderProps {
 const Header = ({ title, subtitle }: HeaderProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { resetDataset, lastUpdated } = useDatasetContext();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(async ({ data }) => {
+      const user = data.session?.user;
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      if (profile?.role === "admin") {
+        setIsAdmin(true);
+      } else {
+        // fallback: admins principais por e-mail
+        const adminEmails = ["eng.rodrigo@gmail.com", "guilherme@gpcad.com.br"];
+        setIsAdmin(adminEmails.includes(user.email ?? ""));
+      }
+    });
+  }, []);
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        title: "Erro ao sair",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
+    try {
+      // Logout Supabase, se estiver configurado
+      if (supabase) {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          throw error;
+        }
+      }
+      // Limpa sessão demo local
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("smartline-demo-user");
+      }
       toast({
         title: "Logout realizado",
         description: "Você foi desconectado com sucesso.",
       });
       navigate("/login");
+    } catch (error: any) {
+      toast({
+        title: "Erro ao sair",
+        description: error?.message ?? "Não foi possível encerrar a sessão.",
+        variant: "destructive",
+      });
     }
+  };
+
+  const handleResetDemo = () => {
+    resetDataset();
+    toast({
+      title: "Dataset demo reiniciado",
+      description: "Os dados simulados foram restaurados.",
+    });
   };
 
   return (
@@ -46,6 +93,11 @@ const Header = ({ title, subtitle }: HeaderProps) => {
           {subtitle && (
             <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
           )}
+          {ENV.DEMO_MODE && (
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Demo ativo {lastUpdated ? `• atualizado em ${new Date(lastUpdated).toLocaleString("pt-BR")}` : ""}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -53,6 +105,20 @@ const Header = ({ title, subtitle }: HeaderProps) => {
             <Bell className="w-5 h-5" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
           </Button>
+
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => navigate("/admin/requests")} className="flex items-center gap-2">
+              <FlaskConical className="w-4 h-4" />
+              Studio
+            </Button>
+          )}
+
+          {ENV.DEMO_MODE && (
+            <Button variant="outline" size="sm" onClick={handleResetDemo} className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Reset demo
+            </Button>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

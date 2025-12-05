@@ -125,24 +125,32 @@ const DataTableAdvanced = ({
             </tr>
           </thead>
           <tbody>
-            {paginatedData.map((row, index) => (
-              <tr
-                key={row.id || index}
-                onClick={() => onRowClick?.(row)}
-                className={`border-b border-border transition-colors ${
-                  onRowClick ? 'cursor-pointer hover:bg-muted/30' : ''
-                }`}
-              >
-                {columns.map((column) => (
-                  <td key={column.key} className="px-4 py-3 text-sm">
-                    {column.render 
-                      ? column.render(row[column.key], row)
-                      : row[column.key]
-                    }
-                  </td>
-                ))}
+            {sortedData.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-4 py-6 text-center text-sm text-muted-foreground"
+                >
+                  Nenhum resultado encontrado com os filtros atuais.
+                </td>
               </tr>
-            ))}
+            ) : (
+              paginatedData.map((row, index) => (
+                <tr
+                  key={row.id || index}
+                  onClick={() => onRowClick?.(row)}
+                  className={`border-b border-border transition-colors ${
+                    onRowClick ? "cursor-pointer hover:bg-muted/30" : ""
+                  }`}
+                >
+                  {columns.map((column) => (
+                    <td key={column.key} className="px-4 py-3 text-sm">
+                      {column.render ? column.render(row[column.key], row) : row[column.key]}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

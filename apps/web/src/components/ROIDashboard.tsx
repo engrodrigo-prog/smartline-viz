@@ -8,6 +8,10 @@ export function ROIDashboard() {
   const { data: metrics } = useQuery({
     queryKey: ['roi-metrics'],
     queryFn: async () => {
+      if (!supabase) {
+        console.warn('[ROIDashboard] Supabase não configurado; usando métricas estáticas de demonstração.');
+        return [];
+      }
       const { data, error } = await supabase.rpc('calculate_roi_metrics', {
         _tenant_id: null, // TODO: Get from user context
         _period_days: 30

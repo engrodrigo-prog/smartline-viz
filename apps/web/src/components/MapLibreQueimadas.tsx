@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -113,7 +114,7 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
     windVectorRef.current = windVector;
   }, [windVector]);
 
-
+  // Inicialização única do mapa e overlay; dependências avaliadas manualmente
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
@@ -156,7 +157,11 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-          try { map.current!.addImage('flame-icon', img, { pixelRatio: 2 }); } catch {}
+          try {
+            map.current!.addImage('flame-icon', img, { pixelRatio: 2 });
+          } catch (error) {
+            console.warn('Não foi possível registrar ícone de chama no mapa.', error);
+          }
           if (!map.current!.getLayer('risk-icons')) {
             map.current!.addLayer({
               id: 'risk-icons',
@@ -326,7 +331,11 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
           if (rafRef.current) cancelAnimationFrame(rafRef.current);
           rafRef.current = null;
           window.removeEventListener('resize', handleResize);
-          try { map.current?.off('move', handleResize as any); } catch {}
+          try {
+            map.current?.off('move', handleResize as any);
+          } catch (error) {
+            console.warn('Falha ao remover listener de movimento do mapa.', error);
+          }
           if (windCanvasRef.current && windCanvasRef.current.parentElement) {
             windCanvasRef.current.parentElement.removeChild(windCanvasRef.current);
           }
@@ -343,7 +352,11 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
 
     return () => {
       if ((map.current as any)?.__windCleanup) {
-        try { (map.current as any).__windCleanup(); } catch {}
+        try {
+          (map.current as any).__windCleanup();
+        } catch (error) {
+          console.warn('Erro ao executar cleanup do overlay de vento.', error);
+        }
       }
       map.current?.remove();
       map.current = null;

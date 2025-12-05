@@ -25,29 +25,31 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
   });
   const [isHovered, setIsHovered] = useState(false);
 
+  const { empresa, regiao, linha } = filters;
+
   // Update regiões when empresa changes
   useEffect(() => {
-    if (filters.empresa) {
-      setAvailableRegioes(REGIOES_POR_EMPRESA[filters.empresa] || []);
-      if (!REGIOES_POR_EMPRESA[filters.empresa]?.includes(filters.regiao || '')) {
-        setFilters({ ...filters, regiao: undefined, linha: undefined });
+    if (empresa) {
+      setAvailableRegioes(REGIOES_POR_EMPRESA[empresa] || []);
+      if (!REGIOES_POR_EMPRESA[empresa]?.includes(regiao || "")) {
+        setFilters((prev) => ({ ...prev, regiao: undefined, linha: undefined }));
       }
     } else {
       setAvailableRegioes([]);
     }
-  }, [filters.empresa]);
+  }, [empresa, regiao, setFilters]);
 
   // Update linhas when região changes
   useEffect(() => {
-    if (filters.regiao) {
-      setAvailableLinhas(LINHAS_POR_REGIAO[filters.regiao] || []);
-      if (!LINHAS_POR_REGIAO[filters.regiao]?.includes(filters.linha || '')) {
-        setFilters({ ...filters, linha: undefined });
+    if (regiao) {
+      setAvailableLinhas(LINHAS_POR_REGIAO[regiao] || []);
+      if (!LINHAS_POR_REGIAO[regiao]?.includes(linha || "")) {
+        setFilters((prev) => ({ ...prev, linha: undefined }));
       }
     } else {
       setAvailableLinhas([]);
     }
-  }, [filters.regiao]);
+  }, [linha, regiao, setFilters]);
 
   // Update ramais when linha changes
   useEffect(() => {

@@ -79,6 +79,7 @@ const UploadUnificado = () => {
 
   const filePickerRef = useRef<HTMLInputElement | null>(null);
 
+  // TODO API Hono: sincronizar status/progresso do endpoint /upload/media/processed para refletir ingestão final.
   const mediaMutation = useMediaUpload();
   const mediaRecordQuery = useMediaRecord(lastMediaId ?? undefined);
   const mediaFramesQuery = useMediaFrames(lastMediaId ?? undefined);

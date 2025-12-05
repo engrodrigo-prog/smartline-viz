@@ -1,51 +1,49 @@
-import { Activity, AlertTriangle, CheckCircle, Clock, TrendingUp, Map, Network, Upload, MapPin, Database } from "lucide-react";
-import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Map, Network, MapPin } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
-import CardKPI from "@/components/CardKPI";
 import FilterPanel from "@/components/FilterPanel";
-import UnifiedMapView from "@/components/map/UnifiedMapView";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useDatasetData } from "@/context/DatasetContext";
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import UnifiedMapView from "@/features/map/UnifiedMapView";
+import QuickAccessGrid, { type QuickAccessItem } from "@/features/dashboard/components/QuickAccessGrid";
+import KpiGrid from "@/features/dashboard/components/KpiGrid";
+import PerformanceCharts from "@/features/dashboard/components/PerformanceCharts";
+import TimelineChart from "@/features/dashboard/components/TimelineChart";
+import RecentSensorsTable from "@/features/dashboard/components/RecentSensorsTable";
+import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
 
 const Dashboard = () => {
-  const { sensors, assets, chartData } = useDatasetData((data) => ({
-    sensors: data.mockSensors,
-    assets: data.mockAssets,
-    chartData: data.mockChartData,
-  }));
+  const { chartData, metrics, sensorsWithDate } = useDashboardData();
 
-  const sensorsWithDate = useMemo(
-    () =>
-      sensors.map((sensor) => ({
-        ...sensor,
-        lastUpdate: sensor.lastUpdate ? new Date(sensor.lastUpdate) : undefined,
-      })),
-    [sensors],
-  );
+  // TODO Supabase: substituir quick links por destinos condicionais assim que o dataset LiPowerline estiver conectado.
 
-  const operationalAssets = assets.filter((a) => a.status === "operational").length;
-  const criticalAlerts = sensors.filter((s) => s.status === "critical").length;
-  const avgHealthScore = assets.length
-    ? Math.round(assets.reduce((acc, a) => acc + a.healthScore, 0) / assets.length)
-    : 0;
-
-  const COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--accent))", "hsl(var(--destructive))"];
+  const quickLinks: QuickAccessItem[] = [
+    {
+      id: "mapa-eventos",
+      title: "Mapa de Eventos",
+      description: "Visualização geográfica de ativos",
+      to: "/visual/mapa",
+      Icon: Map,
+      iconWrapperClass: "bg-primary/10",
+      iconClass: "text-primary",
+    },
+    {
+      id: "unifilar",
+      title: "Diagrama Unifilar",
+      description: "Topologia da linha",
+      to: "/visual/unifilar",
+      Icon: Network,
+      iconWrapperClass: "bg-secondary/10",
+      iconClass: "text-secondary",
+    },
+    {
+      id: "rastreamento",
+      title: "Rastreamento",
+      description: "Equipes em campo",
+      to: "/equipes/rastreamento",
+      Icon: MapPin,
+      iconWrapperClass: "bg-blue-500/10",
+      iconClass: "text-blue-500",
+    },
+  ];
 
   return (
     <AppLayout title="Dashboard Principal" subtitle="Visão geral do sistema AssetHealth">
@@ -61,223 +59,11 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-
-        {/* Quick Access Shortcuts */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link to="/visual/mapa" className="tech-card p-6 hover:scale-[1.02] transition-transform">
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="p-4 bg-primary/10 rounded-2xl">
-                <Map className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Mapa de Eventos</h3>
-                <p className="text-xs text-muted-foreground">Visualização geográfica de ativos</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link to="/visual/unifilar" className="tech-card p-6 hover:scale-[1.02] transition-transform">
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="p-4 bg-secondary/10 rounded-2xl">
-                <Network className="w-8 h-8 text-secondary" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Diagrama Unifilar</h3>
-                <p className="text-xs text-muted-foreground">Topologia da linha</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link to="/equipes/rastreamento" className="tech-card p-6 hover:scale-[1.02] transition-transform">
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="p-4 bg-blue-500/10 rounded-2xl">
-                <MapPin className="w-8 h-8 text-blue-500" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Rastreamento</h3>
-                <p className="text-xs text-muted-foreground">Equipes em campo</p>
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        {/* KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <CardKPI
-            title="Ativos Operacionais"
-            value={operationalAssets}
-            icon={CheckCircle}
-            trend={{ value: 5.2, isPositive: true }}
-          />
-          <CardKPI
-            title="Alertas Críticos"
-            value={criticalAlerts}
-            icon={AlertTriangle}
-            trend={{ value: 12.3, isPositive: false }}
-          />
-          <CardKPI
-            title="Health Score Médio"
-            value={`${avgHealthScore}%`}
-            icon={Activity}
-            trend={{ value: 3.1, isPositive: true }}
-          />
-          <CardKPI
-            title="Sensores Ativos"
-            value={sensors.length}
-            icon={Database}
-          />
-        </div>
-
-        {/* Charts Row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Performance por Região */}
-          <div className="tech-card p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              Performance por Região
-            </h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData.performance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="region" stroke="hsl(var(--foreground))" />
-                <YAxis stroke="hsl(var(--foreground))" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "0.5rem"
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="value" name="Atual" fill="hsl(var(--primary))" />
-                <Bar dataKey="target" name="Meta" fill="hsl(var(--secondary))" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Distribuição de Alertas */}
-          <div className="tech-card p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-primary" />
-              Distribuição de Alertas
-            </h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={chartData.alerts}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => entry.type}
-                  outerRadius={80}
-                  fill="hsl(var(--primary))"
-                  dataKey="count"
-                >
-                  {chartData.alerts.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "0.5rem"
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Timeline Chart */}
-        <div className="tech-card p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-primary" />
-            Histórico de Status (Últimos 30 dias)
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData.timeline}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="day" stroke="hsl(var(--foreground))" />
-              <YAxis stroke="hsl(var(--foreground))" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "0.5rem"
-                }}
-              />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="operational" 
-                name="Operacional"
-                stroke="hsl(var(--primary))" 
-                strokeWidth={2}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="maintenance" 
-                name="Manutenção"
-                stroke="hsl(var(--secondary))" 
-                strokeWidth={2}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="critical" 
-                name="Crítico"
-                stroke="hsl(var(--destructive))" 
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Recent Sensors */}
-        <div className="tech-card p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Database className="w-5 h-5 text-primary" />
-            Sensores Recentes
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-border">
-                <tr className="text-left text-sm text-muted-foreground">
-                  <th className="pb-3 font-medium">ID</th>
-                  <th className="pb-3 font-medium">Nome</th>
-                  <th className="pb-3 font-medium">Tipo</th>
-                  <th className="pb-3 font-medium">Status</th>
-                  <th className="pb-3 font-medium">Última Atualização</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sensorsWithDate.map((sensor) => (
-                  <tr key={sensor.id} className="border-b border-border/50 last:border-0">
-                    <td className="py-3 font-mono text-sm">{sensor.id}</td>
-                    <td className="py-3">{sensor.name}</td>
-                    <td className="py-3 text-sm text-muted-foreground">{sensor.type}</td>
-                    <td className="py-3">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          sensor.status === "normal"
-                            ? "bg-primary/20 text-primary"
-                            : sensor.status === "warning"
-                            ? "bg-secondary/20 text-secondary"
-                            : "bg-destructive/20 text-destructive"
-                        }`}
-                      >
-                        {sensor.status}
-                      </span>
-                    </td>
-                    <td className="py-3 text-sm text-muted-foreground">
-                      {sensor.lastUpdate ? sensor.lastUpdate.toLocaleString("pt-BR") : "Sem registro"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+            <QuickAccessGrid links={quickLinks} />
+            <KpiGrid metrics={metrics} />
+            <PerformanceCharts chartData={chartData} />
+            <TimelineChart data={chartData.timeline} />
+            <RecentSensorsTable sensors={sensorsWithDate} />
           </TabsContent>
 
           {/* Aba Mapa */}

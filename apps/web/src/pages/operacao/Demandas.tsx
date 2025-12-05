@@ -85,8 +85,7 @@ const Demandas = () => {
   const { data, isLoading, refetch } = useDemandas(filters);
   const createMutation = useDemandaMutation();
   const deleteMutation = useDeleteDemanda();
-
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data]);
 
   const resumo = useMemo(() => {
     const total = items.length;

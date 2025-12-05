@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type SyntheticEvent } from 'react';
+import { useState, useEffect, useMemo, useCallback, type SyntheticEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { SensorFiltersBar } from '@/components/sensors/SensorFiltersBar';
@@ -251,11 +251,7 @@ export default function Cameras() {
   const [visibleCount, setVisibleCount] = useState(6);
   const [playAll, setPlayAll] = useState(false);
 
-  useEffect(() => {
-    fetchCameras();
-  }, [filters, sourceFilter]);
-
-  const fetchCameras = async () => {
+  const fetchCameras = useCallback(async () => {
     const matchesFilters = (camera: CameraItem) => {
       const regionFilter = filters.region?.toLowerCase();
       const lineFilter = filters.lineCode?.toLowerCase();
@@ -290,7 +286,11 @@ export default function Cameras() {
     ].filter(matchesFilters);
 
     setCameras(combined);
-  };
+  }, [filters.lineCode, filters.region, sourceFilter]);
+
+  useEffect(() => {
+    fetchCameras();
+  }, [fetchCameras]);
 
   const cameraFeatures = useMemo(() => {
     return cameras

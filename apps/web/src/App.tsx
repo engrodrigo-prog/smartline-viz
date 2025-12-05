@@ -19,6 +19,8 @@ import Unifilar from "./pages/Unifilar";
 import UploadBases from "./pages/UploadBases";
 import UploadTracados from "./pages/UploadTracados";
 import UploadKml from "./pages/UploadKml";
+import ChangePassword from "./pages/ChangePassword";
+import SignupRequest from "./pages/SignupRequest";
 import UploadUnificado from "./pages/upload/UploadUnificado";
 import UploadHistorico from "./pages/upload/UploadHistorico";
 import LayerUpload from "./pages/upload/LayerUpload";
@@ -48,6 +50,9 @@ import MissoesPage from "./pages/missoes";
 import PerfilLinha from "./pages/modules/estrutura/PerfilLinha";
 import ComparativoExecucao from "./pages/analytics/ComparativoExecucao";
 import Legal from "./pages/Legal";
+import Quizzes from "./pages/treinamento/Quizzes";
+import QuizRunner from "./pages/treinamento/QuizRunner";
+import RequestsPage from "./pages/admin/Requests";
 
 const queryClient = new QueryClient();
 
@@ -64,7 +69,10 @@ const App = () => (
           <Route path="/" element={<Landing />} />
           <Route path="/resultados" element={<Resultados />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup-request" element={<SignupRequest />} />
+          <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
           <Route path="/legal" element={<Legal />} />
+          <Route path="/admin/requests" element={<ProtectedRoute><RequestsPage /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/relatorios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
@@ -124,6 +132,10 @@ const App = () => (
           <Route path="/analises/gemeo-digital" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/fiscalizacao/obras" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/auditorias/qualidade" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          
+          {/* Treinamento */}
+          <Route path="/treinamento/quizzes" element={<ProtectedRoute><Quizzes /></ProtectedRoute>} />
+          <Route path="/treinamento/quiz/:id" element={<ProtectedRoute><QuizRunner /></ProtectedRoute>} />
           
           {/* Configurações */}
           <Route path="/config/geral" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />

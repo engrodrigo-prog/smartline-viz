@@ -85,8 +85,16 @@ const Queimadas = () => {
     horizons: HORIZONS,
     count: 2000
   });
+  // TODO Simulações de risco: plugar aqui o output consolidado (span_analysis + modelos de propagação) quando o worker publicar novos campos.
 
-  const collection = (data as FirmsRiskFeatureCollection) ?? { type: "FeatureCollection", features: [] };
+  const collection = useMemo<FirmsRiskFeatureCollection>(
+    () =>
+      (data as FirmsRiskFeatureCollection) ?? {
+        type: "FeatureCollection",
+        features: [],
+      },
+    [data],
+  );
   const meta = collection.meta ?? null;
   const windMeta = meta?.wind;
 
@@ -164,9 +172,11 @@ const Queimadas = () => {
   const usingSimulated = modoSimulado || enrichedBase.length === 0;
   const enriched = usingSimulated ? enrichedSim : enrichedBase;
   const visibleHeightSet = useMemo(() => new Set(visibleHeights), [visibleHeights]);
+  const timeline = windMeta?.timeline;
+
   const windTimelineData = useMemo(() => {
-    if (!windMeta?.timeline?.length) return [];
-    return windMeta.timeline
+    if (!timeline?.length) return [];
+    return timeline
       .map((entry) => {
         const ts = entry.dt * 1000;
         const row: Record<string, any> = {
@@ -182,7 +192,7 @@ const Queimadas = () => {
         return row;
       })
       .sort((a, b) => a.ts - b.ts);
-  }, [windMeta?.timeline]);
+  }, [timeline]);
 
   const profileRows = useMemo(() => {
     if (!windMeta?.profile_by_horizon) return [];
@@ -208,22 +218,25 @@ const Queimadas = () => {
       return [...prev, height].sort((a, b) => a - b);
     });
   };
-  const nowTs = useMemo(() => Date.now(), [windMeta?.timeline]);
+  const nowTs = Date.now();
 
   const baseAvgRisk = useMemo(() => {
     if (!enriched.length) return 0;
     return enriched.reduce((acc, item) => acc + item.riskMax, 0) / enriched.length;
   }, [enriched]);
 
+  const totalHotspots = meta?.stats?.hotspots_total;
+
   const focusCards: Array<FocusFilter & { value: string | number }> = useMemo(() => {
     const criticalThreshold = 90;
     const aboveAvgPredicate = (item: EnrichedHotspot) => item.riskMax >= baseAvgRisk && item.riskMax > 0;
+    const total = totalHotspots ?? collection.features.length;
     return [
       {
         id: "total",
         label: "Hotspots avaliados",
         predicate: () => true,
-        value: meta?.stats?.hotspots_total ?? collection.features.length,
+        value: total,
       },
       {
         id: "criticos",
@@ -244,7 +257,7 @@ const Queimadas = () => {
         value: enriched.filter((item) => item.intersectsCorridor).length,
       },
     ];
-  }, [collection.features.length, enriched, baseAvgRisk]);
+  }, [baseAvgRisk, collection.features.length, enriched, totalHotspots]);
 
   const activeList = useMemo(() => {
     if (!focusFilter) return enriched;

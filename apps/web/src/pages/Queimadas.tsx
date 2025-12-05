@@ -133,7 +133,7 @@ const Queimadas = () => {
           .addTo(map.current!);
       }
     });
-  }, [map.current, pointsData, showPoints]);
+  }, [modoBrasil, pointsData, showPoints]);
 
   const handleRefresh = () => {
     refetchPoints();

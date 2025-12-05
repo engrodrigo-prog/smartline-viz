@@ -24,15 +24,18 @@ export function RasterUpload({ onUploadSuccess, line_code, corridor_id }: Raster
       return;
     }
 
+    if (!supabase) {
+      toast.error('Supabase não configurado neste ambiente. Configure VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY para processar rasters.');
+      return;
+    }
+
     setUploading(true);
 
     try {
-      // Upload para Storage (simulado)
+      toast.loading('Processando raster...');
       const file_path = `rasters/${Date.now()}_${file.name}`;
 
-      toast.loading('Processando raster...');
-
-      // Chamar edge function para processar
+      // Chamar edge function para processar (assume que o arquivo já foi entregue ao bucket configurado)
       const { data, error } = await supabase.functions.invoke('process-raster', {
         body: {
           file_path,

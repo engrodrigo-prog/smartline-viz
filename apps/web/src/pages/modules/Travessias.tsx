@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Cable, Camera, MapPin, Route, TrainTrack } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +20,48 @@ import { useDatasetData } from "@/context/DatasetContext";
 import type { Evento } from "@/lib/mockData";
 
 type TravessiaItem = Evento;
+
+// Helpers geométricos mínimos para intersecção de segmentos
+type XY = [number, number];
+
+const segIntersect = (a: XY, b: XY, c: XY, d: XY): XY | null => {
+  const x1 = a[0],
+    y1 = a[1];
+  const x2 = b[0],
+    y2 = b[1];
+  const x3 = c[0],
+    y3 = c[1];
+  const x4 = d[0],
+    y4 = d[1];
+  const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (denom === 0) return null;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+  const u = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denom;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+};
+
+const lineSegments = (line: LineString): XY[][] => {
+  const coords = line.coordinates as XY[];
+  const segs: XY[][] = [];
+  for (let i = 0; i < coords.length - 1; i++) segs.push([coords[i], coords[i + 1]]);
+  return segs;
+};
+
+const hash = (s: string) => {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+};
+
+const dist2 = (p: XY, q: XY) => {
+  const dx = p[0] - q[0];
+  const dy = p[1] - q[1];
+  return dx * dx + dy * dy;
+};
 
 const STATUS_OPTIONS = ["Identificada", "Notificada", "Judicializada", "Regularizada"] as const;
 const STATUS_FILTERS = [...STATUS_OPTIONS, "Sem status"] as const;
@@ -219,78 +261,79 @@ const Travessias = () => {
     ],
   }), []);
 
-  // Helpers geométricos mínimos para intersecção de segmentos
-  type XY = [number, number];
-  const segIntersect = (a: XY, b: XY, c: XY, d: XY): XY | null => {
-    const x1 = a[0], y1 = a[1];
-    const x2 = b[0], y2 = b[1];
-    const x3 = c[0], y3 = c[1];
-    const x4 = d[0], y4 = d[1];
-    const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-    if (denom === 0) return null;
-    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
-    const u = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denom;
-    if (t < 0 || t > 1 || u < 0 || u > 1) return null;
-    return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
-  };
-
-  const lineSegments = (line: LineString): XY[][] => {
-    const coords = line.coordinates as XY[];
-    const segs: XY[][] = [];
-    for (let i = 0; i < coords.length - 1; i++) segs.push([coords[i], coords[i + 1]]);
-    return segs;
-  };
-
-  const collectIntersections = (
-    base: FeatureCollection<LineString>,
-    target: FeatureCollection<LineString>,
-    tag: 'rodovia' | 'ferrovia',
-  ): FeatureCollection<Point> => {
-    const features: Feature<Point, { tipo: string }>[] = [];
-    base.features.forEach((bf) => {
-      target.features.forEach((tf) => {
-        lineSegments(bf.geometry).forEach(([a, b]) => {
-          lineSegments(tf.geometry).forEach(([c, d]) => {
-            const p = segIntersect(a, b, c, d);
-            if (p) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: p }, properties: { tipo: tag } });
+  const collectIntersections = useCallback(
+    (
+      base: FeatureCollection<LineString>,
+      target: FeatureCollection<LineString>,
+      tag: "rodovia" | "ferrovia",
+    ): FeatureCollection<Point> => {
+      const features: Feature<Point, { tipo: string }>[] = [];
+      base.features.forEach((bf) => {
+        target.features.forEach((tf) => {
+          lineSegments(bf.geometry).forEach(([a, b]) => {
+            lineSegments(tf.geometry).forEach(([c, d]) => {
+              const p = segIntersect(a, b, c, d);
+              if (p)
+                features.push({
+                  type: "Feature",
+                  geometry: { type: "Point", coordinates: p },
+                  properties: { tipo: tag },
+                });
+            });
           });
         });
       });
-    });
-    return { type: 'FeatureCollection', features };
-  };
+      return { type: "FeatureCollection", features };
+    },
+    [],
+  );
 
-  const cruzRodovias = useMemo(() => collectIntersections(rsDemoLine as any, rodovias, 'rodovia'), [rsDemoLine, rodovias]);
-  const cruzFerrovias = useMemo(() => collectIntersections(rsDemoLine as any, ferrovias, 'ferrovia'), [rsDemoLine, ferrovias]);
+  const cruzRodovias = useMemo(
+    () => collectIntersections(rsDemoLine as any, rodovias, "rodovia"),
+    [collectIntersections, rodovias, rsDemoLine],
+  );
+  const cruzFerrovias = useMemo(
+    () => collectIntersections(rsDemoLine as any, ferrovias, "ferrovia"),
+    [collectIntersections, ferrovias, rsDemoLine],
+  );
 
-  // Score de risco por travessia: vão (simulado), corrosão (derivado), proximidade de cruzamentos
-  const hash = (s: string) => {
-    let h = 2166136261 >>> 0;
-    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return h >>> 0;
-  };
-  const dist2 = (p: XY, q: XY) => { const dx = p[0] - q[0]; const dy = p[1] - q[1]; return dx * dx + dy * dy; };
-  const nearestCrossingFactor = (coord: XY): number => {
-    const all = [...cruzRodovias.features, ...cruzFerrovias.features];
-    if (!all.length) return 0;
-    let best = Infinity;
-    for (const f of all) { const q = f.geometry.coordinates as XY; const d = dist2(coord, q); if (d < best) best = d; }
-    const approx = 1 / Math.max(1e-8, best * 5);
-    return Math.min(1, approx);
-  };
+  const nearestCrossingFactor = useCallback(
+    (coord: XY): number => {
+      const all = [...cruzRodovias.features, ...cruzFerrovias.features];
+      if (!all.length) return 0;
+      let best = Infinity;
+      for (const f of all) {
+        const q = f.geometry.coordinates as XY;
+        const d = dist2(coord, q);
+        if (d < best) best = d;
+      }
+      const approx = 1 / Math.max(1e-8, best * 5);
+      return Math.min(1, approx);
+    },
+    [cruzFerrovias, cruzRodovias],
+  );
 
   const enriched = useMemo(() => {
     return filteredData.map((e) => {
-      const h = hash(e.id + (e.nome || ''));
-      const randA = (h % 1000) / 1000; const randB = ((h >>> 10) % 1000) / 1000;
+      const h = hash(e.id + (e.nome || ""));
+      const randA = (h % 1000) / 1000;
+      const randB = ((h >>> 10) % 1000) / 1000;
       const vaoMaior = Math.round(80 + Math.max(randA, randB) * 370);
-      const corrosaoIndex = (e.criticidade === 'Alta' ? 0.75 : e.criticidade === 'Média' ? 0.45 : 0.2) + (e.status === 'Crítico' ? 0.2 : e.status === 'Alerta' ? 0.1 : 0);
+      const corrosaoIndex =
+        (e.criticidade === "Alta" ? 0.75 : e.criticidade === "Média" ? 0.45 : 0.2) +
+        (e.status === "Crítico" ? 0.2 : e.status === "Alerta" ? 0.1 : 0);
       const crossFactor = nearestCrossingFactor((e.coords ?? [-46.63, -23.55]) as XY);
       const vaoNorm = (vaoMaior - 80) / (450 - 80);
       const score = Math.min(1, vaoNorm * 0.4 + Math.min(1, corrosaoIndex) * 0.35 + crossFactor * 0.25);
-      return { ...e, vaoMaior, corrosaoIndex: Math.min(1, corrosaoIndex), crossFactor, riskScore: score } as TravessiaItem & { vaoMaior: number; corrosaoIndex: number; crossFactor: number; riskScore: number };
+      return {
+        ...e,
+        vaoMaior,
+        corrosaoIndex: Math.min(1, corrosaoIndex),
+        crossFactor,
+        riskScore: score,
+      } as TravessiaItem & { vaoMaior: number; corrosaoIndex: number; crossFactor: number; riskScore: number };
     });
-  }, [filteredData, cruzRodovias, cruzFerrovias]);
+  }, [filteredData, nearestCrossingFactor]);
 
   const statusCounts = useMemo(() => {
     const now = Date.now();

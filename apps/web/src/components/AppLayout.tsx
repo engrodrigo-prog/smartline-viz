@@ -1,8 +1,9 @@
 import { ReactNode } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { LoginTopbar } from "./LoginTopbar";
 import PrototypeBadge from "./PrototypeBadge";
+import DemoNav from "./DemoNav";
+import { ENV } from "@/config/env";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -17,8 +18,8 @@ const AppLayout = ({ children, title, subtitle }: AppLayoutProps) => {
       <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <LoginTopbar variant="compact" />
         <Header title={title} subtitle={subtitle} />
+        {ENV.DEMO_MODE && <DemoNav />}
         
         <main className="flex-1 overflow-y-auto p-6">
           {children}

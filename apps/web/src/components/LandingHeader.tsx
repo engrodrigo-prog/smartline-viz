@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { ENV } from "@/config/env";
 
 const LandingHeader = () => {
   const [showContact, setShowContact] = useState(false);
   const { toast } = useToast();
   const [showSurvey, setShowSurvey] = useState(false);
+  const mailto = `mailto:${ENV.CONTACT_EMAIL}?subject=Contato%20Smartline&body=Olá,%0A%0AGostaria de saber mais sobre o Smartline AssetHealth.%0A%0AObrigado!`;
 
   const handleSubmitContact = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -117,6 +119,10 @@ const LandingHeader = () => {
             <Button type="submit" className="btn-primary mt-2">
               Enviar Mensagem
             </Button>
+
+            <p className="text-xs text-muted-foreground text-center">
+              Prefere e-mail direto? <a className="text-primary underline" href={mailto}>Envie para {ENV.CONTACT_EMAIL}</a>
+            </p>
           </form>
         </DialogContent>
       </Dialog>

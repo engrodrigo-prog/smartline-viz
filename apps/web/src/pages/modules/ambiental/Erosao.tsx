@@ -21,6 +21,11 @@ import type { FeatureCollection } from "geojson";
 import { useDatasetData } from "@/context/DatasetContext";
 import type { Erosao as ErosaoItem } from "@/lib/mockData";
 
+const RS_BOUNDS: [[number, number], [number, number]] = [
+  [-57.65, -33.75],
+  [-49.5, -27.0],
+];
+
 type SoilSample = {
   id: string;
   latitude: number;
@@ -63,6 +68,16 @@ const Erosao = () => {
   const [soilLayerPosition, setSoilLayerPosition] = useState<'top' | 'middle' | 'bottom'>('top');
   const [soilDialogOpen, setSoilDialogOpen] = useState(false);
   const erosoesDataset = useDatasetData((data) => data.erosoes);
+
+  const isSoilFormValid = useMemo(() => {
+    const lat = Number(soilForm.latitude);
+    const lon = Number(soilForm.longitude);
+    return (
+      !Number.isNaN(lat) &&
+      !Number.isNaN(lon) &&
+      soilForm.soilType.trim().length > 0
+    );
+  }, [soilForm.latitude, soilForm.longitude, soilForm.soilType]);
 
   const handleSoilInputChange = (field: keyof typeof soilForm, value: string) => {
     setSoilForm((prev) => ({ ...prev, [field]: value }));
@@ -164,8 +179,6 @@ const Erosao = () => {
     if (!focusFilter) return filteredData;
     return filteredData.filter(focusFilter.predicate);
   }, [filteredData, focusFilter]);
-
-  const RS_BOUNDS: [[number, number], [number, number]] = [[-57.65, -33.75], [-49.5, -27.0]];
 
   const points: FeatureCollection = useMemo(
     () => ({
@@ -354,6 +367,20 @@ const Erosao = () => {
     <ModuleLayout title="Erosão" icon={Mountain}>
       <div className="p-6 space-y-6">
         <ModuleDemoBanner />
+        <div className="tech-card p-4 border border-primary/40 bg-background/60">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+            Fluxo SmartLine – Risco de Erosão (Starter Kit)
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Este módulo visual foi desenhado para consumir os resultados do fluxo de automação de risco de erosão SmartLine™:
+          </p>
+          <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
+            <li>Ingestão de chuva observada (INMET + IMERG NRT) e prevista (GFS/ECMWF).</li>
+            <li>Processamento do DTM por linha/corredor (Fill/Breach, Slope, TWI, SPI, LS canônico).</li>
+            <li>Cálculo de A_RUSLE e composição de risco (0–100) para cada trecho.</li>
+            <li>Publicação de COGs para o SmartLine Viz como fonte raster geoespacial.</li>
+          </ol>
+        </div>
         
         <FiltersBar>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -694,7 +721,9 @@ const Erosao = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={handleAddSoilSample}>Adicionar amostra</Button>
+              <Button onClick={handleAddSoilSample} disabled={!isSoilFormValid}>
+                Adicionar amostra
+              </Button>
               <Button variant="outline" onClick={handleGenerateDemoSoil}>Gerar amostras demo</Button>
             </div>
             <div className="space-y-2 max-h-60 overflow-auto border border-dashed border-border rounded-md p-3 bg-background/80">

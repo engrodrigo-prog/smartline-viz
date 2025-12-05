@@ -7,24 +7,40 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { postJSON } from "@/services/api";
-import { SHOULD_USE_DEMO_API, nowIso } from "@/lib/demoApi";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const markSessionStart = () => {
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("smartline-session-start", new Date().toISOString());
+      } catch {
+        // falha em persistir não bloqueia login
+      }
+    }
+  };
+
   useEffect(() => {
     // Check if already logged in (when Supabase is configured)
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/dashboard");
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("must_change_password")
+          .eq("id", session.user.id)
+          .single();
+        if (profile?.must_change_password) {
+          navigate("/change-password");
+        } else {
+          navigate("/dashboard");
+        }
       }
     });
   }, [navigate]);
@@ -35,36 +51,31 @@ const Login = () => {
 
     try {
       if (!supabase) {
-        // Demo sem Supabase; evitar chamadas a /auth e salvar sessão local
-        const user = {
-          id: `demo-${Math.random().toString(36).slice(2,10)}`,
-          display_name: (fullName || email || "Convidado").trim(),
-          email: email || undefined,
-          issued_at: nowIso(),
-        };
-        try { localStorage.setItem("smartline-demo-user", JSON.stringify(user)); } catch {}
-        toast({ title: "Sessão demo ativa", description: `Bem-vindo(a), ${user.display_name}!` });
-        navigate("/dashboard");
-        return;
+        throw new Error(
+          "Módulo de autenticação ainda não configurado. Fale com o administrador para concluir a integração com o Supabase."
+        );
       }
 
-      if (isSignUp) {
-        // Sign up new user
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName },
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-          },
-        });
-        if (error) throw error;
-        toast({ title: "Conta criada!", description: "Você foi autenticado e pode acessar o sistema." });
-        navigate("/dashboard");
+      // Apenas login (cadastro é administrado fora do app público)
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+
+      markSessionStart();
+
+      // Decide para onde ir
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
+      if (!user) throw new Error("Sessão não encontrada após login.");
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("must_change_password")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.must_change_password) {
+        toast({ title: "Troca de senha necessária", description: "Defina uma nova senha para continuar." });
+        navigate("/change-password");
       } else {
-        // Sign in existing user
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
         toast({ title: "Login realizado!", description: "Redirecionando para o dashboard..." });
         navigate("/dashboard");
       }
@@ -104,20 +115,6 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {isSignUp && (
-              <div className="relative">
-                <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Nome completo"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  className="pl-10 bg-input border-border"
-                />
-              </div>
-            )}
-
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
@@ -126,6 +123,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
                 className="pl-10 bg-input border-border"
               />
             </div>
@@ -139,12 +137,13 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
+                autoComplete="current-password"
                 className="pl-10 bg-input border-border"
               />
             </div>
 
             <Button type="submit" className="btn-primary mt-2" disabled={loading}>
-              {loading ? "Processando..." : isSignUp ? "Criar Conta" : "Entrar"}
+              {loading ? "Processando..." : "Entrar"}
             </Button>
           </form>
 
@@ -154,16 +153,13 @@ const Login = () => {
             </p>
           )}
 
-          <div className="mt-6 pt-6 border-t border-border/50 text-center">
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-primary hover:text-primary/80 font-medium transition-colors block w-full"
-            >
-              {isSignUp ? "Já tem uma conta? Entre aqui" : "Não tem conta? Cadastre-se"}
-            </button>
-          </div>
-
           <div className="mt-6 text-center">
+            <Link
+              to="/signup-request"
+              className="text-sm text-primary hover:text-primary/80 transition-colors block mb-2"
+            >
+              Solicitar acesso ao Smartline
+            </Link>
             <Link
               to="/"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"

@@ -252,50 +252,69 @@ export const MapLibreUnified = ({
   );
 
   // Helper utilities to avoid calling getLayer/getSource before style is ready
-  const isStyleReady = (map?: maplibregl.Map | null) => {
+  const isStyleReady = useCallback((map?: maplibregl.Map | null) => {
     try {
-      return !!map && typeof map.isStyleLoaded === 'function' && map.isStyleLoaded();
+      return !!map && typeof map.isStyleLoaded === "function" && map.isStyleLoaded();
     } catch {
       return false;
     }
-  };
+  }, []);
 
-  const hasLayer = (map: maplibregl.Map | null | undefined, layerId: string) => {
-    try {
-      if (!map || !isStyleReady(map)) return false;
-      return !!map.getLayer(layerId);
-    } catch {
-      return false;
-    }
-  };
+  const hasLayer = useCallback(
+    (map: maplibregl.Map | null | undefined, layerId: string) => {
+      try {
+        if (!map || !isStyleReady(map)) return false;
+        return !!map.getLayer(layerId);
+      } catch {
+        return false;
+      }
+    },
+    [isStyleReady],
+  );
 
-  const hasSource = (map: maplibregl.Map | null | undefined, sourceId: string) => {
-    try {
-      if (!map || !isStyleReady(map)) return false;
-      return !!map.getSource(sourceId);
-    } catch {
-      return false;
-    }
-  };
+  const hasSource = useCallback(
+    (map: maplibregl.Map | null | undefined, sourceId: string) => {
+      try {
+        if (!map || !isStyleReady(map)) return false;
+        return !!map.getSource(sourceId);
+      } catch {
+        return false;
+      }
+    },
+    [isStyleReady],
+  );
 
-  const safeRemoveLayer = (map: maplibregl.Map | null | undefined, layerId: string) => {
-    try {
-      if (hasLayer(map, layerId)) map!.removeLayer(layerId);
-    } catch {/* ignore */}
-  };
+  const safeRemoveLayer = useCallback(
+    (map: maplibregl.Map | null | undefined, layerId: string) => {
+      try {
+        if (hasLayer(map, layerId)) map!.removeLayer(layerId);
+      } catch {
+        // ignore
+      }
+    },
+    [hasLayer],
+  );
 
-  const safeRemoveSource = (map: maplibregl.Map | null | undefined, sourceId: string) => {
-    try {
-      if (hasSource(map, sourceId)) map!.removeSource(sourceId);
-    } catch {/* ignore */}
-  };
+  const safeRemoveSource = useCallback(
+    (map: maplibregl.Map | null | undefined, sourceId: string) => {
+      try {
+        if (hasSource(map, sourceId)) map!.removeSource(sourceId);
+      } catch {
+        // ignore
+      }
+    },
+    [hasSource],
+  );
 
   // Helper to remove a source/layer pair
-  const removeLayerAndSource = useCallback((map: maplibregl.Map | null | undefined, layerId: string, sourceId: string) => {
-    if (!map) return;
-    safeRemoveLayer(map, layerId);
-    safeRemoveSource(map, sourceId);
-  }, []);
+  const removeLayerAndSource = useCallback(
+    (map: maplibregl.Map | null | undefined, layerId: string, sourceId: string) => {
+      if (!map) return;
+      safeRemoveLayer(map, layerId);
+      safeRemoveSource(map, sourceId);
+    },
+    [safeRemoveLayer, safeRemoveSource],
+  );
 
   // Custom points layer for case analytics overlays
   useEffect(() => {
@@ -442,7 +461,7 @@ export const MapLibreUnified = ({
       safeRemoveLayer(mapInstance, outlineLayerId);
       removeLayerAndSource(mapInstance, fillLayerId, sourceId);
     };
-  }, [customPolygons, removeLayerAndSource]);
+  }, [customPolygons, hasSource, removeLayerAndSource, safeRemoveLayer]);
 
   // Custom lines layer (e.g., demo RS line)
   useEffect(() => {
@@ -514,7 +533,7 @@ export const MapLibreUnified = ({
       safeRemoveLayer(mapInstance, corridorId);
       removeLayerAndSource(mapInstance, mainId, sourceId);
     };
-  }, [customLines, removeLayerAndSource]);
+  }, [customLines, hasLayer, hasSource, removeLayerAndSource, safeRemoveLayer]);
 
   // Erosion occurrences layer
   useEffect(() => {
@@ -658,13 +677,7 @@ export const MapLibreUnified = ({
     } else {
       mapInstance.once("style.load", loadInfrastructure);
     }
-  }, [
-    filterEmpresa,
-    filterLinha,
-    filterRegiao,
-    removeLayerAndSource,
-    showInfrastructure,
-  ]);
+  }, [filterEmpresa, filterLinha, filterRegiao, removeLayerAndSource, showInfrastructure]);
 
   // Load queimadas layer
   useEffect(() => {
@@ -769,14 +782,7 @@ export const MapLibreUnified = ({
       mapInstance.off("mouseenter", "queimadas-points", handleMouseEnter);
       mapInstance.off("mouseleave", "queimadas-points", handleMouseLeave);
     };
-  }, [
-    confiancaMin,
-    mode,
-    onFeatureClick,
-    sateliteFilter,
-    showQueimadas,
-    zoneConfig,
-  ]);
+  }, [confiancaMin, mode, onFeatureClick, sateliteFilter, showQueimadas, zoneConfig, safeRemoveLayer, safeRemoveSource]);
 
   // Update queimadas data when it changes
   useEffect(() => {
@@ -803,7 +809,7 @@ export const MapLibreUnified = ({
         console.warn("Unable to move layer", layerId, error);
       }
     });
-  }, [layerOrder]);
+  }, [hasLayer, layerOrder]);
 
   // Fit bounds when provided
   useEffect(() => {
@@ -823,8 +829,21 @@ export const MapLibreUnified = ({
   const outerStyle = height ? { height } : undefined;
 
   return (
-    <div className="relative w-full h-full map-smooth" style={outerStyle}>
-      {/* Sem overlay/blur durante o load para evitar flicker */}
+    <div
+      className="relative w-full h-full map-smooth"
+      style={outerStyle}
+      aria-busy={isLoading}
+      aria-live="polite"
+    >
+      {isLoading && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-background/70 backdrop-blur-sm">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <p className="text-xs text-muted-foreground">
+            Carregando mapa geoespacial...
+          </p>
+        </div>
+      )}
+
       {hasInteracted && (
         <BasemapSelector value={currentBasemap} onChange={handleBasemapChange} mapboxAvailable={false} />
       )}

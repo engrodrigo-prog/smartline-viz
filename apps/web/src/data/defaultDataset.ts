@@ -24,6 +24,7 @@ import {
   uploads,
   veiculos,
   unifilarDiagramas,
+  quizzes,
 } from "@/lib/mockData";
 
 /**
@@ -57,6 +58,7 @@ export const defaultDataset = {
   checklists,
   eventosEnergia,
   unifilarDiagramas,
+  quizzes,
 } as const;
 
 export type Dataset = typeof defaultDataset;

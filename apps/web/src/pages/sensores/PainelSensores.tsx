@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { SensorFiltersBar } from '@/components/sensors/SensorFiltersBar';
@@ -43,12 +43,7 @@ export default function PainelSensores() {
   const { filters, setFilters, regions, lines } = useSensorFilters();
   const [sensors, setSensors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchSensors();
-  }, [filters]);
-
-  const fetchSensors = async () => {
+  const fetchSensors = useCallback(async () => {
     setLoading(true);
     
     if (!supabase) {
@@ -81,9 +76,12 @@ export default function PainelSensores() {
       );
       setSensors(sensorsWithReadings);
     }
-    
     setLoading(false);
-  };
+  }, [filters.lineCode, filters.region, filters.sensorType]);
+
+  useEffect(() => {
+    fetchSensors();
+  }, [fetchSensors]);
 
   const sensorFeatures = useMemo(() => {
     return sensors

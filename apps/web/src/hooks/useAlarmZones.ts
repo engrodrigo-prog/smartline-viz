@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,12 +19,7 @@ export const useAlarmZones = (concessao?: string) => {
   const [config, setConfig] = useState<AlarmZoneConfig>(DEFAULT_CONFIG);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-
-  useEffect(() => {
-    loadConfig();
-  }, [concessao]);
-
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     try {
       setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -59,7 +54,11 @@ export const useAlarmZones = (concessao?: string) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [concessao]);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
 
   const saveConfig = async (newConfig: Omit<AlarmZoneConfig, 'id'>) => {
     try {

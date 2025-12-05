@@ -16,6 +16,9 @@ export const useChangeDetection = () => {
 
   return useMutation({
     mutationFn: async (params: DetectChangesParams) => {
+      if (!supabase) {
+        throw new Error('Supabase não configurado neste ambiente. Configure VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY para usar detecção de mudanças.');
+      }
       const { data, error } = await supabase.functions.invoke('detect-changes', {
         body: params,
       });

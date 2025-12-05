@@ -1,12 +1,13 @@
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabase, supabase } from '@/integrations/supabase/client';
 
 export const LayersStorage = {
   /**
    * Upload de arquivo para layers/custom/user_<uuid>/
    */
   async uploadCustomLayer(file: File, userId: string) {
+    const client = getSupabase();
     const path = `custom/user_${userId}/${file.name}`;
-    const { data, error } = await supabase.storage
+    const { data, error } = await client.storage
       .from('layers')
       .upload(path, file, { upsert: true });
     
@@ -18,7 +19,8 @@ export const LayersStorage = {
    * Listar arquivos do usuário em custom/
    */
   async listUserLayers(userId: string) {
-    const { data, error } = await supabase.storage
+    const client = getSupabase();
+    const { data, error } = await client.storage
       .from('layers')
       .list(`custom/user_${userId}/`);
     
@@ -30,7 +32,8 @@ export const LayersStorage = {
    * Download de camada base (IBGE, etc.)
    */
   getBaseLayerUrl(filename: string) {
-    const { data } = supabase.storage
+    const client = getSupabase();
+    const { data } = client.storage
       .from('layers')
       .getPublicUrl(`base/${filename}`);
     
@@ -41,8 +44,9 @@ export const LayersStorage = {
    * Deletar arquivo customizado
    */
   async deleteCustomLayer(userId: string, filename: string) {
+    const client = getSupabase();
     const path = `custom/user_${userId}/${filename}`;
-    const { error } = await supabase.storage
+    const { error } = await client.storage
       .from('layers')
       .remove([path]);
     
@@ -53,7 +57,8 @@ export const LayersStorage = {
    * Download URL de arquivo customizado
    */
   getCustomLayerUrl(userId: string, filename: string) {
-    const { data } = supabase.storage
+    const client = getSupabase();
+    const { data } = client.storage
       .from('layers')
       .getPublicUrl(`custom/user_${userId}/${filename}`);
     
