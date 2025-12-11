@@ -11,7 +11,6 @@ import {
   Zap,
   Database,
   Cloud,
-  TrendingUp,
   AlertTriangle,
   TreePine,
   FileWarning,
@@ -51,6 +50,7 @@ import bannerCompliance from "@/assets/banner-compliance.png";
 import dashboardControl from "@/assets/dashboard-control.png";
 import teamAnalysis from "@/assets/team-analysis.png";
 import controlRoom from "@/assets/control-room.png";
+import droneLidar from "@/assets/drone-lidar.png";
 
 const Landing = () => {
   const [apiAvailable, setApiAvailable] = useState(false);
@@ -265,9 +265,40 @@ const Landing = () => {
           </div>
         </section>
 
-        
+        {/* LiDAR + Orto base (mesmo estilo da seção de operação) */}
+        <section className="py-20 px-10">
+          <div className="container mx-auto max-w-7xl">
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="flex items-center justify-center order-2 lg:order-1"
+              >
+                <img
+                  src={droneLidar}
+                  alt="Drone com LiDAR inspecionando linhas"
+                  className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
+                />
+              </motion.div>
 
-        
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="backdrop-blur-md bg-slate-900/70 rounded-xl p-8 border border-white/10 order-1 lg:order-2"
+              >
+                <h2 className="text-3xl font-bold mb-4 text-white">LiDAR em drones, ortomosaicos de precisão</h2>
+                <p className="text-white/90 text-lg">
+                  Voos fotogramétricos e LiDAR embarcado geram nuvens de pontos densas, MDT/MDS e ortomosaicos
+                  georreferenciados. Essa base geoespacial alimenta todo o SmartLine.
+                </p>
+              </motion.div>
+            </div>
+          </div>
+        </section>
 
         {/* Operational Excellence Section with Images */}
         <section className="py-20 px-10">
