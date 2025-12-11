@@ -288,7 +288,7 @@ const Landing = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
-                className="backdrop-blur-md bg-slate-900/70 rounded-xl p-8 border border-white/10 order-1 lg:order-2"
+                className="tech-card p-8 order-1 lg:order-2"
               >
                 <h2 className="text-3xl font-bold mb-4 text-white">LiDAR em drones, ortomosaicos de precisão</h2>
                 <p className="text-white/90 text-lg">
@@ -309,7 +309,7 @@ const Landing = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
-                className="backdrop-blur-md bg-slate-900/70 rounded-xl p-8 border border-white/10"
+                className="tech-card p-8"
               >
                 <h2 className="text-3xl font-bold mb-4 text-white">Operação descentralizada, controle central</h2>
                 <p className="text-white/90 text-lg">
@@ -358,7 +358,7 @@ const Landing = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
-                className="backdrop-blur-md bg-slate-900/70 rounded-xl p-8 border border-white/10 order-1 lg:order-2"
+                className="tech-card p-8 order-1 lg:order-2"
               >
                 <h2 className="text-3xl font-bold mb-4 text-white">Análise colaborativa e preditiva</h2>
                 <p className="text-white/90 text-lg">
@@ -380,7 +380,7 @@ const Landing = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
-                className="backdrop-blur-md bg-slate-900/70 rounded-xl p-8 border border-white/10"
+                className="tech-card p-8"
               >
                 <h2 className="text-3xl font-bold mb-4 text-white">Dashboards inteligentes e acionáveis</h2>
                 <p className="text-white/90 text-lg">
@@ -429,7 +429,7 @@ const Landing = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
-                className="backdrop-blur-md bg-slate-900/70 rounded-xl p-8 border border-white/10 order-1 lg:order-2"
+                className="tech-card p-8 order-1 lg:order-2"
               >
                 <h2 className="text-3xl font-bold mb-4 text-white">Treinamento & Capacitação</h2>
                 <p className="text-white/90 text-lg mb-4">
