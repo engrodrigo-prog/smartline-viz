@@ -26,7 +26,7 @@ async function ensureLine(client: PoolClient, datasetId: string, options: Lipowe
 
   const result = await client.query(
     `INSERT INTO tb_linha (codigo_linha, nome_linha, tensao_kv, concessionaria, regiao, geom, metadata)
-     VALUES ($1, $2, $3, $4, $5, CASE WHEN $6 IS NULL THEN NULL ELSE ST_GeomFromGeoJSON($6) END, $7::jsonb)
+     VALUES ($1, $2, $3, $4, $5, CASE WHEN $6::text IS NULL THEN NULL ELSE ST_GeomFromGeoJSON($6::text) END, $7::jsonb)
      ON CONFLICT (codigo_linha)
      DO UPDATE SET
        nome_linha = COALESCE(EXCLUDED.nome_linha, tb_linha.nome_linha),
@@ -53,7 +53,7 @@ async function ensureLine(client: PoolClient, datasetId: string, options: Lipowe
 async function ensureScenario(client: PoolClient, linhaId: string, datasetId: string, options: LipowerlineImportOptions) {
   const result = await client.query(
     `INSERT INTO tb_cenario (linha_id, descricao, data_referencia, tipo_cenario, status, metadata)
-     VALUES ($1, $2, $3, $4, $5, jsonb_build_object('dataset_id', $6))
+     VALUES ($1, $2, $3, $4, $5, jsonb_build_object('dataset_id', $6::text))
      ON CONFLICT (linha_id, descricao)
      DO UPDATE SET
        tipo_cenario = EXCLUDED.tipo_cenario,
@@ -99,7 +99,7 @@ async function upsertStructures(client: PoolClient, datasetId: string, linhaId: 
 
     await client.query(
       `INSERT INTO tb_estrutura (linha_id, codigo_estrutura, tipo_estrutura, n_circuitos, altura_m, latitude, longitude, geom, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $8 IS NULL THEN NULL ELSE ST_GeomFromGeoJSON($8) END, $9::jsonb)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $8::text IS NULL THEN NULL ELSE ST_GeomFromGeoJSON($8::text) END, $9::jsonb)
        ON CONFLICT (linha_id, codigo_estrutura)
        DO UPDATE SET
          tipo_estrutura = COALESCE(EXCLUDED.tipo_estrutura, tb_estrutura.tipo_estrutura),
@@ -223,7 +223,7 @@ async function upsertVegetationRisks(client: PoolClient, datasetId: string, linh
 
     const arvoreResult = await client.query(
       `INSERT INTO tb_elemento_vegetacao (linha_id, vao_id, codigo_externo, geom, altura_m, tipo_vegetacao, em_app, metadata)
-       VALUES ($1, $2, $3, CASE WHEN $4 IS NULL THEN NULL ELSE ST_GeomFromGeoJSON($4) END, $5, $6, $7, jsonb_build_object('dataset_id', $8, 'row_number', $9))
+       VALUES ($1, $2, $3, CASE WHEN $4::text IS NULL THEN NULL ELSE ST_GeomFromGeoJSON($4::text) END, $5, $6, $7, jsonb_build_object('dataset_id', $8::text, 'row_number', $9::int))
        ON CONFLICT (linha_id, codigo_externo)
        DO UPDATE SET
          vao_id = COALESCE(EXCLUDED.vao_id, tb_elemento_vegetacao.vao_id),
@@ -246,7 +246,7 @@ async function upsertVegetationRisks(client: PoolClient, datasetId: string, linh
 
     await client.query(
       `INSERT INTO tb_risco_vegetacao_vao (vao_id, arvore_id, cenario_id, dist_min_cabo_m, classe_risco_clearance, distancia_lateral_m, categoria_risco, data_processamento, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, jsonb_build_object('dataset_id', $9, 'row_number', $10))`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, jsonb_build_object('dataset_id', $9::text, 'row_number', $10::int))`,
       [vaoId ?? null, arvoreId, cenarioId, distMin, classe ?? null, distLat, categoria ?? null, dataProc ?? null, datasetId, row.row_number]
     );
     riskCount += 1;

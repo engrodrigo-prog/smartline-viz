@@ -10,6 +10,15 @@ function pool() {
 }
 const router = new Hono();
 
+async function resolveLinhaId(raw: string | null | undefined) {
+  if (!raw) return null;
+  const result = await pool().query<{ linha_id: string }>(
+    `SELECT linha_id FROM tb_linha WHERE linha_id = $1 OR codigo_linha = $1 LIMIT 1`,
+    [raw]
+  );
+  return result.rows[0]?.linha_id ?? null;
+}
+
 router.get("/linhas", async (c) => {
   try {
     const result = await pool().query(
@@ -25,8 +34,8 @@ router.get("/linhas", async (c) => {
 });
 
 router.get("/cenarios", async (c) => {
-  const linhaId = c.req.query("linha_id");
-  if (!linhaId) return c.json({ error: "missing_linha_id" }, 400);
+  const linhaId = await resolveLinhaId(c.req.query("linha_id"));
+  if (!linhaId) return c.json([]);
   try {
     const result = await pool().query(
       `SELECT cenario_id, descricao, data_referencia, tipo_cenario, status
@@ -43,7 +52,7 @@ router.get("/cenarios", async (c) => {
 });
 
 router.get("/kpi-linha", async (c) => {
-  const linhaId = c.req.query("linha_id");
+  const linhaId = await resolveLinhaId(c.req.query("linha_id"));
   const cenarioId = c.req.query("cenario_id");
   const clauses: string[] = [];
   const params: any[] = [];
@@ -66,7 +75,7 @@ router.get("/kpi-linha", async (c) => {
 });
 
 router.get("/risco-vegetacao", async (c) => {
-  const linhaId = c.req.query("linha_id");
+  const linhaId = await resolveLinhaId(c.req.query("linha_id"));
   const cenarioId = c.req.query("cenario_id");
   if (!linhaId || !cenarioId) return c.json({ error: "missing_filters" }, 400);
   try {
@@ -85,7 +94,7 @@ router.get("/risco-vegetacao", async (c) => {
 });
 
 router.get("/risco-queda", async (c) => {
-  const linhaId = c.req.query("linha_id");
+  const linhaId = await resolveLinhaId(c.req.query("linha_id"));
   if (!linhaId) return c.json({ error: "missing_linha_id" }, 400);
   try {
     const result = await pool().query(
@@ -102,7 +111,7 @@ router.get("/risco-queda", async (c) => {
 });
 
 router.get("/cruzamentos", async (c) => {
-  const linhaId = c.req.query("linha_id");
+  const linhaId = await resolveLinhaId(c.req.query("linha_id"));
   if (!linhaId) return c.json({ error: "missing_linha_id" }, 400);
   const cenarioId = c.req.query("cenario_id");
   try {
@@ -122,7 +131,7 @@ router.get("/cruzamentos", async (c) => {
 });
 
 router.get("/tratamentos", async (c) => {
-  const linhaId = c.req.query("linha_id");
+  const linhaId = await resolveLinhaId(c.req.query("linha_id"));
   const cenarioId = c.req.query("cenario_id");
   if (!linhaId || !cenarioId) return c.json({ error: "missing_filters" }, 400);
   try {

@@ -28,7 +28,7 @@ export async function createDatasetRecord(client: PoolClient, options: Lipowerli
   const label = `${options.lineCode} - ${options.scenarioDescription}`;
   const insert = await client.query(
     `INSERT INTO tb_lipowerline_dataset(label, line_code, scenario_hint, source_path, created_by, metadata)
-     VALUES ($1, $2, $3, $4, $5, jsonb_build_object('files', $6))
+     VALUES ($1, $2, $3, $4, $5, jsonb_build_object('files', $6::jsonb))
      RETURNING dataset_id`,
     [label, options.lineCode, options.scenarioDescription, options.datasetPath, options.createdBy ?? "etl", JSON.stringify(files)]
   );
@@ -105,7 +105,7 @@ async function stageKml(client: PoolClient, datasetId: string, type: keyof typeo
     const raw = JSON.stringify({ properties: feature.properties ?? {}, geometry: feature.geometry ?? null });
     await client.query(
       `INSERT INTO ${table} (dataset_id, source_file, feature_name, raw, geom)
-       VALUES ($1, $2, $3, $4::jsonb, ${geomJson ? "ST_GeomFromGeoJSON($5)" : "NULL"})`,
+       VALUES ($1, $2, $3, $4::jsonb, ${geomJson ? "ST_Force2D(ST_GeomFromGeoJSON($5))" : "NULL"})`,
       geomJson
         ? [datasetId, basename(filePath), name ?? null, raw, geomJson]
         : [datasetId, basename(filePath), name ?? null, raw]
