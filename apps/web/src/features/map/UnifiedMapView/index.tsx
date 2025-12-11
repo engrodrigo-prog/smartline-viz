@@ -14,6 +14,8 @@ const UnifiedMapView = () => {
     shouldShowBrazilMode,
     queimadasData,
     footprintsData,
+    customLines,
+    customPoints,
     mapInstance,
     setMapInstance,
     centerCoords,
@@ -36,6 +38,8 @@ const UnifiedMapView = () => {
         layers={layers}
         queimadasData={queimadasData}
         footprintsData={footprintsData}
+        customLines={customLines}
+        customPoints={customPoints}
         shouldShowBrazilMode={shouldShowBrazilMode}
         initialCenter={centerCoords}
         initialZoom={initialZoom}

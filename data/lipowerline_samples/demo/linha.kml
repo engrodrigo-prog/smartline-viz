@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>LT Demo 138 kV</name>
+      <ExtendedData>
+        <Data name="codigo">
+          <value>LT-DEMO-01</value>
+        </Data>
+      </ExtendedData>
+      <LineString>
+        <coordinates>
+          -47.0625,-22.9350,0 -47.0580,-22.9315,0 -47.0535,-22.9280,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+    <Placemark>
+      <name>TR-01</name>
+      <ExtendedData>
+        <Data name="codigo">
+          <value>TR-01</value>
+        </Data>
+        <Data name="tipo">
+          <value>Autoportante</value>
+        </Data>
+      </ExtendedData>
+      <Point>
+        <coordinates>-47.0625,-22.9350,0</coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>TR-02</name>
+      <ExtendedData>
+        <Data name="codigo">
+          <value>TR-02</value>
+        </Data>
+        <Data name="tipo">
+          <value>Alinhamento</value>
+        </Data>
+      </ExtendedData>
+      <Point>
+        <coordinates>-47.0580,-22.9315,0</coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>TR-03</name>
+      <ExtendedData>
+        <Data name="codigo">
+          <value>TR-03</value>
+        </Data>
+        <Data name="tipo">
+          <value>Alinhamento</value>
+        </Data>
+      </ExtendedData>
+      <Point>
+        <coordinates>-47.0535,-22.9280,0</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>

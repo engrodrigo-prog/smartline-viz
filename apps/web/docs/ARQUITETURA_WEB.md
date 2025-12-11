@@ -19,6 +19,13 @@ Este documento descreve como o app web está estruturado atualmente (abril/2024)
 ## DatasetContext + defaultDataset
 `DatasetContext.tsx` mantém um dataset mockado (`defaultDataset.ts`) em `localStorage`. O dataset é clonado no load, pode ser importado/exportado pelo usuário e é a fonte padrão para filtros e cards quando não há backend real.
 
+### SelectionContext (Fase 3)
+
+- `context/SelectionContext.tsx` coordena a linha e o cenário selecionados globalmente.
+- Depende dos hooks `useLipowerlineLinhas` e `useLipowerlineCenarios` (React Query) para buscar `/api/linhas` e `/api/cenarios`.
+- Caso a API não esteja disponível (modo demo/offline), os hooks retornam automaticamente dados mockados do `DatasetContext`, mantendo a UX consistente.
+- O provider envolve toda a aplicação (entre `DatasetProvider` e `FiltersProvider`), permitindo que Dashboard, mapa e módulos detalhados compartilhem a mesma seleção LiPowerline.
+
 Páginas/Componentes que consomem diretamente o `DatasetContext` hoje:
 
 - **Dashboard principal:** `pages/Dashboard.tsx`.
@@ -43,6 +50,13 @@ Páginas/Componentes que consomem diretamente o `DatasetContext` hoje:
 - **Supabase Edge Functions / hooks geoespaciais:**
   - `useQueimadas`, `useFirmsData`, `useFirmsFootprints`, `useFirmsRisk`, `useFootprintAlerts`, `useWeather` alimentam `Dashboard` (mapa), `pages/modules/ambiental/Queimadas.tsx`, `FirmsViewer.tsx` e `components/map/UnifiedMapView`.
   - `useAmbienteAlerts`, `useAlarmZones`, `useChangeDetection` suportam módulos Ambientais (chamados em `modules/afins`).
+
+- **API LiPowerline (Fase 3):**
+  - `services/lipowerlineApi.ts` encapsula todas as chamadas `/api/linhas`, `/api/cenarios`, `/api/kpi-linha`, `/api/risco-*`, `/api/cruzamentos`, `/api/tratamentos` e `/api/simulacoes/riscos`.
+  - Hooks dedicados (`useLipowerlineLinhas`, `useLipowerlineCenarios`, `useLipowerlineKpi`, `useLipowerlineRiscoVegetacao`, etc.) usam React Query + fallback do dataset, evitando que a UI quebre em modo demo.
+  - `pages/Dashboard.tsx` consome `useSelectionContext` + `useLipowerlineKpi` para montar KPIs reais e exibir um alerta quando estiver em fallback.
+  - O `UnifiedMapView` e as páginas de listas passam a consumir os hooks de risco/tratamentos para abastecer camadas vetoriais e tabelas (detalhado em seções específicas conforme cada módulo é integrado).
+  - O bloco “Simulação de Risco (MVP)” usa `useSimulacaoRisco` (POST `/api/simulacoes/riscos`) e continua funcionando em modo demo com resultados sintéticos.
 
 - **API Hono (ENV.API_BASE_URL):**
   - Upload unificado (`pages/upload/UploadUnificado.tsx`) usa `useMediaUpload`, `usePointcloud*`, `useMediaRecord/Frames` para interagir com endpoints `/media/*`, `/pointcloud/*`.
@@ -78,3 +92,26 @@ As pastas `features/ambiental`, `features/estrutura` e `features/upload` já exi
 - **Simulações de risco:** comentários em `pages/modules/ambiental/Queimadas.tsx` e `features/map/UnifiedMapView/useUnifiedMapState.ts` destacam onde injetar outputs de risk engines (ex.: `span_analysis` + modelos de propagação).
 
 Esses marcadores garantem rastreabilidade quando os dados passarem a vir 100% dos serviços gerenciados.
+
+## Fase 4 – Inspeções e mídia
+
+- **Serviços / hooks**
+  - `services/mediaJobsApi.ts` agrupa as rotas `/api/media/*`, `/api/anomalias/*` e `/api/export/*`, converte `geom` em GeoJSON e cuida do mapeamento snake_case → camelCase.
+  - `hooks/useMedia.ts` exporta `useMediaJobs`, `useMediaJob`, `useMediaItems`, `useMediaAnomalias`, `useCreateAnomalia` e `useUpdateAnomalia`, todos em React Query com invalidação automática dos caches.
+  - O `SelectionContext` continua sendo a única fonte de linha/cenário – usado tanto pelo Dashboard quanto pelo upload de mídia, garantindo consistência nas associações com `tb_media_job`.
+- **Upload de mídia**
+  - `pages/upload/Midia.tsx` agora pede explicitamente Linha, Cenário e Tipo de inspeção (selects alimentados pelo `SelectionContext`) antes de chamar `MediaUploader`.
+  - `MediaUploader` envia os novos campos (`lineId`, `cenarioId`, `tipo_inspecao`, `temaPrincipal`) junto com os arquivos, permitindo que o backend crie o job em `tb_media_job`.
+- **Tela de Inspeções**
+  - `pages/modules/estrutura/InspecaoTermografica.tsx` foi reimplementada como hub de inspeções LiPowerline:
+    - Lista jobs (`useMediaJobs`) com status e número de itens.
+    - Mostra detalhes do job selecionado (`useMediaJob`) + mapa dedicado (`MapLibreUnified`) com os frames de `useMediaItems`.
+    - Lista mídias com link para `/media/files/...` e abre um diálogo para registrar anomalias (`useCreateAnomalia`).
+    - Tabela de anomalias vinculadas ao job (`useMediaAnomalias`) com ação rápida de conclusão (`useUpdateAnomalia`).
+    - Botões de download que apontam para `/api/export/linha/:linhaId.zip` e `/api/export/inspecao/:jobId.zip`.
+- **Mapa unificado**
+  - `DEFAULT_LAYERS` ganha o toggle “Frames / Inspeções”.
+  - `useUnifiedMapState` consulta `useMediaItems` (quando a camada está ativa) e injeta os frames/fotos como `customPoints` coloridos, ao lado das camadas de risco LiPowerline.
+- **Exports e monitoramento**
+  - O front já expõe os endpoints `/api/export/*` via botões/links, então baixar um pacote Zip/KMZ não exige scripts externos.
+  - Qualquer lugar que precise monitorar a fila de mídia pode reutilizar `useMediaJobs` (por exemplo, dashboards internos ou notificações em uploads).

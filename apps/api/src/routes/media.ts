@@ -6,6 +6,7 @@ import type { FeatureCollection } from "geojson";
 import mime from "mime";
 import { ZipFile } from "yazl";
 import { env } from "../env.js";
+import { getDbPool } from "@smartline/db";
 
 const THEMES = [
   "Ocorrências",
@@ -65,6 +66,50 @@ const MEDIA_META = join(MEDIA_ROOT, "meta");
 const MEDIA_FRAMES = join(MEDIA_DERIVED, "frames");
 
 const WORKER_INBOX = join(process.cwd(), "workers/media/inbox");
+
+let mediaDbPool: ReturnType<typeof getDbPool> | null = null;
+const db = () => (mediaDbPool ??= getDbPool());
+
+type PersistMediaJobPayload = {
+  jobId: string;
+  batchId: string;
+  linhaId?: string;
+  cenarioId?: string;
+  tipoInspecao: string;
+  frameInterval: number;
+  temas: Tema[];
+  meta: Record<string, unknown>;
+};
+
+const persistMediaJobRecord = async (payload: PersistMediaJobPayload) => {
+  const metadata = {
+    media_id: payload.batchId,
+    temas: payload.temas,
+    ...payload.meta
+  };
+  await db().query(
+    `INSERT INTO tb_media_job (job_id, linha_id, cenario_id, tipo_inspecao, status, input_path, options, metadata)
+     VALUES ($1, $2, $3, $4, 'queued', $5, $6, $7)
+     ON CONFLICT (job_id) DO UPDATE SET
+       linha_id = COALESCE(EXCLUDED.linha_id, tb_media_job.linha_id),
+       cenario_id = COALESCE(EXCLUDED.cenario_id, tb_media_job.cenario_id),
+       tipo_inspecao = EXCLUDED.tipo_inspecao,
+       status = EXCLUDED.status,
+       input_path = EXCLUDED.input_path,
+       options = EXCLUDED.options,
+       metadata = EXCLUDED.metadata,
+       updated_at = now()`,
+    [
+      payload.jobId,
+      payload.linhaId ?? null,
+      payload.cenarioId ?? null,
+      payload.tipoInspecao,
+      `raw/${payload.batchId}`,
+      { frameIntervalSec: payload.frameInterval },
+      metadata
+    ]
+  );
+};
 
 const ensureDirectories = () => {
   [MEDIA_ROOT, MEDIA_RAW, MEDIA_DERIVED, MEDIA_META, MEDIA_FRAMES, WORKER_INBOX].forEach((dir) =>
@@ -198,10 +243,17 @@ mediaRoutes.post("/upload", async (c) => {
   const temas = sanitizeTemas(body["temas"], [temaPrincipal]);
   const missionId = typeof body["missionId"] === "string" ? body["missionId"].trim() : undefined;
   const lineId = typeof body["lineId"] === "string" ? body["lineId"].trim() : undefined;
+  const cenarioId = typeof body["cenarioId"] === "string" ? body["cenarioId"].trim() : undefined;
   const frameInterval = Math.max(
     1,
     Number(body["frame_interval_s"] ?? body["frameInterval"] ?? env.VIDEO_FRAME_INTERVAL_S ?? 1)
   );
+  const tipoInspecaoRaw =
+    typeof body["tipo_inspecao"] === "string"
+      ? body["tipo_inspecao"]
+      : typeof body["tipoInspecao"] === "string"
+      ? body["tipoInspecao"]
+      : undefined;
 
   let fileMetaMap: FileMetaMap = {};
   const rawMeta = body["fileMeta"];
@@ -307,6 +359,25 @@ mediaRoutes.post("/upload", async (c) => {
 
   record.jobId = jobId;
   saveMeta(record);
+  try {
+    await persistMediaJobRecord({
+      jobId,
+      batchId,
+      linhaId: lineId,
+      cenarioId,
+      tipoInspecao: (tipoInspecaoRaw ?? temaPrincipal ?? "inspecao_desconhecida") as string,
+      frameInterval,
+      temas,
+      meta: {
+        mission_id: missionId,
+        tema_principal: temaPrincipal,
+        asset_count: assets.length
+      }
+    });
+  } catch (error) {
+    console.error("[media] falha ao registrar job no banco", error);
+    return c.json({ error: "db_error" }, 500);
+  }
 
   return c.json({
     id: batchId,

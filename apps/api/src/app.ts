@@ -12,6 +12,11 @@ import { mediaRoutes } from "./routes/media.js";
 import { missoesRoutes } from "./routes/missoes.js";
 import { demandasRoutes } from "./routes/demandas.js";
 import weatherRoutes from "./routes/weather.js";
+import simulacoesRoutes from "./routes/simulacoes.js";
+import lipowerlineRoutes from "./routes/lipowerline.js";
+import mediaApiRoutes from "./routes/media_inspecoes.js";
+import anomaliasRoutes from "./routes/anomalias.js";
+import exportRoutes from "./routes/export.js";
 import { readFileSync, existsSync, createReadStream } from "node:fs";
 import { join } from "node:path";
 import mime from "mime";
@@ -72,6 +77,11 @@ app.route("/media", mediaRoutes);
 app.route("/missoes", missoesRoutes);
 app.route("/demandas", demandasRoutes);
 app.route("/weather", weatherRoutes);
+app.route("/api", lipowerlineRoutes);
+app.route("/api/simulacoes", simulacoesRoutes);
+app.route("/api/media", mediaApiRoutes);
+app.route("/api/anomalias", anomaliasRoutes);
+app.route("/api/export", exportRoutes);
 
 app.get("/jobs/:id/status", (c) => {
   const p = join("workers/media/outbox", `${c.req.param("id")}.status.json`);

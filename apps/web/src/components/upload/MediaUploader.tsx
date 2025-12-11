@@ -2,15 +2,19 @@ import { useRef, useState, useEffect } from 'react'
 import type { FeatureCollection } from 'geojson'
 import { uploadMedia, fetchMediaFrames } from '@/services/media'
 
-export function MediaUploader({
-  onJobDone,
-  onFrames,
-  onMediaCreated
-}: {
-  onJobDone?: (jobId: string) => void
-  onFrames?: (fc: FeatureCollection) => void
-  onMediaCreated?: (mediaId: string) => void
-}) {
+type MediaUploaderProps = {
+  onJobDone?: (jobId: string) => void;
+  onFrames?: (fc: FeatureCollection) => void;
+  onMediaCreated?: (mediaId: string) => void;
+  metaOverrides?: {
+    temaPrincipal?: string;
+    lineId?: string;
+    cenarioId?: string;
+    tipoInspecao?: string;
+  };
+};
+
+export function MediaUploader({ onJobDone, onFrames, onMediaCreated, metaOverrides }: MediaUploaderProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [files, setFiles] = useState<File[]>([])
   const [intervalo, setIntervalo] = useState(1)
@@ -33,8 +37,17 @@ export function MediaUploader({
     const form = new FormData()
     files.forEach((f) => form.append('files', f))
     // Campo obrigatório pelo backend
-    form.append('temaPrincipal', 'Inspeção de Ativos')
+    form.append('temaPrincipal', metaOverrides?.temaPrincipal ?? 'Inspeção de Ativos')
     form.append('frame_interval_s', String(Math.max(1, Number(intervalo) || 1)))
+    if (metaOverrides?.lineId) {
+      form.append('lineId', metaOverrides.lineId)
+    }
+    if (metaOverrides?.cenarioId) {
+      form.append('cenarioId', metaOverrides.cenarioId)
+    }
+    if (metaOverrides?.tipoInspecao) {
+      form.append('tipo_inspecao', metaOverrides.tipoInspecao)
+    }
     try {
       const res = await uploadMedia(form)
       setJobId(res.jobId)

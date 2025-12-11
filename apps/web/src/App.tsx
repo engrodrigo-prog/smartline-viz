@@ -7,6 +7,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import LegalNotice from "@/components/LegalNotice";
 import { FiltersProvider } from "./context/FiltersContext";
 import { DatasetProvider } from "./context/DatasetContext";
+import { SelectionProvider } from "./context/SelectionContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
@@ -64,8 +65,9 @@ const App = () => (
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ErrorBoundary>
           <DatasetProvider>
-            <FiltersProvider>
-              <Routes>
+            <SelectionProvider>
+              <FiltersProvider>
+                <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/resultados" element={<Resultados />} />
           <Route path="/login" element={<Login />} />
@@ -145,9 +147,10 @@ const App = () => (
           <Route path="/config/dataset" element={<ProtectedRoute><DatasetManager /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFound />} />
-              </Routes>
-              <LegalNotice />
-            </FiltersProvider>
+                </Routes>
+                <LegalNotice />
+              </FiltersProvider>
+            </SelectionProvider>
           </DatasetProvider>
         </ErrorBoundary>
       </BrowserRouter>

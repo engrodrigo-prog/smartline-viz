@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Map as MapLibreMap } from "maplibre-gl";
+import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import { DEFAULT_LAYERS, BASE_LAYERS } from "@/components/map/layersConfig";
 import type { Layer } from "@/components/map/LayerSelector";
 import { LayersStorage } from "@/lib/storage/layers";
@@ -8,11 +9,23 @@ import { toast } from "sonner";
 import { useQueimadas } from "@/hooks/useQueimadas";
 import { useFirmsKml } from "@/hooks/useFirmsKml";
 import type { FiltersState } from "@/context/FiltersContext";
+import { useSelectionContext } from "@/context/SelectionContext";
+import { useLipowerlineRiscoVegetacao } from "@/hooks/useLipowerlineRiscoVegetacao";
+import { useLipowerlineRiscoQueda } from "@/hooks/useLipowerlineRiscoQueda";
+import { useLipowerlineCruzamentos } from "@/hooks/useLipowerlineCruzamentos";
+import { useLipowerlineTratamentos } from "@/hooks/useLipowerlineTratamentos";
+import { useMediaItems } from "@/hooks/useMedia";
 
 const RS_BOUNDS: [[number, number], [number, number]] = [
   [-57.65, -33.75],
   [-49.5, -27.0],
 ];
+
+const MEDIA_COLORS: Record<string, string> = {
+  frame: "#f97316",
+  foto: "#0ea5e9",
+  video: "#a855f7",
+};
 
 export const useUnifiedMapState = (filters: FiltersState) => {
   const [layers, setLayers] = useState<Layer[]>(DEFAULT_LAYERS);
@@ -27,6 +40,8 @@ export const useUnifiedMapState = (filters: FiltersState) => {
   );
 
   // TODO Simulação de risco: incorporar resultados span_analysis quando o edge function expuser novos atributos.
+  const { linhaSelecionadaId, cenarioSelecionadoId } = useSelectionContext();
+
   const { data: queimadasData } = useQueimadas({
     mode: "live",
     concessao: shouldShowBrazilMode ? "BRASIL" : filters.empresa || "TODAS",
@@ -36,6 +51,15 @@ export const useUnifiedMapState = (filters: FiltersState) => {
   const { data: footprintsData } = useFirmsKml({
     enabled: shouldShowBrazilMode,
   });
+
+  const vegetacaoRisk = useLipowerlineRiscoVegetacao(linhaSelecionadaId, cenarioSelecionadoId);
+  const quedaRisk = useLipowerlineRiscoQueda(linhaSelecionadaId, cenarioSelecionadoId);
+  const cruzamentos = useLipowerlineCruzamentos(linhaSelecionadaId, cenarioSelecionadoId);
+  const tratamentos = useLipowerlineTratamentos(linhaSelecionadaId, cenarioSelecionadoId);
+  const mediaItems = useMediaItems(
+    { linhaId: linhaSelecionadaId, cenarioId: cenarioSelecionadoId, hasGeom: true, limit: 1000 },
+    { enabled: Boolean(linhaSelecionadaId) }
+  );
 
   const handleToggleLayer = useCallback((layerId: string) => {
     setLayers((prev) =>
@@ -179,6 +203,81 @@ export const useUnifiedMapState = (filters: FiltersState) => {
     );
   }, [queimadasData]);
 
+  useEffect(() => {
+    setLayers((prev) =>
+      prev.map((layer) => {
+        if (layer.id === "lp_vegetacao") {
+          return { ...layer, count: vegetacaoRisk.data.features.length };
+        }
+        if (layer.id === "lp_queda") {
+          return { ...layer, count: quedaRisk.data.features.length };
+        }
+        if (layer.id === "lp_cruzamentos") {
+          return { ...layer, count: cruzamentos.data.features.length };
+        }
+        if (layer.id === "lp_tratamentos") {
+          return { ...layer, count: tratamentos.data.features.length };
+        }
+        if (layer.id === "lp_media") {
+          return { ...layer, count: mediaItems.data?.items.length ?? 0 };
+        }
+        return layer;
+      }),
+    );
+  }, [cruzamentos.data.features.length, quedaRisk.data.features.length, tratamentos.data.features.length, vegetacaoRisk.data.features.length, mediaItems.data?.items.length]);
+
+  const mediaPoints = useMemo<Feature<Point>[]>(() => {
+    const items = mediaItems.data?.items ?? [];
+    return items
+      .filter((item) => item.geometry)
+      .map((item) => ({
+        type: "Feature" as const,
+        geometry: item.geometry!,
+        properties: {
+          mediaId: item.mediaId,
+          jobId: item.jobId,
+          tipo: item.tipoMidia,
+          filePath: item.filePath,
+          color: MEDIA_COLORS[item.tipoMidia] ?? "#fbbf24",
+          size: item.tipoMidia === "frame" ? 6 : 8,
+        },
+      }));
+  }, [mediaItems.data?.items]);
+
+  const combinedLines = useMemo<FeatureCollection<LineString> | null>(() => {
+    const features: FeatureCollection<LineString>["features"] = [];
+    const vegetacaoVisible = layers.find((layer) => layer.id === "lp_vegetacao")?.visible;
+    const tratamentosVisible = layers.find((layer) => layer.id === "lp_tratamentos")?.visible;
+
+    if (vegetacaoVisible) {
+      features.push(...vegetacaoRisk.data.features);
+    }
+    if (tratamentosVisible) {
+      features.push(...tratamentos.data.features);
+    }
+
+    return features.length ? { type: "FeatureCollection", features } : null;
+  }, [layers, tratamentos.data.features, vegetacaoRisk.data.features]);
+
+  const combinedPoints = useMemo<FeatureCollection<Point> | null>(() => {
+    const features: FeatureCollection<Point>["features"] = [];
+    const quedaVisible = layers.find((layer) => layer.id === "lp_queda")?.visible;
+    const cruzVisible = layers.find((layer) => layer.id === "lp_cruzamentos")?.visible;
+    const mediaVisible = layers.find((layer) => layer.id === "lp_media")?.visible;
+
+    if (quedaVisible) {
+      features.push(...quedaRisk.data.features);
+    }
+    if (cruzVisible) {
+      features.push(...cruzamentos.data.features);
+    }
+    if (mediaVisible) {
+      features.push(...mediaPoints);
+    }
+
+    return features.length ? { type: "FeatureCollection", features } : null;
+  }, [cruzamentos.data.features, layers, mediaPoints, quedaRisk.data.features]);
+
   const centerCoords = shouldShowBrazilMode ? { lat: -30.0, lng: -53.0 } : { lat: -23.96, lng: -46.33 };
   const initialZoom = shouldShowBrazilMode ? 6 : 12;
 
@@ -191,6 +290,8 @@ export const useUnifiedMapState = (filters: FiltersState) => {
     shouldShowBrazilMode,
     queimadasData,
     footprintsData,
+    customLines: combinedLines ?? undefined,
+    customPoints: combinedPoints ?? undefined,
     mapInstance,
     setMapInstance,
     centerCoords,

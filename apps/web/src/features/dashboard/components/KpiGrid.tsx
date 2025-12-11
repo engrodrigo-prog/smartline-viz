@@ -1,38 +1,34 @@
+import type { LucideIcon } from "lucide-react";
 import CardKPI from "@/components/CardKPI";
-import { Activity, AlertTriangle, CheckCircle, Database } from "lucide-react";
 
-type Metrics = {
-  operationalAssets: number;
-  criticalAlerts: number;
-  avgHealthScore: number;
-  totalSensors: number;
+export type KpiCard = {
+  id: string;
+  title: string;
+  value: string | number;
+  icon: LucideIcon;
+  description?: string;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
 };
 
 type KpiGridProps = {
-  metrics: Metrics;
+  cards: KpiCard[];
 };
 
-const KpiGrid = ({ metrics }: KpiGridProps) => (
+const KpiGrid = ({ cards }: KpiGridProps) => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-    <CardKPI
-      title="Ativos Operacionais"
-      value={metrics.operationalAssets}
-      icon={CheckCircle}
-      trend={{ value: 5.2, isPositive: true }}
-    />
-    <CardKPI
-      title="Alertas Críticos"
-      value={metrics.criticalAlerts}
-      icon={AlertTriangle}
-      trend={{ value: 12.3, isPositive: false }}
-    />
-    <CardKPI
-      title="Health Score Médio"
-      value={`${metrics.avgHealthScore}%`}
-      icon={Activity}
-      trend={{ value: 3.1, isPositive: true }}
-    />
-    <CardKPI title="Sensores Ativos" value={metrics.totalSensors} icon={Database} />
+    {cards.map((card) => (
+      <CardKPI
+        key={card.id}
+        title={card.title}
+        value={card.value}
+        icon={card.icon}
+        description={card.description}
+        trend={card.trend}
+      />
+    ))}
   </div>
 );
 

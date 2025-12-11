@@ -11,7 +11,7 @@ interface FloatingFiltersBarProps {
   alwaysVisible?: boolean;
 }
 
-const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = false }: FloatingFiltersBarProps) => {
+const FloatingFiltersBar = ({ onApplyFilters, alwaysVisible = true }: FloatingFiltersBarProps) => {
   const { filters, setFilters, resetFilters, clearField } = useFilters();
   const [isPinned, setIsPinned] = useState(() => {
     const saved = localStorage.getItem('filters_pinned');

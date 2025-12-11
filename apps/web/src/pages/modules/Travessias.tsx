@@ -14,10 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
 import { useFilters } from "@/context/FiltersContext";
+import { useSelectionContext } from "@/context/SelectionContext";
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import { useFeatureStatuses, useSaveFeatureStatus } from "@/hooks/useFeatureStatus";
 import { useDatasetData } from "@/context/DatasetContext";
 import type { Evento } from "@/lib/mockData";
+import { useLipowerlineCruzamentos } from "@/hooks/useLipowerlineCruzamentos";
 
 type TravessiaItem = Evento;
 
@@ -88,6 +90,7 @@ const stableId = (item: TravessiaItem) => {
 
 const Travessias = () => {
   const { filters } = useFilters();
+  const { linhaSelecionadaId, cenarioSelecionadoId, linhaSelecionada } = useSelectionContext();
   const [activeTab, setActiveTab] = useState("lista");
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -99,8 +102,37 @@ const Travessias = () => {
   const [showRodovias, setShowRodovias] = useState(true);
   const [showFerrovias, setShowFerrovias] = useState(true);
   const eventosDataset = useDatasetData((data) => data.eventos);
+  const cruzamentosQuery = useLipowerlineCruzamentos(linhaSelecionadaId, cenarioSelecionadoId);
 
-  const travessias = useMemo(() => eventosDataset.filter((evento) => evento.tipo === "Travessias"), [eventosDataset]);
+  const travessias = useMemo(() => {
+    if (cruzamentosQuery.data.features.length && linhaSelecionadaId) {
+      return cruzamentosQuery.data.features.map((feature, idx) => {
+        const props: any = feature.properties ?? {};
+        const coords = feature.geometry?.type === "Point" ? feature.geometry.coordinates : [0, 0];
+        const criticidade = (() => {
+          const classe = String(props.classe_risco_cruzamento ?? "").toLowerCase();
+          if (classe.includes("crit")) return "Alta";
+          if (classe.includes("moder")) return "Média";
+          return "Baixa";
+        })() as Evento["criticidade"];
+        const status = criticidade === "Alta" ? "Crítico" : criticidade === "Média" ? "Alerta" : "OK";
+        return {
+          id: props.cruzamento_id ?? `crz-${idx}`,
+          tipo: "Travessias",
+          regiao: linhaSelecionada?.regiao ?? "A",
+          linha: linhaSelecionadaId,
+          ramal: props.vao_id ?? props.codigo_vao ?? "VAO",
+          data: new Date().toISOString(),
+          criticidade,
+          status,
+          nome: props.tipo_cruzamento ?? "Cruzamento crítico",
+          descricao: props.classe_risco_cruzamento ?? "Sem classificação",
+          coords: coords as [number, number],
+        } as Evento;
+      });
+    }
+    return eventosDataset.filter((evento) => evento.tipo === "Travessias");
+  }, [cruzamentosQuery.data.features, eventosDataset, linhaSelecionada?.regiao, linhaSelecionadaId]);
   const allIds = useMemo(() => travessias.map((item) => stableId(item)), [travessias]);
 
   const { data: statusList = [] } = useFeatureStatuses("travessias", allIds);
@@ -411,6 +443,13 @@ const Travessias = () => {
     <ModuleLayout title="Gestão de Travessias" icon={Cable}>
       <div className="p-6 space-y-6">
         <ModuleDemoBanner />
+        {cruzamentosQuery.isFallback ? (
+          <p className="text-xs text-muted-foreground">
+            Exibindo travessias do dataset demo enquanto o backend de LiPowerline não está disponível.
+          </p>
+        ) : cruzamentosQuery.isLoading ? (
+          <p className="text-xs text-muted-foreground">Carregando cruzamentos LiPowerline...</p>
+        ) : null}
         <FiltersBar>
           <div className="flex flex-wrap gap-2 mt-4">
             {STATUS_FILTERS.map((status) => {

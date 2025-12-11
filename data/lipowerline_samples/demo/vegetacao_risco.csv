@@ -1,0 +1,3 @@
+tree_id,vao_codigo,dist_min_cabo_m,classe_risco,lateral_distance,categoria,lat,lon,altura
+T-001,"TR-01 - TR-02",1.8,Crítico,3.2,Contato direto,-22.9330,-47.0605,22
+T-002,"TR-02 - TR-03",3.5,Alerta,4.0,Queda lateral,-22.9300,-47.0555,18

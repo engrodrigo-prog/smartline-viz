@@ -616,8 +616,9 @@ const Landing = () => {
         </section>
 
         {/* Desafios e Soluções por Módulo */}
-        <section className="py-20 px-4 bg-gradient-to-b from-slate-900 to-slate-800">
-          <div className="container mx-auto max-w-7xl">
+        <section className="relative py-20 px-4 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-slate-900/25 to-transparent backdrop-blur-sm pointer-events-none" aria-hidden="true" />
+          <div className="relative z-10 container mx-auto max-w-7xl">
             <motion.div
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}

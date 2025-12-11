@@ -1,5 +1,5 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
-import type { FeatureCollection } from "geojson";
+import type { FeatureCollection, LineString, Point } from "geojson";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
 import { FirmsFootprintsLayer } from "@/components/ambiente/FirmsFootprintsLayer";
 import type { Layer } from "@/components/map/LayerSelector";
@@ -10,6 +10,8 @@ type MapViewportProps = {
   layers: Layer[];
   queimadasData?: FeatureCollection | null;
   footprintsData?: FeatureCollection | null;
+  customLines?: FeatureCollection<LineString> | null | undefined;
+  customPoints?: FeatureCollection<Point> | null | undefined;
   shouldShowBrazilMode: boolean;
   initialCenter: { lat: number; lng: number };
   initialZoom: number;
@@ -23,6 +25,8 @@ const MapViewport = ({
   layers,
   queimadasData,
   footprintsData,
+  customLines,
+  customPoints,
   shouldShowBrazilMode,
   initialCenter,
   initialZoom,
@@ -44,6 +48,8 @@ const MapViewport = ({
         showQueimadas={showQueimadas}
         showInfrastructure={showInfrastructure}
         queimadasData={queimadasData}
+        customLines={customLines || undefined}
+        customPoints={customPoints || undefined}
         initialCenter={[initialCenter.lng, initialCenter.lat]}
         initialZoom={initialZoom}
         onMapLoad={onMapLoad}
