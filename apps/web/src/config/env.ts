@@ -13,8 +13,10 @@ export const ENV = {
     // Em modo demo, ignorar base explícita para evitar erros quando o backend não estiver rodando.
     if (demoMode) return '';
     if (explicit) return explicit;
-    const isVercel = typeof window !== 'undefined' && window.location?.origin?.includes('vercel.app');
-    return isVercel ? '/api' : 'http://localhost:8080';
+    if (typeof window === 'undefined') return '';
+    const origin = window.location?.origin ?? '';
+    const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+    return isLocal ? 'http://localhost:8080' : '/api';
   })(),
   SITE_ORIGIN: import.meta.env.VITE_SITE_ORIGIN ?? (typeof window !== 'undefined' ? window.location.origin : ''),
 }

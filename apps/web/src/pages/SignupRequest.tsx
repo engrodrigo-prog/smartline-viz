@@ -41,9 +41,22 @@ const SignupRequest = () => {
       setPhone("");
       setMessage("");
     } catch (err: any) {
+      const code = err?.code as string | undefined;
+      const rawMessage = (err?.message as string | undefined) ?? "";
+      const normalized = rawMessage.toLowerCase();
+
+      const friendly =
+        code === "23505"
+          ? "Já existe uma solicitação pendente para este e-mail. Aguarde a aprovação ou fale com a equipe."
+          : code === "42P01" || normalized.includes("relation") || normalized.includes("does not exist")
+            ? "Cadastro temporariamente indisponível (tabela de solicitações não configurada)."
+            : code === "42501" || normalized.includes("row-level security") || normalized.includes("permission")
+              ? "Cadastro temporariamente indisponível (permissão/RLS)."
+              : null;
+
       toast({
         title: "Não foi possível enviar",
-        description: err?.message ?? "Tente novamente em instantes.",
+        description: friendly ?? err?.message ?? "Tente novamente em instantes.",
         variant: "destructive",
       });
     } finally {
@@ -97,4 +110,3 @@ const SignupRequest = () => {
 };
 
 export default SignupRequest;
-

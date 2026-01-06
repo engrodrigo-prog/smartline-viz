@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,56 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ChangePassword = () => {
+  const [fullName, setFullName] = useState("");
+  const [organization, setOrganization] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  useEffect(() => {
+    const load = async () => {
+      if (!supabase) {
+        setLoadingProfile(false);
+        return;
+      }
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const user = sessionData.session?.user;
+        if (!user) return;
+
+        const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+        const metaName = typeof meta.full_name === "string" ? meta.full_name : "";
+        const metaOrg = typeof meta.organization === "string" ? meta.organization : "";
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, organization")
+          .eq("id", user.id)
+          .single();
+
+        setFullName((profile?.full_name ?? metaName ?? user.email ?? "").toString());
+        setOrganization((profile?.organization ?? metaOrg ?? "").toString());
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    void load();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!fullName.trim()) {
+      toast({ title: "Nome obrigatório", description: "Informe seu nome completo.", variant: "destructive" });
+      return;
+    }
+    if (!organization.trim()) {
+      toast({ title: "Empresa obrigatória", description: "Informe sua empresa/organização.", variant: "destructive" });
+      return;
+    }
     if (password.length < 6) {
       toast({ title: "Senha muito curta", description: "Use ao menos 6 caracteres.", variant: "destructive" });
       return;
@@ -34,14 +76,23 @@ const ChangePassword = () => {
         throw sessionErr ?? new Error("Sessão inválida, faça login novamente.");
       }
       const userId = sessionData.session.user.id;
-      const { error: updErr } = await supabase.auth.updateUser({ password });
+      const { error: updErr } = await supabase.auth.updateUser({
+        password,
+        data: {
+          must_change_password: false,
+          full_name: fullName.trim(),
+          organization: organization.trim(),
+        },
+      });
       if (updErr) throw updErr;
 
       const { error: profileErr } = await supabase
         .from("profiles")
-        .update({ must_change_password: false })
+        .update({ full_name: fullName.trim(), organization: organization.trim() } as any)
         .eq("id", userId);
-      if (profileErr) throw profileErr;
+      if (profileErr) {
+        console.warn("[profile] falha ao atualizar cadastro", profileErr);
+      }
 
       toast({ title: "Senha alterada", description: "Você já pode acessar o dashboard." });
       navigate("/dashboard");
@@ -57,10 +108,28 @@ const ChangePassword = () => {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Trocar senha</CardTitle>
-          <p className="text-sm text-muted-foreground">Defina uma nova senha para continuar.</p>
+          <p className="text-sm text-muted-foreground">Complete seu cadastro e defina uma nova senha para continuar.</p>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="space-y-1">
+              <label className="text-sm text-muted-foreground">Nome completo</label>
+              <Input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                disabled={loadingProfile}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-muted-foreground">Empresa / Organização</label>
+              <Input
+                value={organization}
+                onChange={(e) => setOrganization(e.target.value)}
+                required
+                disabled={loadingProfile}
+              />
+            </div>
             <div className="space-y-1">
               <label className="text-sm text-muted-foreground">Nova senha</label>
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
@@ -83,4 +152,3 @@ const ChangePassword = () => {
 };
 
 export default ChangePassword;
-

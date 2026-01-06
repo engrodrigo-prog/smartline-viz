@@ -23,12 +23,17 @@ const RequestsPage = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [daysById, setDaysById] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
+      const user = data.user;
+      setUserId(user?.id ?? null);
+      const adminEmails = ["eng.rodrigo@gmail.com", "guilherme@gpcad.com.br"];
+      const metaRole = (user?.app_metadata as any)?.smartline_role;
+      setIsAdmin(metaRole === "admin" || adminEmails.includes(user?.email ?? ""));
     });
   }, []);
 
@@ -41,7 +46,15 @@ const RequestsPage = () => {
         .select("id, type, full_name, email, phone, status, created_at")
         .eq("status", "pending")
         .order("created_at", { ascending: true });
-      if (error) throw error;
+      if (error) {
+        const msg = (error as any)?.message as string | undefined;
+        if (msg?.includes("schema cache") || msg?.toLowerCase().includes("does not exist")) {
+          throw new Error(
+            'Tabela "signup_requests" não configurada no Supabase. Aplique as migrations do projeto para habilitar o fluxo de solicitações.'
+          );
+        }
+        throw error;
+      }
       return (data as SignupRequest[]) ?? [];
     },
   });
@@ -101,6 +114,24 @@ const RequestsPage = () => {
     `mailto:${req.email}?subject=Smartline%20-%20Acesso&body=Olá%20${encodeURIComponent(
       req.full_name,
     )},%0A%0ASua%20solicitação%20de%20acesso%20ao%20Smartline%20foi%20recebida.%0A%0AObrigado!`;
+
+  if (!supabase) {
+    return (
+      <div className="p-6 space-y-4">
+        <h1 className="text-2xl font-semibold">Studio – Solicitações de Acesso</h1>
+        <p className="text-sm text-muted-foreground">Indisponível (Supabase não configurado neste ambiente).</p>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="p-6 space-y-3">
+        <h1 className="text-2xl font-semibold">Studio – Solicitações de Acesso</h1>
+        <p className="text-sm text-muted-foreground">Acesso restrito a administradores.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-4">

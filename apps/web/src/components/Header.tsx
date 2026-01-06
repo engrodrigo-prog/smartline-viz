@@ -35,15 +35,18 @@ const Header = ({ title, subtitle }: HeaderProps) => {
         setIsAdmin(false);
         return;
       }
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-      if (profile?.role === "admin") {
+      if ((user.app_metadata as any)?.smartline_role === "admin") {
         setIsAdmin(true);
-      } else {
-        // fallback: admins principais por e-mail
+        return;
+      }
+      try {
+        const { data: roles, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        if (error) throw error;
+        setIsAdmin(Boolean(roles?.some((r) => r.role === "admin")));
+      } catch {
         const adminEmails = ["eng.rodrigo@gmail.com", "guilherme@gpcad.com.br"];
         setIsAdmin(adminEmails.includes(user.email ?? ""));
       }

@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
-const DOMAIN = process.env.DEPLOY_DOMAIN || 'smartline-gpcad.vercel.app'
+const DOMAIN = process.env.DEPLOY_DOMAIN || 'smartline-gpcad.enerlytics.pro'
 const ROOT_DIR = fileURLToPath(new URL('..', import.meta.url))
 const WEB_DIR = path.join(ROOT_DIR, 'apps/web')
 

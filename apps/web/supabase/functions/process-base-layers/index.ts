@@ -6,14 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function normalizeBaseUrl(url: string): string {
+  return url.replace(/\/+$/, '');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const supabaseUrl = normalizeBaseUrl(Deno.env.get('SUPABASE_URL') ?? '');
+    if (!supabaseUrl) {
+      return new Response(
+        JSON.stringify({ error: 'Missing SUPABASE_URL' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
+      supabaseUrl,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
@@ -36,7 +48,7 @@ serve(async (req) => {
         name: 'Brasil - Estados (UF)',
         layer_type: 'uf',
         source: 'IBGE',
-        file_url: 'https://ndmelhwkpthvgjiqarrs.supabase.co/storage/v1/object/public/layers/base/BR_UF_2024.geojson',
+        file_url: `${supabaseUrl}/storage/v1/object/public/layers/base/BR_UF_2024.geojson`,
         style_json: {
           type: 'line',
           paint: {
@@ -52,7 +64,7 @@ serve(async (req) => {
         name: 'São Paulo - Municípios',
         layer_type: 'municipio',
         source: 'IBGE',
-        file_url: 'https://ndmelhwkpthvgjiqarrs.supabase.co/storage/v1/object/public/layers/base/SP_Municipios_2024.geojson',
+        file_url: `${supabaseUrl}/storage/v1/object/public/layers/base/SP_Municipios_2024.geojson`,
         style_json: {
           type: 'line',
           paint: {
@@ -68,7 +80,7 @@ serve(async (req) => {
         name: 'Rio Grande do Sul - Municípios',
         layer_type: 'municipio',
         source: 'IBGE',
-        file_url: 'https://ndmelhwkpthvgjiqarrs.supabase.co/storage/v1/object/public/layers/base/RS_Municipios_2024.geojson',
+        file_url: `${supabaseUrl}/storage/v1/object/public/layers/base/RS_Municipios_2024.geojson`,
         style_json: {
           type: 'line',
           paint: {
@@ -84,7 +96,7 @@ serve(async (req) => {
         name: 'Ramal Marapé',
         layer_type: 'ramal',
         source: 'Custom',
-        file_url: 'https://ndmelhwkpthvgjiqarrs.supabase.co/storage/v1/object/public/layers/ramais/Ramal_Marape.geojson',
+        file_url: `${supabaseUrl}/storage/v1/object/public/layers/ramais/Ramal_Marape.geojson`,
         style_json: {
           line: {
             'line-color': '#FF3333',

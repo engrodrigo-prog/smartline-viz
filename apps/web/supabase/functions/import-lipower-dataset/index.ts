@@ -10,8 +10,7 @@ const corsHeaders = {
 
 // Allowed storage domains for security
 const ALLOWED_DOMAINS = [
-  'supabase.co',
-  'ndmelhwkpthvgjiqarrs.supabase.co'
+  'supabase.co'
 ];
 
 const LiPowerlineSchema = z.object({

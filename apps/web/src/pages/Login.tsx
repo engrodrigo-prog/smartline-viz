@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ENV } from "@/config/env";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -31,12 +32,8 @@ const Login = () => {
     if (!supabase) return;
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("must_change_password")
-          .eq("id", session.user.id)
-          .single();
-        if (profile?.must_change_password) {
+        const meta = (session.user.user_metadata ?? {}) as Record<string, unknown>;
+        if (meta.must_change_password === true) {
           navigate("/change-password");
         } else {
           navigate("/dashboard");
@@ -51,9 +48,12 @@ const Login = () => {
 
     try {
       if (!supabase) {
-        throw new Error(
-          "Módulo de autenticação ainda não configurado. Fale com o administrador para concluir a integração com o Supabase."
-        );
+        if (ENV.DEMO_MODE && ENV.DEMO_BYPASS_AUTH) {
+          markSessionStart();
+          navigate("/dashboard");
+          return;
+        }
+        throw new Error("Autenticação indisponível (Supabase não configurado neste ambiente).");
       }
 
       // Apenas login (cadastro é administrado fora do app público)
@@ -66,13 +66,9 @@ const Login = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const user = sessionData.session?.user;
       if (!user) throw new Error("Sessão não encontrada após login.");
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("must_change_password")
-        .eq("id", user.id)
-        .single();
+      const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
 
-      if (profile?.must_change_password) {
+      if (meta.must_change_password === true) {
         toast({ title: "Troca de senha necessária", description: "Defina uma nova senha para continuar." });
         navigate("/change-password");
       } else {
@@ -80,9 +76,15 @@ const Login = () => {
         navigate("/dashboard");
       }
     } catch (error: any) {
+      const message = (error?.message as string | undefined) ?? "";
+      const friendly =
+        message.toLowerCase().includes("failed to fetch") ||
+        message.toLowerCase().includes("name_not_resolved")
+          ? "Não foi possível conectar ao servidor de autenticação. Verifique a internet e as configurações do Supabase."
+          : null;
       toast({
         title: "Erro",
-        description: error.message || "Ocorreu um erro. Tente novamente.",
+        description: (friendly ?? error.message) || "Ocorreu um erro. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -149,7 +151,9 @@ const Login = () => {
 
           {!supabase && (
             <p className="text-xs text-amber-400 mt-3 text-center">
-              Supabase não configurado — usando modo DEMO. O login usa endpoints locais e não requer cadastro.
+              {ENV.DEMO_MODE && ENV.DEMO_BYPASS_AUTH
+                ? "Modo demo ativo — você pode entrar sem login."
+                : "Supabase não configurado neste ambiente."}
             </p>
           )}
 

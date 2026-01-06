@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { ENV } from "@/config/env";
 
 const SESSION_START_KEY = "smartline-session-start";
 const MAX_SESSION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
@@ -12,12 +13,19 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const client = supabase;
   const location = useLocation();
+  const bypassAuth = ENV.DEMO_MODE && ENV.DEMO_BYPASS_AUTH;
   const [hasSession, setHasSession] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [expiredAccess, setExpiredAccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (bypassAuth) {
+      setHasSession(true);
+      setLoading(false);
+      return;
+    }
+
     const now = Date.now();
 
     // Se não houver Supabase configurado, considera não autenticado
@@ -42,6 +50,24 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           return;
         }
 
+        const meta = (session.user.user_metadata ?? {}) as Record<string, unknown>;
+        const metaMustChange = Boolean(meta.must_change_password);
+        setMustChangePassword(metaMustChange);
+
+        const metaExpiresAt = meta.expires_at as string | undefined;
+        if (metaExpiresAt) {
+          const expMs = Date.parse(metaExpiresAt);
+          if (Number.isFinite(expMs) && now >= expMs) {
+            setExpiredAccess(true);
+            setHasSession(false);
+            try {
+              await client.auth.signOut();
+            } catch {/* ignore */}
+            window.localStorage.removeItem(SESSION_START_KEY);
+            return;
+          }
+        }
+
         let startIso = window.localStorage.getItem(SESSION_START_KEY);
         if (!startIso) {
           startIso = new Date().toISOString();
@@ -61,41 +87,16 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           return;
         }
 
-        // Busca profile para saber flags de troca de senha e expiração customizada
-        const { data: profile, error } = await client
-          .from("profiles")
-          .select("must_change_password, expires_at")
-          .eq("id", session.user.id)
-          .single();
-
-        if (error) {
-          // Em caso de erro, ainda considera sessão válida, mas sem flags
-          setHasSession(true);
-          return;
-        }
-
-        if (profile?.expires_at) {
-          const expMs = Date.parse(profile.expires_at as unknown as string);
-          if (Number.isFinite(expMs) && now >= expMs) {
-            setExpiredAccess(true);
-            setHasSession(false);
-            try {
-              await client.auth.signOut();
-            } catch {/* ignore */}
-            window.localStorage.removeItem(SESSION_START_KEY);
-            return;
-          }
-        }
-
-        setMustChangePassword(Boolean(profile?.must_change_password));
         setHasSession(true);
+      } catch {
+        setHasSession(false);
       } finally {
         setLoading(false);
       }
     };
 
     void checkSupabaseSession();
-  }, [client]);
+  }, [bypassAuth, client]);
 
   if (loading) {
     return (
@@ -103,6 +104,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     );
+  }
+
+  if (bypassAuth) {
+    return <>{children}</>;
   }
 
   if (!hasSession) {
