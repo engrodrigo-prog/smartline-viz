@@ -36,7 +36,7 @@ async function main() {
   }
 
   console.log(`[deploy] Deploying to Vercel…`)
-  const output = await run('npx', ['vercel', '--prod', '--yes', '--cwd', ROOT_DIR], { cwd: ROOT_DIR })
+  const output = await run('npx', ['vercel', '--prod', '--yes', '--cwd', WEB_DIR], { cwd: WEB_DIR })
   const match = output.match(/https:\/\/[^\s]*vercel\.app[^\s]*/)
   if (!match) {
     console.log(output)
