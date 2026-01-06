@@ -1,13 +1,16 @@
 {
   "version": 2,
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/[...path]?path=$1"
+      "src": "^/api/(.*)$",
+      "dest": "/api/[...path]?path=$1"
     },
     {
-      "source": "/((?!api/|@vite/|@react-refresh|__vite_ping|src/|node_modules/|assets/|public/|dist/|_next/|\\.well-known/|.*\\.[\\w]+$).*)",
-      "destination": "/index.html"
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/(.*)$",
+      "dest": "/index.html"
     }
   ],
   "headers": [
