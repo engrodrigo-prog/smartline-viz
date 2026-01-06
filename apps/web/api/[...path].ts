@@ -6,8 +6,7 @@ export const config = {
   runtime: 'nodejs',
 }
 
-// Important: Vercel will call this function under /api/*, so mount the app at /api here.
-// This makes /api/health resolve correctly to app.get('/health').
-const root = new Hono().route('/api', app)
+// Vercel already mounts this handler at /api/*; keep routes rooted at /.
+const root = new Hono().route('/', app)
 
 export default handle(root)
