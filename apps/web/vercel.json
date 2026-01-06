@@ -1,27 +1,30 @@
 {
   "version": 2,
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/[...path]"
+      "src": "^/logo-smartline\\.png$",
+      "headers": {
+        "Cache-Control": "public,max-age=31536000,immutable"
+      },
+      "continue": true
     },
     {
-      "source": "/((?!api/|@vite/|@react-refresh|__vite_ping|src/|node_modules/|assets/|public/|dist/|_next/|\\.well-known/|.*\\.[\\w]+$).*)",
-      "destination": "/index.html"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/logo-smartline.png",
-      "headers": [
-        { "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }
-      ]
+      "src": "^/smartline-og\\.png$",
+      "headers": {
+        "Cache-Control": "public,max-age=604800"
+      },
+      "continue": true
     },
     {
-      "source": "/smartline-og.png",
-      "headers": [
-        { "key": "Cache-Control", "value": "public,max-age=604800" }
-      ]
+      "src": "^/api/(.*)$",
+      "dest": "/api/[...path]?path=$1"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/((?!api/|@vite/|@react-refresh|__vite_ping|src/|node_modules/|assets/|public/|dist/|_next/|\\.well-known/|.*\\.[\\w]+$).*)",
+      "dest": "/index.html"
     }
   ]
 }
