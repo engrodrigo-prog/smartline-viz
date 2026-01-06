@@ -190,12 +190,12 @@ export const listMediaJobs = async (params: JobListParams = {}): Promise<MediaJo
     status: params.status,
     limit: params.limit,
   });
-  const rows = await requestJson<any[]>(`/api/media/jobs${query}`);
+  const rows = await requestJson<any[]>(`/media/jobs${query}`);
   return rows.map(mapJob);
 };
 
 export const getMediaJob = async (jobId: string): Promise<MediaJobDetail> => {
-  const row = await requestJson<any>(`/api/media/jobs/${encodeURIComponent(jobId)}`);
+  const row = await requestJson<any>(`/media/jobs/${encodeURIComponent(jobId)}`);
   return {
     ...mapJob(row),
     itensPorTipo: row.itens_por_tipo ?? [],
@@ -216,7 +216,7 @@ export const listMediaItems = async (params: ItemsListParams = {}): Promise<Medi
     limit: params.limit,
     offset: params.offset,
   });
-  const payload = await requestJson<{ items: any[]; count: number }>(`/api/media/items${query}`);
+  const payload = await requestJson<{ items: any[]; count: number }>(`/media/items${query}`);
   return {
     items: payload.items.map(mapMediaItem),
     count: payload.count,
@@ -233,7 +233,7 @@ export const listAnomalias = async (params: AnomaliaListParams = {}): Promise<An
     tipo: params.tipo,
     job_id: params.jobId,
   });
-  const rows = await requestJson<any[]>(`/api/anomalias/${query}`);
+  const rows = await requestJson<any[]>(`/anomalias${query}`);
   return rows.map(mapAnomalia);
 };
 
@@ -265,7 +265,7 @@ export const createAnomalia = async (payload: {
     detectadoEm: payload.detectadoEm,
     metadata: payload.metadata ?? {},
   };
-  const row = await requestJson<any>("/api/anomalias/", {
+  const row = await requestJson<any>("/anomalias", {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -273,7 +273,7 @@ export const createAnomalia = async (payload: {
 };
 
 export const updateAnomalia = async (anomaliaId: string, patch: Partial<{ status: string; criticidade: string; descricao: string; origem: string }>) => {
-  const row = await requestJson<any>(`/api/anomalias/${encodeURIComponent(anomaliaId)}`, {
+  const row = await requestJson<any>(`/anomalias/${encodeURIComponent(anomaliaId)}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
   });
@@ -282,7 +282,7 @@ export const updateAnomalia = async (anomaliaId: string, patch: Partial<{ status
 
 export const getLinhaExportUrl = (linhaId: string, cenarioId?: string) => {
   const search = cenarioId ? `?${new URLSearchParams({ cenario_id: cenarioId }).toString()}` : "";
-  return `${baseUrl}/api/export/linha/${encodeURIComponent(linhaId)}.zip${search}`;
+  return `${baseUrl}/export/linha/${encodeURIComponent(linhaId)}.zip${search}`;
 };
 
-export const getInspecaoExportUrl = (jobId: string) => `${baseUrl}/api/export/inspecao/${encodeURIComponent(jobId)}.zip`;
+export const getInspecaoExportUrl = (jobId: string) => `${baseUrl}/export/inspecao/${encodeURIComponent(jobId)}.zip`;

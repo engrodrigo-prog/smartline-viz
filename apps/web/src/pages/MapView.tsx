@@ -146,8 +146,8 @@ const MapFilters = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Piscas + Interrupções</SelectItem>
-            <SelectItem value="Pisca">Somente Piscas</SelectItem>
+            <SelectItem value="all">Eventos Transitórios {"<3min"} + Interrupções</SelectItem>
+            <SelectItem value="Pisca">Somente Eventos Transitórios {"<3min"}</SelectItem>
             <SelectItem value="Interrupção">Somente Interrupções</SelectItem>
           </SelectContent>
         </Select>
@@ -811,7 +811,7 @@ const MapView = () => {
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-foreground">{eventSummary.pisca}</div>
-                    <p className="text-xs text-muted-foreground">Piscas</p>
+                    <p className="text-xs text-muted-foreground">Eventos Transitórios {"<3min"}</p>
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-foreground">{eventSummary.interrupcao}</div>

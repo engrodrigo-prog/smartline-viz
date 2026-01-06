@@ -217,12 +217,12 @@ const safeParseJson = (value: string | null | undefined) => {
 };
 
 export const listLinhas = async () => {
-  const rows = await getJSON<any[]>("/api/linhas");
+  const rows = await getJSON<any[]>("/linhas");
   return rows.map(mapLine);
 };
 
 export const listCenarios = async (linhaId: string) => {
-  const rows = await getJSON<any[]>(`/api/cenarios?linha_id=${encodeURIComponent(linhaId)}`);
+  const rows = await getJSON<any[]>(`/cenarios?linha_id=${encodeURIComponent(linhaId)}`);
   return rows.map((row) => mapScenario({ ...row, linha_id: linhaId }));
 };
 
@@ -230,38 +230,38 @@ export const getKpiLinha = async (linhaId: string, cenarioId?: string | null) =>
   const params = new URLSearchParams();
   params.set("linha_id", linhaId);
   if (cenarioId) params.set("cenario_id", cenarioId);
-  const rows = await getJSON<any[]>(`/api/kpi-linha?${params.toString()}`);
+  const rows = await getJSON<any[]>(`/kpi-linha?${params.toString()}`);
   const mapped = rows.map(mapKpi);
   return mapped[0] ?? null;
 };
 
 export const getRiscoVegetacao = async (linhaId: string, cenarioId: string) => {
   const params = new URLSearchParams({ linha_id: linhaId, cenario_id: cenarioId });
-  const rows = await getJSON<any[]>(`/api/risco-vegetacao?${params.toString()}`);
+  const rows = await getJSON<any[]>(`/risco-vegetacao?${params.toString()}`);
   return rows.map(mapVegFeature);
 };
 
 export const getRiscoQueda = async (linhaId: string, cenarioId?: string) => {
   const params = new URLSearchParams({ linha_id: linhaId });
   if (cenarioId) params.set("cenario_id", cenarioId);
-  const rows = await getJSON<any[]>(`/api/risco-queda?${params.toString()}`);
+  const rows = await getJSON<any[]>(`/risco-queda?${params.toString()}`);
   return rows.map(mapQuedaFeature);
 };
 
 export const getCruzamentos = async (linhaId: string, cenarioId?: string | null) => {
   const params = new URLSearchParams({ linha_id: linhaId });
   if (cenarioId) params.set("cenario_id", cenarioId);
-  const rows = await getJSON<any[]>(`/api/cruzamentos?${params.toString()}`);
+  const rows = await getJSON<any[]>(`/cruzamentos?${params.toString()}`);
   return rows.map(mapCruzamento);
 };
 
 export const getTratamentos = async (linhaId: string, cenarioId: string) => {
   const params = new URLSearchParams({ linha_id: linhaId, cenario_id: cenarioId });
-  const rows = await getJSON<any[]>(`/api/tratamentos?${params.toString()}`);
+  const rows = await getJSON<any[]>(`/tratamentos?${params.toString()}`);
   return rows.map(mapTratamento);
 };
 
 export const simulateRisco = async (payload: SimulacaoRiscoPayload) => {
-  const response = await postJSON<SimulacaoRiscoResponse>("/api/simulacoes/riscos", payload);
+  const response = await postJSON<SimulacaoRiscoResponse>("/simulacoes/riscos", payload);
   return response;
 };

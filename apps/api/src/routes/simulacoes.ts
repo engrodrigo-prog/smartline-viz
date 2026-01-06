@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { getDbPool } from "@smartline/db";
 
 const router = new Hono();
-const pool = getDbPool();
+let poolInstance: ReturnType<typeof getDbPool> | null = null;
+const pool = () => (poolInstance ??= getDbPool());
 
 router.post("/riscos", async (c) => {
   const payload = await c.req.json().catch(() => null);
@@ -16,7 +17,7 @@ router.post("/riscos", async (c) => {
   }
 
   try {
-    const baseQuery = await pool.query(
+    const baseQuery = await pool().query(
       `WITH veg AS (
          SELECT vao_id,
                 SUM(CASE
@@ -46,15 +47,15 @@ router.post("/riscos", async (c) => {
            WHERE linha_id = $2
            GROUP BY vao_id
         )
-        SELECT v.vao_id,
+       SELECT v.vao_id,
                v.codigo_vao,
                COALESCE(veg.veg_score, 0) AS veg_score,
                COALESCE(queda.queda_score, 0) AS queda_score,
                COALESCE(cruz.cruz_score, 0) AS cruz_score
-          FROM tb_vao v
-          LEFT JOIN veg ON veg.vao_id = v.vao_id
-          LEFT JOIN queda ON queda.vao_id = v.vao_id
-          LEFT JOIN cruz ON cruz.vao_id = v.vao_id
+         FROM tb_vao v
+         LEFT JOIN veg ON veg.vao_id = v.vao_id
+         LEFT JOIN queda ON queda.vao_id = v.vao_id
+         LEFT JOIN cruz ON cruz.vao_id = v.vao_id
          WHERE v.linha_id = $2`,
       [cenarioId, linhaId]
     );

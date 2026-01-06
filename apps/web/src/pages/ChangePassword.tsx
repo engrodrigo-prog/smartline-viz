@@ -31,11 +31,16 @@ const ChangePassword = () => {
         const metaName = typeof meta.full_name === "string" ? meta.full_name : "";
         const metaOrg = typeof meta.organization === "string" ? meta.organization : "";
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name, organization")
-          .eq("id", user.id)
-          .single();
+        const attemptFull = async (columns: string) =>
+          supabase.from("profiles").select(columns).eq("id", user.id).single();
+
+        const first = await attemptFull("full_name, organization");
+        const second =
+          first.error && (first.error as any)?.code === "PGRST204"
+            ? await attemptFull("full_name")
+            : null;
+
+        const profile = (first.data ?? second?.data) as any | null;
 
         setFullName((profile?.full_name ?? metaName ?? user.email ?? "").toString());
         setOrganization((profile?.organization ?? metaOrg ?? "").toString());
@@ -86,12 +91,20 @@ const ChangePassword = () => {
       });
       if (updErr) throw updErr;
 
-      const { error: profileErr } = await supabase
-        .from("profiles")
-        .update({ full_name: fullName.trim(), organization: organization.trim() } as any)
-        .eq("id", userId);
-      if (profileErr) {
-        console.warn("[profile] falha ao atualizar cadastro", profileErr);
+      const updateProfile = async (payload: Record<string, unknown>) =>
+        supabase.from("profiles").update(payload as any).eq("id", userId);
+
+      const profileAttempt = await updateProfile({
+        full_name: fullName.trim(),
+        organization: organization.trim(),
+      });
+      if (profileAttempt.error && (profileAttempt.error as any)?.code === "PGRST204") {
+        const retry = await updateProfile({ full_name: fullName.trim() });
+        if (retry.error) {
+          console.warn("[profile] falha ao atualizar cadastro", retry.error);
+        }
+      } else if (profileAttempt.error) {
+        console.warn("[profile] falha ao atualizar cadastro", profileAttempt.error);
       }
 
       toast({ title: "Senha alterada", description: "Você já pode acessar o dashboard." });
@@ -132,11 +145,25 @@ const ChangePassword = () => {
             </div>
             <div className="space-y-1">
               <label className="text-sm text-muted-foreground">Nova senha</label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                required
+                minLength={6}
+              />
             </div>
             <div className="space-y-1">
               <label className="text-sm text-muted-foreground">Confirmar senha</label>
-              <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={6} />
+              <Input
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                autoComplete="new-password"
+                required
+                minLength={6}
+              />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Salvando..." : "Salvar e acessar"}

@@ -12,6 +12,14 @@ export const useFirmsKml = (options: FirmsKmlOptions = {}) => {
     queryKey: ['firms-kml', options.url, options.localFile],
     queryFn: async () => {
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/firms-fetch`;
+      const apiKey =
+        (import.meta.env.VITE_SUPABASE_ANON_KEY ??
+          import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) as string | undefined;
+      const { data: sessionData } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
+      const token = sessionData.session?.access_token ?? apiKey ?? "";
+      const headers: Record<string, string> = {};
+      if (apiKey) headers["apikey"] = apiKey;
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       
       // Se tiver arquivo local, fazer upload
       if (options.localFile) {
@@ -23,16 +31,15 @@ export const useFirmsKml = (options: FirmsKmlOptions = {}) => {
         
         const response = await fetch(baseUrl, {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
+          headers,
           body: formData,
           signal: AbortSignal.timeout(30000),
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-          throw new Error(errorData.message || `HTTP ${response.status}: Failed to process local KMZ`);
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.warn('[firms-kml] falha ao processar KMZ', { status: response.status, error: errorData });
+          return { type: "FeatureCollection", features: [] } as GeoJSON.FeatureCollection;
         }
         
         const data = await response.json();
@@ -42,15 +49,14 @@ export const useFirmsKml = (options: FirmsKmlOptions = {}) => {
       // Caso contrário, usar URL
       const params = options.url ? `?url=${encodeURIComponent(options.url)}` : '';
       const response = await fetch(`${baseUrl}${params}`, {
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers,
         signal: AbortSignal.timeout(30000),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `HTTP ${response.status}: Failed to fetch FIRMS footprints`);
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.warn('[firms-kml] falha ao buscar footprints', { status: response.status, error: errorData });
+        return { type: "FeatureCollection", features: [] } as GeoJSON.FeatureCollection;
       }
       
       const data = await response.json();

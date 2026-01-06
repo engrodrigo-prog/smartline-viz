@@ -20,6 +20,7 @@ import exportRoutes from "./routes/export.js";
 import { readFileSync, existsSync, createReadStream } from "node:fs";
 import { join } from "node:path";
 import mime from "mime";
+import nodemailer from "nodemailer";
 
 const app = new Hono();
 
@@ -54,6 +55,71 @@ app.use("*", logger());
 
 app.get("/health", (c) => c.json({ status: "ok" }));
 
+app.post("/admin/send-approval-email", async (c) => {
+  try {
+    const body = await c.req.json<{
+      email: string;
+      full_name: string;
+      days: number;
+      type?: "new" | "extend";
+    }>();
+
+    const { email, full_name, days, type } = body;
+    if (!email || !full_name || !days) {
+      return c.json({ error: "Parâmetros inválidos" }, 400);
+    }
+
+    const host = env.SMTP_HOST;
+    const port = env.SMTP_PORT ?? 587;
+    const user = env.SMTP_USER;
+    const pass = env.SMTP_PASS;
+    const from = env.EMAIL_FROM ?? "admin@smartline.pro";
+
+    if (!host || !user || !pass) {
+      console.warn("[email] SMTP não configurado; pulando envio.");
+      return c.json({ ok: true, skipped: "smtp_not_configured" });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+    });
+
+    const subject =
+      type === "extend"
+        ? "Extensão de acesso ao Smartline"
+        : "Acesso autorizado ao Smartline AssetHealth";
+
+    const text = [
+      `Olá ${full_name},`,
+      "",
+      type === "extend"
+        ? `Sua extensão de acesso ao Smartline AssetHealth foi aprovada.`
+        : `Seu acesso ao Smartline AssetHealth foi aprovado.`,
+      `Prazo de acesso: ${days} dia(s) a partir desta mensagem.`,
+      "",
+      "Você poderá acessar o ambiente em breve com as credenciais fornecidas pela equipe.",
+      "",
+      "Atenciosamente,",
+      "Equipe Smartline",
+    ].join("\n");
+
+    await transporter.sendMail({
+      from,
+      to: email,
+      subject,
+      text,
+    });
+
+    return c.json({ ok: true });
+  } catch (err: any) {
+    console.error("[email] falha ao enviar e-mail de aprovação", err);
+    return c.json({ error: err?.message ?? "Falha ao enviar e-mail" }, 500);
+  }
+});
+
 // Demo: retorna usuário atual (sem sessão real nesta versão)
 app.get("/auth/demo/me", (c) => {
   return c.json({ user: null });
@@ -77,11 +143,16 @@ app.route("/media", mediaRoutes);
 app.route("/missoes", missoesRoutes);
 app.route("/demandas", demandasRoutes);
 app.route("/weather", weatherRoutes);
-app.route("/api", lipowerlineRoutes);
-app.route("/api/simulacoes", simulacoesRoutes);
-app.route("/api/media", mediaApiRoutes);
-app.route("/api/anomalias", anomaliasRoutes);
-app.route("/api/export", exportRoutes);
+app.route("/", lipowerlineRoutes);
+app.route("/api", lipowerlineRoutes); // compat
+app.route("/simulacoes", simulacoesRoutes);
+app.route("/api/simulacoes", simulacoesRoutes); // compat
+app.route("/media", mediaApiRoutes);
+app.route("/api/media", mediaApiRoutes); // compat
+app.route("/anomalias", anomaliasRoutes);
+app.route("/api/anomalias", anomaliasRoutes); // compat
+app.route("/export", exportRoutes);
+app.route("/api/export", exportRoutes); // compat
 
 app.get("/jobs/:id/status", (c) => {
   const p = join("workers/media/outbox", `${c.req.param("id")}.status.json`);

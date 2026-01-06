@@ -20,9 +20,18 @@ Deno.serve(async (req) => {
 
     console.log('Queimadas live request:', { concessao, minConf, satelite, maxKm, mode });
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseKey =
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
+      Deno.env.get('SUPABASE_ANON_KEY') ??
+      '';
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase env ausente (SUPABASE_URL / SUPABASE_*_KEY)');
+    }
+
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      supabaseUrl,
+      supabaseKey
     );
 
     let query = supabase

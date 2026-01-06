@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { getDbPool } from "@smartline/db";
 
-const pool = getDbPool();
 const router = new Hono();
+let poolInstance: ReturnType<typeof getDbPool> | null = null;
+const pool = () => (poolInstance ??= getDbPool());
 
 const parseListParam = (value?: string | null) =>
   value
@@ -33,7 +34,7 @@ router.get("/jobs", async (c) => {
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
 
   try {
-    const result = await pool.query(
+    const result = await pool().query(
       `SELECT
          mj.job_id,
          mj.linha_id,
@@ -76,7 +77,7 @@ router.get("/jobs", async (c) => {
 router.get("/jobs/:jobId", async (c) => {
   const jobId = c.req.param("jobId");
   try {
-    const jobRes = await pool.query(
+    const jobRes = await pool().query(
       `SELECT
          mj.job_id,
          mj.linha_id,
@@ -111,14 +112,14 @@ router.get("/jobs/:jobId", async (c) => {
       return c.json({ error: "job_not_found" }, 404);
     }
     const job = jobRes.rows[0];
-    const tiposRes = await pool.query(
+    const tiposRes = await pool().query(
       `SELECT tipo_midia, COUNT(*) AS total
          FROM tb_media_item
         WHERE job_id = $1
         GROUP BY tipo_midia`,
       [jobId]
     );
-    const sampleRes = await pool.query(
+    const sampleRes = await pool().query(
       `SELECT media_id, tipo_midia, file_path, thumb_path, capturado_em, metadata, ST_AsGeoJSON(geom) AS geom_geojson
          FROM tb_media_item
         WHERE job_id = $1
@@ -189,7 +190,7 @@ router.get("/items", async (c) => {
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
 
   try {
-    const result = await pool.query(
+    const result = await pool().query(
       `SELECT
          mi.media_id,
          mi.job_id,

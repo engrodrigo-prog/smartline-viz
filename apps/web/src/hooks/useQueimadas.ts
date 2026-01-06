@@ -31,17 +31,24 @@ export const useQueimadas = (filters: QueimadasFilters) => {
       const functionName = filters.mode === 'live' ? 'queimadas-live' : 'queimadas-archive';
       
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
+      const apiKey =
+        (import.meta.env.VITE_SUPABASE_ANON_KEY ??
+          import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) as string | undefined;
+      const { data: sessionData } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
+      const token = sessionData.session?.access_token ?? apiKey ?? "";
+      const headers: Record<string, string> = {};
+      if (apiKey) headers["apikey"] = apiKey;
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const response = await fetch(`${baseUrl}?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers,
         signal: AbortSignal.timeout(30000),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
-        console.error('Erro da API:', errorData);
-        throw new Error(errorData.message || `HTTP ${response.status}: Falha ao buscar queimadas`);
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.warn('[queimadas] falha ao buscar', { status: response.status, error: errorData });
+        return { type: "FeatureCollection", features: [] } as GeoJSON.FeatureCollection;
       }
       
       const data = await response.json();

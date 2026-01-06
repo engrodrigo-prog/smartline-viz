@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { getDbPool } from "@smartline/db";
 
-const pool = getDbPool();
 const router = new Hono();
+let poolInstance: ReturnType<typeof getDbPool> | null = null;
+const pool = () => (poolInstance ??= getDbPool());
 
 router.get("/", async (c) => {
   const linhaId = c.req.query("linha_id");
@@ -46,7 +47,7 @@ router.get("/", async (c) => {
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
 
   try {
-    const result = await pool.query(
+    const result = await pool().query(
       `SELECT
          a.anomalia_id,
          a.linha_id,
@@ -104,7 +105,7 @@ router.post("/", async (c) => {
   const metadata = typeof body["metadata"] === "object" && body["metadata"] !== null ? body["metadata"] : {};
 
   try {
-    const result = await pool.query(
+    const result = await pool().query(
       `INSERT INTO tb_anomalia_eletromecanica (
          linha_id, estrutura_id, vao_id, cenario_id, media_id,
          tipo_anomalia, criticidade, status, origem, descricao, detectado_em, metadata, atualizado_em
@@ -165,7 +166,7 @@ router.patch("/:anomaliaId", async (c) => {
   const setSql = sets.join(", ");
 
   try {
-    const result = await pool.query(
+    const result = await pool().query(
       `UPDATE tb_anomalia_eletromecanica
           SET ${setSql}, atualizado_em = now()
         WHERE anomalia_id = $${params.length}

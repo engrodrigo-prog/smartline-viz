@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { handle } from 'hono/vercel'
-import app from './_serverless_app.ts'
+import app from '../../api/src/app.ts'
 
 export const config = {
   runtime: 'nodejs',

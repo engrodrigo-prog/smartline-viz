@@ -2,8 +2,9 @@ import { Hono } from "hono";
 import { getDbPool } from "@smartline/db";
 import { ZipFile } from "yazl";
 
-const pool = getDbPool();
 const router = new Hono();
+let poolInstance: ReturnType<typeof getDbPool> | null = null;
+const pool = () => (poolInstance ??= getDbPool());
 
 type RowWithGeom = Record<string, unknown> & { geom_geojson?: string | null };
 
@@ -58,51 +59,51 @@ router.get("/linha/:linhaId.zip", async (c) => {
     return c.json({ error: "missing_linha_id" }, 400);
   }
   try {
-    const linhaPromise = pool.query<RowWithGeom>(
+    const linhaPromise = pool().query<RowWithGeom>(
       `SELECT linha_id, codigo_linha, nome_linha, tensao_kv, concessionaria, regiao, ST_AsGeoJSON(geom) AS geom_geojson
          FROM tb_linha
         WHERE linha_id = $1`,
       [linhaId]
     );
-    const vaoPromise = pool.query<RowWithGeom>(
+    const vaoPromise = pool().query<RowWithGeom>(
       `SELECT vao_id, codigo_vao, comprimento_m, ST_AsGeoJSON(geom) AS geom_geojson
          FROM tb_vao
         WHERE linha_id = $1`,
       [linhaId]
     );
     const riscoVegPromise = cenarioId
-      ? pool.query<RowWithGeom>(
+      ? pool().query<RowWithGeom>(
           `SELECT *, ST_AsGeoJSON(geom) AS geom_geojson
              FROM vw_risco_vegetacao_mapa
             WHERE linha_id = $1 AND cenario_id = $2`,
           [linhaId, cenarioId]
         )
-      : pool.query<RowWithGeom>(
+      : pool().query<RowWithGeom>(
           `SELECT *, ST_AsGeoJSON(geom) AS geom_geojson
              FROM vw_risco_vegetacao_mapa
             WHERE linha_id = $1`,
           [linhaId]
         );
-    const riscoQuedaPromise = pool.query<RowWithGeom>(
+    const riscoQuedaPromise = pool().query<RowWithGeom>(
       `SELECT *, ST_AsGeoJSON(geom) AS geom_geojson
          FROM vw_risco_queda_mapa
         WHERE linha_id = $1`,
       [linhaId]
     );
-    const cruzamentosPromise = pool.query<RowWithGeom>(
+    const cruzamentosPromise = pool().query<RowWithGeom>(
       `SELECT *, ST_AsGeoJSON(geom) AS geom_geojson
          FROM tb_cruzamento
         WHERE linha_id = $1`,
       [linhaId]
     );
     const tratamentosPromise = cenarioId
-      ? pool.query<RowWithGeom>(
+      ? pool().query<RowWithGeom>(
           `SELECT *, ST_AsGeoJSON(geom) AS geom_geojson
              FROM vw_tratamento_mapa
             WHERE linha_id = $1 AND cenario_id = $2`,
           [linhaId, cenarioId]
         )
-      : pool.query<RowWithGeom>(
+      : pool().query<RowWithGeom>(
           `SELECT *, ST_AsGeoJSON(geom) AS geom_geojson
              FROM vw_tratamento_mapa
             WHERE linha_id = $1`,
@@ -144,7 +145,7 @@ router.get("/inspecao/:jobId.zip", async (c) => {
   const jobId = c.req.param("jobId");
   if (!jobId) return c.json({ error: "missing_job_id" }, 400);
   try {
-    const jobRes = await pool.query(
+    const jobRes = await pool().query(
       `SELECT job_id, linha_id, cenario_id, tipo_inspecao, status, metadata, created_at, finished_at
          FROM tb_media_job
         WHERE job_id = $1`,
@@ -154,14 +155,14 @@ router.get("/inspecao/:jobId.zip", async (c) => {
       return c.json({ error: "job_not_found" }, 404);
     }
     const job = jobRes.rows[0];
-    const itemsRes = await pool.query<RowWithGeom>(
+    const itemsRes = await pool().query<RowWithGeom>(
       `SELECT media_id, job_id, linha_id, cenario_id, tipo_midia, file_path, thumb_path, capturado_em, metadata,
               ST_AsGeoJSON(geom) AS geom_geojson
          FROM tb_media_item
         WHERE job_id = $1`,
       [jobId]
     );
-    const anomaliasRes = await pool.query(
+    const anomaliasRes = await pool().query(
       `SELECT a.anomalia_id, a.tipo_anomalia, a.criticidade, a.status, a.descricao, a.detectado_em, a.media_id, mi.file_path
          FROM tb_anomalia_eletromecanica a
          LEFT JOIN tb_media_item mi ON mi.media_id = a.media_id
