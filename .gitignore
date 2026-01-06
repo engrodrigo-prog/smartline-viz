@@ -29,3 +29,4 @@ dist-ssr
 **/supabase/.temp/
 
 PROJETO.ZIP
+.env*.local
