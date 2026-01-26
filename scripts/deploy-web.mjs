@@ -22,6 +22,28 @@ function run(cmd, args, opts = {}) {
   })
 }
 
+async function sleep(ms) {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function verifyUrl(url, { attempts = 10 } = {}) {
+  let lastErr
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': 'smartline-viz-deploy' } })
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` → ${text.slice(0, 200)}` : ''}`)
+      }
+      return
+    } catch (err) {
+      lastErr = err
+      if (attempt < attempts) await sleep(300 * attempt)
+    }
+  }
+  throw lastErr
+}
+
 async function main() {
   console.log(`[deploy] Building web…`)
   // Try pnpm, then corepack pnpm, then npm run build
@@ -36,7 +58,9 @@ async function main() {
   }
 
   console.log(`[deploy] Deploying to Vercel…`)
-  const output = await run('npx', ['vercel', '--prod', '--yes', '--cwd', WEB_DIR], { cwd: WEB_DIR })
+  // Deploy from repo root so it uses the intended Vercel project (smartline-viz) with rootDirectory=apps/web,
+  // keeping the production custom domain (smartline-gpcad.enerlytics.pro) in sync.
+  const output = await run('npx', ['vercel', '--prod', '--yes'], { cwd: ROOT_DIR })
   const match = output.match(/https:\/\/[^\s]*vercel\.app[^\s]*/)
   if (!match) {
     console.log(output)
@@ -48,6 +72,10 @@ async function main() {
   console.log(`[deploy] Assigning alias ${DOMAIN}…`)
   const aliasOut = await run('npx', ['vercel', 'alias', 'set', url, DOMAIN], { cwd: ROOT_DIR })
   console.log(aliasOut)
+
+  console.log(`[deploy] Verifying alias…`)
+  await verifyUrl(`https://${DOMAIN}/api/health`)
+  await verifyUrl(`https://${DOMAIN}/api/linhas`)
   console.log(`[deploy] Done.`)
 }
 

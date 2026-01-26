@@ -23,10 +23,13 @@ export default function LayerUpload() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const queryClient = useQueryClient();
+  const supabaseEnabled = Boolean(supabase);
 
   const { data: userId } = useQuery({
     queryKey: ['current-user'],
+    enabled: supabaseEnabled,
     queryFn: async () => {
+      if (!supabase) return null;
       const { data: { user } } = await supabase.auth.getUser();
       return user?.id;
     },
@@ -38,11 +41,12 @@ export default function LayerUpload() {
       if (!userId) return [];
       return LayersStorage.listUserLayers(userId);
     },
-    enabled: !!userId,
+    enabled: !!userId && supabaseEnabled,
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (filename: string) => {
+      if (!supabase) throw new Error('Supabase não configurado');
       if (!userId) throw new Error('User not authenticated');
       await LayersStorage.deleteCustomLayer(userId, filename);
     },
@@ -56,6 +60,11 @@ export default function LayerUpload() {
   });
 
   const onDrop = async (acceptedFiles: File[]) => {
+    if (!supabaseEnabled) {
+      toast.error('Supabase não configurado. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+      return;
+    }
+
     if (!userId) {
       toast.error('Usuário não autenticado');
       return;

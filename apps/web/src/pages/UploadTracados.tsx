@@ -36,6 +36,13 @@ const UploadTracados = () => {
   const handleUpload = async () => {
     if (!selectedFile) return;
 
+    if (!supabase) {
+      toast.error("Supabase não configurado", {
+        description: "Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para usar o upload de geodados.",
+      });
+      return;
+    }
+
     setIsUploading(true);
     
     try {
@@ -93,6 +100,13 @@ const UploadTracados = () => {
   };
 
   const handleFinalize = async () => {
+    if (!supabase) {
+      toast.error("Supabase não configurado", {
+        description: "Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para finalizar a importação.",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     setCurrentStep(3);
 

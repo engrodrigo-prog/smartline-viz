@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapLibreUnified } from "@/components/MapLibreUnified";
 import { toast } from "sonner";
+import type { MediaItem } from "@/services/mediaJobsApi";
 import { getLinhaExportUrl, getInspecaoExportUrl } from "@/services/mediaJobsApi";
 import { getMediaFileUrl } from "@/services/media";
 
@@ -48,6 +49,8 @@ const formatDate = (value?: string | null) => {
   if (!value) return "—";
   return new Date(value).toLocaleString("pt-BR");
 };
+
+const EMPTY_JOB_ITEMS: MediaItem[] = [];
 
 export default function InspecaoTermografica() {
   const { linhaSelecionada, linhaSelecionadaId, cenarioSelecionado, cenarioSelecionadoId } = useSelectionContext();
@@ -82,7 +85,7 @@ export default function InspecaoTermografica() {
   const [anomaliaCriticidade, setAnomaliaCriticidade] = useState("Critico");
   const [anomaliaDescricao, setAnomaliaDescricao] = useState("");
 
-  const jobItems = itemsQuery.data?.items ?? [];
+  const jobItems = itemsQuery.data?.items ?? EMPTY_JOB_ITEMS;
   const jobAnomalias = useMemo(() => {
     const items = anomaliasQuery.data ?? [];
     if (!selectedJobId) return items;

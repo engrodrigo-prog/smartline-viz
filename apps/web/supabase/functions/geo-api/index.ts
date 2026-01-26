@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const GeoApiParamsSchema = z.object({
   fn: z.enum(['lines', 'domain', 'profile']),
-  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9 _-]+$/).optional(),
   tenant_id: z.string().uuid().optional(),
   format: z.enum(['geojson', 'wkt']).default('geojson')
 });

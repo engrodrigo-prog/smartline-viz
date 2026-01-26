@@ -8,9 +8,13 @@ const corsHeaders = {
 };
 
 const SpanUploadSchema = z.object({
-  file_path: z.string().min(1),
-  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9_-]+$/),
+  file_path: z.string().min(1).optional(),
+  file_name: z.string().min(1).optional(),
+  csv_data: z.string().max(10_000_000).optional(), // 10MB max
+  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9 _-]+$/),
   tenant_id: z.string().uuid().optional()
+}).refine((data) => !!(data.file_path || data.csv_data), {
+  message: 'Provide one of: file_path, csv_data'
 });
 
 serve(async (req) => {
@@ -63,27 +67,36 @@ serve(async (req) => {
 
     const tenant_id = validatedTenant;
 
-    // Validate file ownership
-    const normalizedPath = body.file_path.replace(/\.\.\//g, '');
-    if (!normalizedPath.startsWith(`${user.id}/`)) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized file access' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Download file from storage
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from('geodata-uploads')
-      .download(normalizedPath);
+    let fileContent: string;
+    let uploadSource: 'inline' | 'storage' = 'inline';
 
-    if (downloadError) {
-      throw new Error(`Failed to download file: ${downloadError.message}`);
+    if (body.csv_data !== undefined) {
+      fileContent = body.csv_data;
+    } else if (body.file_path) {
+      uploadSource = 'storage';
+      const normalizedPath = body.file_path.replace(/\.\.\//g, '');
+      if (!normalizedPath.startsWith(`${user.id}/`)) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized file access' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('geodata-uploads')
+        .download(normalizedPath);
+
+      if (downloadError) {
+        throw new Error(`Failed to download file: ${downloadError.message}`);
+      }
+
+      fileContent = await fileData.text();
+    } else {
+      throw new Error('Missing CSV data');
     }
 
-    const fileContent = await fileData.text();
     const spans: any[] = [];
 
     // Parse CSV
@@ -110,6 +123,7 @@ serve(async (req) => {
           angle_deg: parseFloat(row.angle_deg || row.angle || 0),
           meta: {
             imported_from: 'csv',
+            upload_source: uploadSource,
             original_data: row
           }
         });

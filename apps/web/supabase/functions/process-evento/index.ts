@@ -8,10 +8,15 @@ const corsHeaders = {
 };
 
 const EventoUploadSchema = z.object({
-  file_path: z.string().min(1),
+  file_path: z.string().min(1).optional(),
+  file_name: z.string().min(1).optional(),
+  kml_data: z.string().max(10_000_000).optional(), // 10MB max
+  csv_data: z.string().max(10_000_000).optional(), // 10MB max
   tipo_evento: z.enum(['arvore_queda', 'arvore_lateral', 'clearance_perigo', 'cruzamento', 'perigo_generico', 'outros']),
   concessao: z.string().optional(),
   tenant_id: z.string().uuid().optional()
+}).refine((data) => !!(data.file_path || data.kml_data || data.csv_data), {
+  message: 'Provide one of: file_path, kml_data, csv_data'
 });
 
 serve(async (req) => {
@@ -44,31 +49,50 @@ serve(async (req) => {
     const rawBody = await req.json();
     const body = EventoUploadSchema.parse(rawBody);
 
-    // Validate file ownership
-    const normalizedPath = body.file_path.replace(/\.\.\//g, '');
-    if (!normalizedPath.startsWith(`${user.id}/`)) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized file access' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Download file from storage
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from('geodata-uploads')
-      .download(normalizedPath);
+    const fileNameHint = (body.file_name ?? body.file_path ?? '').toLowerCase();
+    const isCsv = body.csv_data !== undefined || fileNameHint.endsWith('.csv');
+    const isKml = body.kml_data !== undefined || fileNameHint.endsWith('.kml') || fileNameHint.endsWith('.kmz');
 
-    if (downloadError) {
-      throw new Error(`Failed to download file: ${downloadError.message}`);
+    if (!isCsv && !isKml) {
+      throw new Error('Unsupported file format (expected .csv, .kml, .kmz)');
     }
 
-    const fileContent = await fileData.text();
+    let fileContent: string;
+    let uploadSource: 'inline' | 'storage' = 'inline';
+
+    if (body.csv_data !== undefined) {
+      fileContent = body.csv_data;
+    } else if (body.kml_data !== undefined) {
+      fileContent = body.kml_data;
+    } else if (body.file_path) {
+      uploadSource = 'storage';
+      const normalizedPath = body.file_path.replace(/\.\.\//g, '');
+      if (!normalizedPath.startsWith(`${user.id}/`)) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized file access' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('geodata-uploads')
+        .download(normalizedPath);
+
+      if (downloadError) {
+        throw new Error(`Failed to download file: ${downloadError.message}`);
+      }
+
+      fileContent = await fileData.text();
+    } else {
+      throw new Error('Missing file content');
+    }
+
     const eventos: any[] = [];
 
     // Parse KML/CSV
-    if (normalizedPath.endsWith('.csv')) {
+    if (isCsv) {
       const lines = fileContent.split('\n');
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
       
@@ -90,6 +114,7 @@ serve(async (req) => {
             geometry: `SRID=4674;POINT(${row.longitude} ${row.latitude})`,
             metadata: {
               imported_from: 'csv',
+              upload_source: uploadSource,
               original_data: row
             }
           });
@@ -137,6 +162,7 @@ serve(async (req) => {
             geometry: `SRID=4674;${wkt}`,
             metadata: {
               imported_from: 'kml',
+              upload_source: uploadSource,
               geometry_type: geomType
             }
           });

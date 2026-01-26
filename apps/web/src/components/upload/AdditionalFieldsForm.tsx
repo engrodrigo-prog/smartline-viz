@@ -60,31 +60,37 @@ export function AdditionalFieldsForm({ fileType, values, onChange }: AdditionalF
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="x_left">Largura Esquerda (m) *</Label>
-            <Input
-              id="x_left"
-              type="number"
-              min="0"
-              max="10000"
-              placeholder="Ex: 100"
-              value={values.x_left || ''}
-              onChange={(e) => onChange('x_left', parseFloat(e.target.value))}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="x_right">Largura Direita (m) *</Label>
-            <Input
-              id="x_right"
-              type="number"
-              min="0"
-              max="10000"
-              placeholder="Ex: 100"
-              value={values.x_right || ''}
-              onChange={(e) => onChange('x_right', parseFloat(e.target.value))}
-              required
-            />
-          </div>
+          <Input
+            id="x_left"
+            type="number"
+            min="0"
+            max="10000"
+            placeholder="Ex: 100"
+            value={values.x_left || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              onChange('x_left', value === '' ? '' : Number(value));
+            }}
+            required
+          />
         </div>
+        <div>
+          <Label htmlFor="x_right">Largura Direita (m) *</Label>
+          <Input
+            id="x_right"
+            type="number"
+            min="0"
+            max="10000"
+            placeholder="Ex: 100"
+            value={values.x_right || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              onChange('x_right', value === '' ? '' : Number(value));
+            }}
+            required
+          />
+        </div>
+      </div>
       )}
 
       {fileType.requiredFields.includes('concessao') && (
@@ -110,7 +116,10 @@ export function AdditionalFieldsForm({ fileType, values, onChange }: AdditionalF
             max="1000"
             placeholder="Ex: 10"
             value={values.gsd_cm || ''}
-            onChange={(e) => onChange('gsd_cm', parseInt(e.target.value))}
+            onChange={(e) => {
+              const value = e.target.value;
+              onChange('gsd_cm', value === '' ? '' : Number(value));
+            }}
             required
           />
           <p className="text-xs text-muted-foreground mt-1">

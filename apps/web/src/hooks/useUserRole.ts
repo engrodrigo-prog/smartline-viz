@@ -10,6 +10,11 @@ export function useUserRole() {
   useEffect(() => {
     async function fetchUserRole() {
       try {
+        if (!supabase) {
+          setRole(null);
+          return;
+        }
+
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {

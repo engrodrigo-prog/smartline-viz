@@ -20,6 +20,12 @@ export default function SensorDashboard() {
   }, []);
 
   const fetchDashboardData = async () => {
+    if (!supabase) {
+      setStats({ total: 0, online: 0, warning: 0, critical: 0 });
+      setChartData([]);
+      return;
+    }
+
     const { data: sensors } = await supabase.from('sensors').select('status');
     if (sensors) {
       setStats({

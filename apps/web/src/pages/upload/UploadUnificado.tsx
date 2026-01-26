@@ -45,6 +45,7 @@ import type { MediaTema } from "@/services/media";
 import { DEMANDA_TEMAS } from "@/services/demandas";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import JSZip from "jszip";
 
 type SelectedFiles = {
   fotos: File[];
@@ -55,6 +56,47 @@ type SelectedFiles = {
 const emptyFiles: SelectedFiles = { fotos: [], videos: [], srt: [] };
 
 const temas: MediaTema[] = DEMANDA_TEMAS as MediaTema[];
+
+const readKmlFromFile = async (file: File) => {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith(".kml")) {
+    return file.text();
+  }
+  if (lower.endsWith(".kmz")) {
+    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+    const entries = Object.values(zip.files).filter((entry) => !entry.dir);
+    const kml = entries.find((entry) => entry.name.toLowerCase().endsWith(".kml"));
+    if (!kml) {
+      throw new Error("KMZ inválido: não encontrou arquivo .kml dentro do pacote.");
+    }
+    return kml.async("text");
+  }
+  throw new Error("Formato não suportado. Use .kml ou .kmz");
+};
+
+const MAX_INLINE_TYPOLOGY_BYTES = 10 * 1024 * 1024; // 10MB
+
+const isMissingRequiredValue = (value: any) => {
+  if (value === undefined || value === null) return true;
+  if (typeof value === "string") return value.trim() === "";
+  if (typeof value === "number") return !Number.isFinite(value);
+  return false;
+};
+
+const getFunctionErrorMessage = (error: any) => {
+  const contextBody = error?.context?.body ?? error?.context?.data;
+  if (contextBody) {
+    try {
+      const parsed = typeof contextBody === "string" ? JSON.parse(contextBody) : contextBody;
+      if (parsed?.error) return parsed.error;
+      if (parsed?.message) return parsed.message;
+      return typeof parsed === "string" ? parsed : JSON.stringify(parsed);
+    } catch {
+      return typeof contextBody === "string" ? contextBody : JSON.stringify(contextBody);
+    }
+  }
+  return error?.message ?? "Erro no processamento";
+};
 
 const UploadUnificado = () => {
   const [files, setFiles] = useState<SelectedFiles>(emptyFiles);
@@ -251,11 +293,7 @@ const UploadUnificado = () => {
 
     const required = selectedType.requiredFields ?? [];
     for (const field of required) {
-      if (
-        additionalData[field] === undefined ||
-        additionalData[field] === "" ||
-        additionalData[field] === null
-      ) {
+      if (isMissingRequiredValue(additionalData[field])) {
         toast.error(`Campo obrigatório: ${field}`);
         return;
       }
@@ -312,36 +350,96 @@ const UploadUnificado = () => {
       if (job.status !== "pending" && job.status !== "error") continue;
 
       try {
+        // Special case: line-upload expects KML content, not a storage path.
+        if (job.fileType.edgeFunction === "line-upload") {
+          updateJobStatus(job.id, "processing");
+          const kmlData = await readKmlFromFile(job.file);
+          const xLeft = Number(job.additionalData.x_left);
+          const xRight = Number(job.additionalData.x_right);
+          if (!Number.isFinite(xLeft) || !Number.isFinite(xRight)) {
+            throw new Error("Informe valores válidos para a largura esquerda/direita.");
+          }
+          const payload = {
+            ...job.additionalData,
+            x_left: xLeft,
+            x_right: xRight,
+            kml_data: kmlData,
+          };
+          const { data, error: functionError } = await supabase.functions.invoke("line-upload", { body: payload });
+          if (functionError) throw functionError;
+          updateJobStatus(job.id, "success", {
+            result: data?.message ?? "Linha importada com sucesso",
+          });
+          continue;
+        }
+
+        const isInlineTypology =
+          job.fileType.edgeFunction === "process-tower-asset" ||
+          job.fileType.edgeFunction === "process-span-analysis" ||
+          job.fileType.edgeFunction === "process-evento";
+
+        if (isInlineTypology) {
+          updateJobStatus(job.id, "processing");
+
+          if (job.file.size > MAX_INLINE_TYPOLOGY_BYTES) {
+            const mb = Math.ceil(job.file.size / (1024 * 1024));
+            throw new Error(
+              `Arquivo muito grande para envio direto (${mb}MB). Configure o bucket 'geodata-uploads' para uploads maiores.`
+            );
+          }
+
+          const lower = job.file.name.toLowerCase();
+          const payload: Record<string, any> = {
+            ...job.additionalData,
+            file_name: job.file.name,
+          };
+
+          if (lower.endsWith(".csv")) {
+            payload.csv_data = await job.file.text();
+          } else if (lower.endsWith(".kml") || lower.endsWith(".kmz")) {
+            payload.kml_data = await readKmlFromFile(job.file);
+          } else {
+            throw new Error("Formato não suportado para esta tipologia.");
+          }
+
+          const { data, error: functionError } = await supabase.functions.invoke(job.fileType.edgeFunction, { body: payload });
+          if (functionError) throw functionError;
+
+          updateJobStatus(job.id, "success", {
+            result: data?.message ?? "Processado com sucesso",
+          });
+          continue;
+        }
+
         updateJobStatus(job.id, "uploading");
         const storageKey = `${auth.user.id}/${Date.now()}_${job.id}_${job.file.name}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("geodata-uploads")
-          .upload(storageKey, job.file);
+        const { error: uploadError } = await supabase.storage.from("geodata-uploads").upload(storageKey, job.file);
         if (uploadError) throw uploadError;
 
         updateJobStatus(job.id, "processing");
 
         const payload = {
           file_path: storageKey,
-          ...job.additionalData
+          ...job.additionalData,
         };
 
-        const { data, error: functionError } = await supabase.functions.invoke(
-          job.fileType.edgeFunction,
-          { body: payload }
-        );
+        const { data, error: functionError } = await supabase.functions.invoke(job.fileType.edgeFunction, { body: payload });
         if (functionError) throw functionError;
 
         updateJobStatus(job.id, "success", {
-          result: data?.message ?? "Processado com sucesso"
+          result: data?.message ?? "Processado com sucesso",
         });
       } catch (error: any) {
         console.error("Upload typologia error:", error);
+        const rawMessage = getFunctionErrorMessage(error);
+        const message = rawMessage.includes("Bucket not found")
+          ? "Bucket 'geodata-uploads' não encontrado no Supabase. Crie o bucket (Storage) ou aplique as migrations do projeto."
+          : rawMessage;
         updateJobStatus(job.id, "error", {
-          error: error?.message ?? "Erro no processamento"
+          error: message
         });
-        toast.error(`Erro ao processar ${job.file.name}: ${error?.message ?? "Falha"}`);
+        toast.error(`Erro ao processar ${job.file.name}: ${message ?? "Falha"}`);
       }
     }
 

@@ -42,14 +42,20 @@ interface PresetsBarProps {
 
 export function PresetsBar({ onPresetSelect, onResetDemo }: PresetsBarProps) {
   const handlePresetClick = async (preset: Preset) => {
-    // Log telemetry
-    await supabase.from('telemetry_events').insert({
-      event_type: 'preset_selected',
-      event_data: {
-        preset_id: preset.id,
-        preset_name: preset.name
+    // Log telemetry (best-effort)
+    if (supabase) {
+      try {
+        await supabase.from('telemetry_events').insert({
+          event_type: 'preset_selected',
+          event_data: {
+            preset_id: preset.id,
+            preset_name: preset.name
+          }
+        });
+      } catch {
+        // ignore telemetry failures
       }
-    });
+    }
 
     toast.success(`Preset "${preset.name}" ativado`, {
       description: preset.description
@@ -61,13 +67,19 @@ export function PresetsBar({ onPresetSelect, onResetDemo }: PresetsBarProps) {
   };
 
   const handleResetDemo = async () => {
-    // Log telemetry
-    await supabase.from('telemetry_events').insert({
-      event_type: 'demo_reset',
-      event_data: {
-        timestamp: new Date().toISOString()
+    // Log telemetry (best-effort)
+    if (supabase) {
+      try {
+        await supabase.from('telemetry_events').insert({
+          event_type: 'demo_reset',
+          event_data: {
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch {
+        // ignore telemetry failures
       }
-    });
+    }
 
     // Reset to Santos/SP demo state
     const santos = { lat: -23.96, lng: -46.333, zoom: 12 };

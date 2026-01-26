@@ -45,6 +45,13 @@ Para usar, abra o projeto no VS Code e selecione **“Reopen in Container”**. 
 2. Execute `pnpm install` na raiz do monorepo.
 3. Preencha `apps/web/.env` (chaves `VITE_MAPBOX_TOKEN`, `VITE_JOTFORM_URL`) e `apps/api/.env`.
 4. Em terminais separados, rode `pnpm dev:web` e `pnpm dev:api`. A API expõe o health check em `http://localhost:8080/health`.
+
+## Deploy (Vercel)
+
+- Para publicar **com** endpoints em `/api/*` (Vercel Functions), faça deploy do diretório `apps/web` (não apenas `apps/web/dist`).
+- Scripts:
+  - `pnpm deploy:web` (CLI Vercel)
+  - `pnpm deploy:web:auto` (build + deploy + alias)
 # >>> SMARTLINE-EROSION: readme
 ## SmartLine™ – Erosion Risk Automation (Starter Kit)
 Fluxo:

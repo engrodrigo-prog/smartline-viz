@@ -66,6 +66,15 @@ const UploadKml = () => {
       return;
     }
 
+    if (!supabase) {
+      toast({
+        title: "Supabase não configurado",
+        description: "Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para usar upload/processamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -132,6 +141,15 @@ const UploadKml = () => {
     setLoading(true);
 
     try {
+      if (!supabase) {
+        toast({
+          title: "Supabase não configurado",
+          description: "Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para cadastrar estrutura.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({

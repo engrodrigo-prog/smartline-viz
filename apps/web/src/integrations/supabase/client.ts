@@ -89,7 +89,7 @@ export default client;
 export function getSupabase(): SupabaseClient<Database> {
   if (!client) {
     throw new Error(
-      "Supabase não configurado neste demo. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (ou VITE_SUPABASE_PUBLISHABLE_KEY) em apps/web/.env."
+      "Supabase não configurado neste ambiente. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (ou VITE_SUPABASE_PUBLISHABLE_KEY) em apps/web/.env.local (ou .env.*.local)."
     );
   }
   return client;

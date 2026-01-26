@@ -17,9 +17,15 @@ const DEFAULT_CONFIG: AlarmZoneConfig = {
 
 export const useAlarmZones = (concessao?: string) => {
   const [config, setConfig] = useState<AlarmZoneConfig>(DEFAULT_CONFIG);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(Boolean(supabase));
   const { toast } = useToast();
   const loadConfig = useCallback(async () => {
+    if (!supabase) {
+      setConfig(DEFAULT_CONFIG);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -62,6 +68,7 @@ export const useAlarmZones = (concessao?: string) => {
 
   const saveConfig = async (newConfig: Omit<AlarmZoneConfig, 'id'>) => {
     try {
+      if (!supabase) throw new Error('Supabase não configurado');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 

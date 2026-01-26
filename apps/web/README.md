@@ -29,3 +29,6 @@ The dev server uses port `5173` (see `vite.config.ts`). Set `VITE_API_BASE_URL` 
 
 Static builds are generated with `pnpm build`.  
 `vercel.json` contains the rewrite rules needed for Vercel so that client-side routing works (single-page app fallback to `index.html`).
+
+This app also includes Vercel Functions under `apps/web/api`, used when `VITE_API_BASE_URL=/api`.
+To keep `/api/*` working, deploy the `apps/web` directory (not only `apps/web/dist`).

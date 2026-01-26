@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const DEMUploadSchema = z.object({
   file_path: z.string().min(1),
-  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9_-]+$/),
+  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9 _-]+$/),
   gsd_cm: z.number().int().min(1).max(1000),
   bands: z.number().int().optional().default(1),
   tenant_id: z.string().uuid().optional()

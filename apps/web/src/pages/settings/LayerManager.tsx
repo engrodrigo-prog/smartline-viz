@@ -11,10 +11,13 @@ import { Link } from 'react-router-dom';
 
 export default function LayerManager() {
   const queryClient = useQueryClient();
+  const supabaseEnabled = Boolean(supabase);
 
   const { data: userId } = useQuery({
     queryKey: ['current-user'],
+    enabled: supabaseEnabled,
     queryFn: async () => {
+      if (!supabase) return null;
       const { data: { user } } = await supabase.auth.getUser();
       return user?.id;
     },
@@ -26,11 +29,12 @@ export default function LayerManager() {
       if (!userId) return [];
       return LayersStorage.listUserLayers(userId);
     },
-    enabled: !!userId,
+    enabled: !!userId && supabaseEnabled,
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (filename: string) => {
+      if (!supabase) throw new Error('Supabase não configurado');
       if (!userId) throw new Error('User not authenticated');
       await LayersStorage.deleteCustomLayer(userId, filename);
     },

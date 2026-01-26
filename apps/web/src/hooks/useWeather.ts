@@ -49,6 +49,9 @@ export const useWeather = ({ lat, lon, roi_id }: WeatherParams) => {
   return useQuery<WeatherData>({
     queryKey: ['weather', lat, lon, roi_id],
     queryFn: async () => {
+      if (!supabase) {
+        throw new Error('Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+      }
       const { data, error } = await supabase.functions.invoke('weather_fetch', {
         body: { lat, lon, roi_id }
       });
@@ -58,6 +61,6 @@ export const useWeather = ({ lat, lon, roi_id }: WeatherParams) => {
     },
     staleTime: 10 * 60 * 1000, // 10 minutos
     refetchInterval: 10 * 60 * 1000, // Refetch a cada 10 min
-    enabled: !!lat && !!lon,
+    enabled: !!lat && !!lon && Boolean(supabase),
   });
 };

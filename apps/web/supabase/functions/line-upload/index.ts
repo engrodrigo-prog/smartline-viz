@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const LineUploadSchema = z.object({
-  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9_-]+$/),
+  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9 _-]+$/),
   name: z.string().trim().max(200).optional(),
   kml_data: z.string().max(10_000_000).optional(), // 10MB max
   file_url: z.string().url().optional(),
@@ -75,32 +75,46 @@ serve(async (req) => {
     // NOW safe to use service role with validated tenant
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const parseCoordinate = (coord: string) => {
+      const parts = coord.split(',').map(part => part.trim());
+      const lon = Number(parts[0]);
+      const lat = Number(parts[1]);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+      return [lon, lat] as [number, number];
+    };
+
+    const extractLineString = (kml: string) => {
+      const coordMatch = kml.match(/<LineString>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/);
+      if (!coordMatch) return null;
+      const coords = coordMatch[1]
+        .trim()
+        .split(/\s+/)
+        .map(parseCoordinate)
+        .filter((coord): coord is [number, number] => !!coord);
+      return coords.length >= 2 ? coords : null;
+    };
+
+    const extractPointsAsLine = (kml: string) => {
+      const matches = [...kml.matchAll(/<Point>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/g)];
+      const coords = matches
+        .map((match) => parseCoordinate(match[1].trim()))
+        .filter((coord): coord is [number, number] => !!coord);
+      return coords.length >= 2 ? coords : null;
+    };
+
     // Parse KML and extract LineString geometry
-    let lineGeometry: any = null;
+    let lineCoordinates: [number, number][] | null = null;
 
     if (body.kml_data) {
-      // Simple KML parsing (extract coordinates from LineString)
-      const coordMatch = body.kml_data.match(/<LineString>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/);
-      
-      if (coordMatch) {
-        const coords = coordMatch[1].trim().split(/\s+/).map(coord => {
-          const [lon, lat] = coord.split(',').map(Number);
-          return [lon, lat];
-        });
-
-        lineGeometry = {
-          type: 'LineString',
-          coordinates: coords
-        };
-      }
+      lineCoordinates = extractLineString(body.kml_data) ?? extractPointsAsLine(body.kml_data);
     }
 
-    if (!lineGeometry) {
-      throw new Error('Could not extract LineString geometry from KML');
+    if (!lineCoordinates) {
+      throw new Error('Could not extract a valid LineString from KML');
     }
 
     // Convert GeoJSON to WKT for PostGIS
-    const wkt = `LINESTRING(${lineGeometry.coordinates.map((c: number[]) => `${c[0]} ${c[1]}`).join(',')})`;
+    const wkt = `LINESTRING(${lineCoordinates.map((c) => `${c[0]} ${c[1]}`).join(',')})`;
 
     // Calculate asymmetric buffer (domain/faixa) using PostGIS function
     const { data: bufferResult, error: bufferError } = await supabase.rpc('calculate_asymmetric_buffer', {
@@ -111,11 +125,11 @@ serve(async (req) => {
 
     if (bufferError) {
       console.error('Buffer calculation error:', bufferError);
-      throw new Error('Failed to calculate buffer zone');
+      throw new Error(`Failed to calculate buffer zone: ${bufferError.message}`);
     }
 
     // Determine UTM zone from line centroid
-    const centerLon = lineGeometry.coordinates[Math.floor(lineGeometry.coordinates.length / 2)][0];
+    const centerLon = lineCoordinates[Math.floor(lineCoordinates.length / 2)][0];
     const utmZone = Math.floor((centerLon + 180) / 6) + 1;
     const utmSrid = 31980 + utmZone; // SIRGAS 2000 UTM South zones
 
@@ -158,6 +172,13 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error:', error);
+    if (error instanceof z.ZodError) {
+      const message = error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ');
+      return new Response(
+        JSON.stringify({ error: message || 'Invalid request payload', issues: error.issues }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ error: errorMessage }),

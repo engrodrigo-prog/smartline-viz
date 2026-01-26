@@ -54,6 +54,21 @@ export function UploadLayerButton() {
       return;
     }
 
+    if (!supabase) {
+      toast.error('Supabase não configurado', {
+        description: 'Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para fazer upload.',
+      });
+      return;
+    }
+
+    const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
+    if (!supabaseUrl) {
+      toast.error('Supabase URL ausente', {
+        description: 'Defina VITE_SUPABASE_URL para chamar as Edge Functions.',
+      });
+      return;
+    }
+
     setUploading(true);
 
     try {
@@ -74,7 +89,7 @@ export function UploadLayerButton() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/custom-layer-upload`,
+        `${supabaseUrl}/functions/v1/custom-layer-upload`,
         {
           method: 'POST',
           headers: {

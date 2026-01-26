@@ -11,6 +11,18 @@ type FeatureCollection = {
   meta?: Record<string, unknown>;
 };
 
+const allowedOrigins = (() => {
+  const raw = process.env.ALLOWED_ORIGINS ?? process.env.VITE_ALLOWED_ORIGINS ?? process.env.VITE_SITE_ORIGIN ?? '';
+  const parsed = raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (parsed.length) return parsed;
+
+  return ['https://smartline-gpcad.enerlytics.pro', 'http://localhost:5173', 'http://127.0.0.1:5173', '*.vercel.app'];
+})();
+
 const emptyFeatureCollection = (meta?: Record<string, unknown>): FeatureCollection => ({
   type: 'FeatureCollection',
   features: [],
@@ -80,9 +92,18 @@ app.use(
   '*',
   cors({
     origin: (origin) => {
-      const fallback = 'http://localhost:5173';
+      const fallback = allowedOrigins[0] ?? 'http://localhost:5173';
       if (!origin) return fallback;
-      return origin;
+      const match = allowedOrigins.some((pat) => {
+        if (!pat) return false;
+        if (pat === '*') return true;
+        if (pat.startsWith('*.')) {
+          const suffix = pat.slice(1); // ".vercel.app"
+          return origin.endsWith(suffix);
+        }
+        return pat === origin;
+      });
+      return match ? origin : fallback;
     },
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

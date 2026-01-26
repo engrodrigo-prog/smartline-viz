@@ -13,6 +13,7 @@ export const useAmbienteAlerts = (options: UseAmbienteAlertsOptions = {}) => {
   return useQuery({
     queryKey: ['ambiente-alerts', options],
     queryFn: async () => {
+      if (!supabase) return [];
       let query = (supabase as any)
         .from('alerts_log')
         .select('*')
@@ -40,7 +41,8 @@ export const useAmbienteAlerts = (options: UseAmbienteAlertsOptions = {}) => {
       if (error) throw error;
       return data || [];
     },
-    refetchInterval: 30000, // Atualizar a cada 30s
+    enabled: Boolean(supabase),
+    refetchInterval: supabase ? 30000 : false, // Atualizar a cada 30s
   });
 };
 
@@ -49,6 +51,7 @@ export const useAcknowledgeAlert = () => {
 
   return useMutation({
     mutationFn: async ({ alertId, notes }: { alertId: string; notes?: string }) => {
+      if (!supabase) throw new Error('Supabase não configurado');
       const { data: { user } } = await supabase.auth.getUser();
       
       const { data, error } = await (supabase as any)

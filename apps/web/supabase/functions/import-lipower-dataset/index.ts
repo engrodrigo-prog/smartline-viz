@@ -15,7 +15,7 @@ const ALLOWED_DOMAINS = [
 
 const LiPowerlineSchema = z.object({
   dataset_name: z.string().trim().min(1).max(200),
-  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9_-]+$/),
+  line_code: z.string().trim().min(1).max(50).regex(/^[A-Za-z0-9 _-]+$/),
   line_kml_url: z.string().url(),
   tower_csv_url: z.string().url(),
   span_csv_url: z.string().url(),
