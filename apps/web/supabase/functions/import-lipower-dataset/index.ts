@@ -98,29 +98,114 @@ serve(async (req) => {
     const rawBody = await req.json();
     const body = LiPowerlineSchema.parse(rawBody);
 
-    // Validate tenant access BEFORE using service role
-    const { data: validatedTenant, error: tenantError } = await anonClient.rpc(
-      'validate_tenant_access',
-      {
-        _user_id: user.id,
-        _requested_tenant_id: body.tenant_id || null
-      }
-    );
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (tenantError || !validatedTenant) {
-      return new Response(
-        JSON.stringify({ 
-          error: tenantError?.message || 'Invalid tenant access',
-          hint: 'If you belong to multiple tenants, please specify tenant_id'
-        }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const { data: appUser } = await supabase
+      .from('app_user')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const userTenantId = appUser?.tenant_id ?? null;
+    const requestedTenantId = body.tenant_id ?? null;
+
+    const ensureAdmin = async () => {
+      const isAdminByClaim =
+        (user.app_metadata as Record<string, unknown> | null | undefined)?.smartline_role === 'admin';
+      if (isAdminByClaim) return true;
+      const { data: adminRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      return Boolean(adminRole);
+    };
+
+    if (requestedTenantId) {
+      if (userTenantId && requestedTenantId !== userTenantId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid tenant access' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      if (!userTenantId) {
+        const isAdmin = await ensureAdmin();
+        if (!isAdmin) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid tenant access' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+
+        const { data: tenantExists, error: tenantExistsError } = await supabase
+          .from('tenant')
+          .select('id')
+          .eq('id', requestedTenantId)
+          .maybeSingle();
+
+        if (tenantExistsError) throw tenantExistsError;
+        if (!tenantExists) {
+          return new Response(
+            JSON.stringify({ error: 'tenant_id not found', tenant_id: requestedTenantId }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+      }
     }
 
-    const tenant_id = validatedTenant;
+    const upsertAppUser = async (tenantId: string) => {
+      const { error } = await supabase.from('app_user').upsert(
+        { id: user.id, tenant_id: tenantId, email: user.email ?? null },
+        { onConflict: 'id' },
+      );
 
-    // NOW safe to use service role
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      if (!error) return;
+      const message = (error.message ?? '').toLowerCase();
+      const isUniqueViolation =
+        (error as any)?.code === '23505' || message.includes('duplicate') || message.includes('unique');
+      if (!isUniqueViolation) throw error;
+
+      const { error: fallbackError } = await supabase.from('app_user').upsert(
+        { id: user.id, tenant_id: tenantId, email: null },
+        { onConflict: 'id' },
+      );
+      if (fallbackError) throw fallbackError;
+    };
+
+    let tenant_id: string | null = userTenantId ?? requestedTenantId;
+
+    if (!tenant_id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const organizationName =
+        profile?.organization ??
+        (typeof user.user_metadata?.organization === 'string' ? user.user_metadata.organization : null) ??
+        (typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null) ??
+        user.email ??
+        'PoC';
+
+      const { data: createdTenant, error: tenantInsertError } = await supabase
+        .from('tenant')
+        .insert({ name: organizationName })
+        .select('id')
+        .single();
+
+      if (tenantInsertError) throw tenantInsertError;
+      tenant_id = createdTenant.id;
+      await upsertAppUser(tenant_id);
+    } else if (!userTenantId) {
+      // Admin provided a tenant_id but the user had no app_user row yet.
+      await upsertAppUser(tenant_id);
+    }
+
+    if (!tenant_id) {
+      throw new Error('Unable to resolve tenant_id for user');
+    }
 
     // Create dataset catalog entry
     const { data: dataset, error: datasetError } = await supabase

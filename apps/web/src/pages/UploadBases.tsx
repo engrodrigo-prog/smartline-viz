@@ -5,6 +5,7 @@ import { Upload, File, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useLipowerlineLinhas } from "@/hooks/useLipowerlineLinhas";
 
 type UploadedFile = {
   file: File;
@@ -19,6 +20,7 @@ type UploadedFile = {
 const UploadBases = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const { toast } = useToast();
+  const linhasQuery = useLipowerlineLinhas();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -99,10 +101,17 @@ const UploadBases = () => {
                       required
                     >
                       <option value="">Selecione</option>
-                      <option value="LT-001">LT-001 - Linha 1 SP Norte</option>
-                      <option value="LT-002">LT-002 - Linha 2 SP Sul</option>
-                      <option value="LT-003">LT-003 - Linha 3 RJ</option>
+                      {linhasQuery.data.map((linha) => (
+                        <option key={linha.linhaId} value={linha.linhaId}>
+                          {linha.nome}
+                        </option>
+                      ))}
                     </select>
+                    {!linhasQuery.isFallback && !linhasQuery.isLoading && linhasQuery.data.length === 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Nenhuma linha ingerida ainda. Use /upload para cadastrar uma linha (KML/KMZ).
+                      </p>
+                    )}
                   </div>
 
                   <div>

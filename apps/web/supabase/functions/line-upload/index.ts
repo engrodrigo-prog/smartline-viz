@@ -14,7 +14,7 @@ const LineUploadSchema = z.object({
   file_url: z.string().url().optional(),
   x_left: z.number().min(0).max(10000),
   x_right: z.number().min(0).max(10000),
-  tenant_id: z.string().uuid().optional()
+  tenant_id: z.string().uuid().optional(),
 });
 
 serve(async (req) => {
@@ -51,60 +51,122 @@ serve(async (req) => {
     const rawBody = await req.json();
     const body = LineUploadSchema.parse(rawBody);
 
-    // Use service role for DB ops (tenant/RLS are handled here with best-effort defaults for PoC).
+    // Use service role for DB ops (tenant access is validated here).
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    let tenant_id: string | null = body.tenant_id ?? null;
+    const requestedTenantId = body.tenant_id ?? null;
+
+    const { data: appUser } = await supabase
+      .from('app_user')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const userTenantId = (appUser?.tenant_id as string | null | undefined) ?? null;
+
+    const ensureAdmin = async () => {
+      const isAdminByClaim =
+        (user.app_metadata as Record<string, unknown> | null | undefined)?.smartline_role === 'admin';
+      if (isAdminByClaim) return true;
+      const { data: adminRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      return Boolean(adminRole);
+    };
+
+    if (requestedTenantId) {
+      if (userTenantId && requestedTenantId !== userTenantId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid tenant access' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      if (!userTenantId) {
+        const isAdmin = await ensureAdmin();
+        if (!isAdmin) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid tenant access' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+
+        const { data: tenantExists, error: tenantExistsError } = await supabase
+          .from('tenant')
+          .select('id')
+          .eq('id', requestedTenantId)
+          .maybeSingle();
+
+        if (tenantExistsError) throw tenantExistsError;
+        if (!tenantExists) {
+          return new Response(
+            JSON.stringify({ error: 'tenant_id not found', tenant_id: requestedTenantId }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+      }
+    }
+
+    const upsertAppUser = async (tenantId: string) => {
+      const { error } = await supabase.from('app_user').upsert(
+        {
+          id: user.id,
+          tenant_id: tenantId,
+          email: user.email ?? null,
+        },
+        { onConflict: 'id' },
+      );
+
+      if (!error) return;
+
+      const message = (error.message ?? '').toLowerCase();
+      const isUniqueViolation =
+        (error as any)?.code === '23505' || message.includes('duplicate') || message.includes('unique');
+
+      if (!isUniqueViolation) throw error;
+
+      const { error: fallbackError } = await supabase.from('app_user').upsert(
+        {
+          id: user.id,
+          tenant_id: tenantId,
+          email: null,
+        },
+        { onConflict: 'id' },
+      );
+
+      if (fallbackError) throw fallbackError;
+    };
+
+    let tenant_id: string | null = userTenantId ?? requestedTenantId;
 
     if (!tenant_id) {
-      const { data: appUser } = await supabase
-        .from('app_user')
-        .select('tenant_id')
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization')
         .eq('id', user.id)
         .maybeSingle();
 
-      tenant_id = appUser?.tenant_id ?? null;
-    }
+      const organizationName =
+        profile?.organization ??
+        (typeof user.user_metadata?.organization === 'string' ? user.user_metadata.organization : null) ??
+        (typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null) ??
+        user.email ??
+        'PoC';
 
-    if (!tenant_id) {
-      try {
-        const { data: createdTenant, error: tenantInsertError } = await supabase
-          .from('tenant')
-          .insert({ name: 'PoC' })
-          .select('id')
-          .single();
+      const { data: createdTenant, error: tenantInsertError } = await supabase
+        .from('tenant')
+        .insert({ name: organizationName })
+        .select('id')
+        .single();
 
-        if (tenantInsertError) throw tenantInsertError;
-        tenant_id = createdTenant.id;
-
-        const { error: userInsertError } = await supabase
-          .from('app_user')
-          .insert({
-            id: user.id,
-            tenant_id,
-            email: user.email ?? null,
-            role: 'ORG_ADMIN'
-          });
-
-        if (userInsertError) {
-          const message = userInsertError.message?.toLowerCase?.() ?? '';
-          const isUniqueViolation =
-            (userInsertError as any)?.code === '23505' || message.includes('duplicate') || message.includes('unique');
-          if (isUniqueViolation) {
-            await supabase.from('app_user').insert({
-              id: user.id,
-              tenant_id,
-              email: null,
-              role: 'ORG_ADMIN'
-            });
-          } else {
-            throw userInsertError;
-          }
-        }
-      } catch (error) {
-        console.error('Tenant bootstrap failed:', error);
-        tenant_id = null;
-      }
+      if (tenantInsertError) throw tenantInsertError;
+      tenant_id = createdTenant.id;
+      await upsertAppUser(tenant_id);
+    } else if (!userTenantId) {
+      // Admin provided a tenant_id but the user had no app_user row yet.
+      await upsertAppUser(tenant_id);
     }
 
     const parseCoordinate = (coord: string) => {

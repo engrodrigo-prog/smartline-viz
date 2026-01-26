@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useDatasetContext } from "@/context/DatasetContext";
 import { Upload, Download, RefreshCcw, Database } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const formatNumber = (value: number | undefined) => (typeof value === "number" ? value.toLocaleString("pt-BR") : "0");
 
@@ -16,6 +17,8 @@ const DatasetManager = () => {
   const { dataset, importDatasetFile, exportDataset, resetDataset, lastUpdated } = useDatasetContext();
   const [mode, setMode] = useState<"replace" | "merge">("replace");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [keepLineCode, setKeepLineCode] = useState("PoC SM 230KV");
+  const [isCleaning, setIsCleaning] = useState(false);
 
   const datasetMetrics = useMemo(
     () => [
@@ -58,6 +61,36 @@ const DatasetManager = () => {
   const handleReset = () => {
     resetDataset();
     toast.success("Dataset padrão restaurado.");
+  };
+
+  const handleSupabaseCleanup = async () => {
+    if (!supabase) {
+      toast.error("Supabase não configurado neste ambiente.");
+      return;
+    }
+    if (!keepLineCode.trim()) {
+      toast.error("Informe o código da linha a manter.");
+      return;
+    }
+    setIsCleaning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-cleanup", {
+        body: { keep_line_code: keepLineCode.trim(), wipe_legacy: true, dry_run: false },
+      });
+      if (error) throw error;
+      toast.success("Base limpa. Mantida apenas a linha informada (câmeras preservadas).");
+      if (import.meta.env.DEV) {
+        console.info("[admin-cleanup]", data);
+      }
+    } catch (error: any) {
+      const message = error?.context?.body || error?.message || "Falha na limpeza do Supabase.";
+      toast.error(message);
+      if (import.meta.env.DEV) {
+        console.error("[admin-cleanup]", error);
+      }
+    } finally {
+      setIsCleaning(false);
+    }
   };
 
   const instructions = [
@@ -151,6 +184,34 @@ const DatasetManager = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">Arquivo aceito: JSON. Tamanho recomendado &lt; 5 MB.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border/60">
+          <CardHeader>
+            <CardTitle>Limpeza do Supabase (PoC)</CardTitle>
+            <CardDescription>
+              Remove dados de teste/demonstração e mantém apenas a linha informada. Não remove câmeras.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end">
+              <div className="flex-1">
+                <Label htmlFor="keep_line_code">Código da Linha a manter</Label>
+                <Input
+                  id="keep_line_code"
+                  value={keepLineCode}
+                  onChange={(event) => setKeepLineCode(event.target.value)}
+                  placeholder="Ex: PoC SM 230KV"
+                />
+              </div>
+              <Button type="button" variant="destructive" onClick={handleSupabaseCleanup} disabled={isCleaning}>
+                {isCleaning ? "Limpando…" : "Limpar base (manter linha)"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Atenção: esta ação é irreversível. Garanta que a ingestão da PoC esteja correta antes de limpar.
+            </p>
           </CardContent>
         </Card>
 

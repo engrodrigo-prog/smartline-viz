@@ -1,4 +1,5 @@
 import { ENV } from '../config/env'
+import { supabase } from '@/integrations/supabase/client'
 
 interface RequestOptions extends RequestInit {
   timeoutMs?: number
@@ -19,6 +20,24 @@ async function requestJSON<T = unknown>(path: string, init: RequestOptions = {})
     }
     if (!headers.has('Accept')) {
       headers.set('Accept', 'application/json')
+    }
+
+    if (!headers.has('Authorization') && supabase && typeof window !== 'undefined') {
+      try {
+        const target = new URL(url, window.location.origin)
+        const isSameOrigin = target.origin === window.location.origin
+        const isLocalTarget = target.hostname === 'localhost' || target.hostname === '127.0.0.1'
+        const isLocalOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        const canAttachAuth = isSameOrigin || (isLocalTarget && isLocalOrigin)
+
+        if (canAttachAuth) {
+          const { data } = await supabase.auth.getSession()
+          const token = data.session?.access_token
+          if (token) headers.set('Authorization', `Bearer ${token}`)
+        }
+      } catch {
+        // ignore auth attach errors
+      }
     }
 
     const response = await fetch(url, {

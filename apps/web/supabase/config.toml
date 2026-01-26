@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.health-check]
 verify_jwt = false
+
+[functions.admin-cleanup]
+verify_jwt = true

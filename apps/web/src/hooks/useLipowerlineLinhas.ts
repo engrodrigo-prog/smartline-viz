@@ -16,24 +16,23 @@ export const useLipowerlineLinhas = () => {
     })),
   );
 
+  const shouldQuery = !SHOULD_USE_DEMO_API;
+
   const query = useQuery<LipLine[]>({
     queryKey: ["lipowerline", "linhas"],
     queryFn: listLinhas,
     staleTime: 5 * 60 * 1000,
-    enabled: !SHOULD_USE_DEMO_API,
+    enabled: shouldQuery,
   });
-
-  const data = query.data ?? fallback;
-  const isFallback = SHOULD_USE_DEMO_API || !query.data;
 
   return useMemo(
     () => ({
-      data,
-      isLoading: SHOULD_USE_DEMO_API ? false : query.isLoading,
-      error: SHOULD_USE_DEMO_API ? undefined : query.error,
+      data: SHOULD_USE_DEMO_API ? fallback : (query.data ?? []),
+      isLoading: shouldQuery ? query.isLoading : false,
+      error: shouldQuery ? query.error : undefined,
       refetch: query.refetch,
-      isFallback,
+      isFallback: SHOULD_USE_DEMO_API,
     }),
-    [data, isFallback, query.error, query.isLoading, query.refetch],
+    [fallback, query.data, query.error, query.isLoading, query.refetch, shouldQuery],
   );
 };

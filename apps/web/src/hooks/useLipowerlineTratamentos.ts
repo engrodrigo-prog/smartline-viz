@@ -74,10 +74,13 @@ export const useLipowerlineTratamentos = (linhaId?: string, cenarioId?: string) 
       const features = query.data.flatMap(toLineFeatures);
       return { type: "FeatureCollection", features };
     }
-    return fallbackLineFeaturesFromEventos(dataset.eventos, linhaId, {
-      tipo: "Eventos",
-      color: "#22c55e",
-    });
+    if (SHOULD_USE_DEMO_API) {
+      return fallbackLineFeaturesFromEventos(dataset.eventos, linhaId, {
+        tipo: "Eventos",
+        color: "#22c55e",
+      });
+    }
+    return emptyLineCollection;
   }, [dataset.eventos, linhaId, query.data]);
 
   return {
@@ -85,6 +88,6 @@ export const useLipowerlineTratamentos = (linhaId?: string, cenarioId?: string) 
     isLoading: shouldQuery ? query.isLoading : false,
     error: shouldQuery ? query.error : undefined,
     refetch: query.refetch,
-    isFallback: SHOULD_USE_DEMO_API || !query.data?.length,
+    isFallback: SHOULD_USE_DEMO_API,
   };
 };

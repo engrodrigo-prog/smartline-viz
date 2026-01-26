@@ -61,10 +61,13 @@ export const useLipowerlineRiscoVegetacao = (linhaId?: string, cenarioId?: strin
       );
       return { type: "FeatureCollection", features };
     }
-    return fallbackLineFeaturesFromEventos(dataset.eventos, linhaId, {
-      tipo: "Vegetação",
-      color: "#16a34a",
-    });
+    if (SHOULD_USE_DEMO_API) {
+      return fallbackLineFeaturesFromEventos(dataset.eventos, linhaId, {
+        tipo: "Vegetação",
+        color: "#16a34a",
+      });
+    }
+    return emptyLineCollection;
   }, [dataset.eventos, linhaId, query.data]);
 
   return {
@@ -72,6 +75,6 @@ export const useLipowerlineRiscoVegetacao = (linhaId?: string, cenarioId?: strin
     isLoading: shouldQuery ? query.isLoading : false,
     error: shouldQuery ? query.error : undefined,
     refetch: query.refetch,
-    isFallback: SHOULD_USE_DEMO_API || !query.data?.length,
+    isFallback: SHOULD_USE_DEMO_API,
   };
 };

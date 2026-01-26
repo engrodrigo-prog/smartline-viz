@@ -38,10 +38,13 @@ export const useLipowerlineRiscoQueda = (linhaId?: string, cenarioId?: string) =
         .filter((feature): feature is Feature<Point> => Boolean(feature));
       return { type: "FeatureCollection", features };
     }
-    return fallbackPointFeaturesFromEventos(dataset.eventos, linhaId, {
-      tipo: "Vegetação",
-      color: "#f97316",
-    });
+    if (SHOULD_USE_DEMO_API) {
+      return fallbackPointFeaturesFromEventos(dataset.eventos, linhaId, {
+        tipo: "Vegetação",
+        color: "#f97316",
+      });
+    }
+    return emptyPointCollection;
   }, [dataset.eventos, linhaId, query.data]);
 
   return {
@@ -49,6 +52,6 @@ export const useLipowerlineRiscoQueda = (linhaId?: string, cenarioId?: string) =
     isLoading: shouldQuery ? query.isLoading : false,
     error: shouldQuery ? query.error : undefined,
     refetch: query.refetch,
-    isFallback: SHOULD_USE_DEMO_API || !query.data?.length,
+    isFallback: SHOULD_USE_DEMO_API,
   };
 };

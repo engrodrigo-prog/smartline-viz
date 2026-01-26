@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { EMPRESAS, REGIOES_POR_EMPRESA, LINHAS_POR_REGIAO, TIPOS_MATERIAL, NIVEIS_TENSAO } from "@/lib/empresasRegioes";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDatasetData } from "@/context/DatasetContext";
+import { SHOULD_USE_DEMO_API } from "@/lib/demoApi";
+import { useLipowerlineLinhas } from "@/hooks/useLipowerlineLinhas";
 
 interface FilterPanelProps {
   onApplyFilters?: (filters: any) => void;
@@ -15,6 +17,7 @@ interface FilterPanelProps {
 const FilterPanel = ({ onApplyFilters, children }: FilterPanelProps) => {
   const { filters, setFilters } = useFilters();
   const linhasDataset = useDatasetData((data) => data.linhas);
+  const linhasQuery = useLipowerlineLinhas();
   const [ramais, setRamais] = useState<string[]>([]);
   const [availableRegioes, setAvailableRegioes] = useState<string[]>([]);
   const [availableLinhas, setAvailableLinhas] = useState<string[]>([]);
@@ -30,10 +33,17 @@ const FilterPanel = ({ onApplyFilters, children }: FilterPanelProps) => {
 
   // Update regiões when empresa changes
   useEffect(() => {
+    if (!SHOULD_USE_DEMO_API) {
+      setAvailableRegioes([]);
+      if (empresa || regiao) {
+        setFilters({ empresa: undefined, regiao: undefined });
+      }
+      return;
+    }
     if (empresa) {
       setAvailableRegioes(REGIOES_POR_EMPRESA[empresa] || []);
       if (!REGIOES_POR_EMPRESA[empresa]?.includes(regiao || "")) {
-        setFilters((prev) => ({ ...prev, regiao: undefined, linha: undefined }));
+        setFilters({ regiao: undefined, linha: undefined });
       }
     } else {
       setAvailableRegioes([]);
@@ -42,18 +52,30 @@ const FilterPanel = ({ onApplyFilters, children }: FilterPanelProps) => {
 
   // Update linhas when região changes
   useEffect(() => {
+    if (!SHOULD_USE_DEMO_API) {
+      const linhaIds = linhasQuery.data.map((linha) => linha.linhaId);
+      setAvailableLinhas(linhaIds);
+      if (filters.linha && !linhaIds.includes(filters.linha)) {
+        setFilters({ linha: undefined });
+      }
+      return;
+    }
     if (regiao) {
       setAvailableLinhas(LINHAS_POR_REGIAO[regiao] || []);
       if (!LINHAS_POR_REGIAO[regiao]?.includes(linha || "")) {
-        setFilters((prev) => ({ ...prev, linha: undefined }));
+        setFilters({ linha: undefined });
       }
     } else {
       setAvailableLinhas([]);
     }
-  }, [linha, regiao, setFilters]);
+  }, [filters.linha, linhasQuery.data, linha, regiao, setFilters]);
 
   // Update ramais when linha changes
   useEffect(() => {
+    if (!SHOULD_USE_DEMO_API) {
+      setRamais([]);
+      return;
+    }
     if (filters.linha) {
       const linha = linhasDataset.find((l) => l.id === filters.linha);
       setRamais(linha?.ramais || []);
@@ -101,35 +123,39 @@ const FilterPanel = ({ onApplyFilters, children }: FilterPanelProps) => {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                   {/* Empresa */}
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Empresa</label>
-                    <select 
-                      value={filters.empresa || ''} 
-                      onChange={(e) => setFilters({ ...filters, empresa: e.target.value as any, regiao: undefined, linha: undefined })}
-                      className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <option value="">Todas</option>
-                      {EMPRESAS.map(emp => (
-                        <option key={emp} value={emp}>{emp}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {SHOULD_USE_DEMO_API && (
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Empresa</label>
+                      <select
+                        value={filters.empresa || ''}
+                        onChange={(e) => setFilters({ ...filters, empresa: e.target.value as any, regiao: undefined, linha: undefined })}
+                        className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="">Todas</option>
+                        {EMPRESAS.map(emp => (
+                          <option key={emp} value={emp}>{emp}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {/* Região */}
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Região</label>
-                    <select 
-                      value={filters.regiao || ''} 
-                      onChange={(e) => setFilters({ ...filters, regiao: e.target.value, linha: undefined })}
-                      disabled={!filters.empresa}
-                      className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                    >
-                      <option value="">Todas</option>
-                      {availableRegioes.map(reg => (
-                        <option key={reg} value={reg}>{reg}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {SHOULD_USE_DEMO_API && (
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Região</label>
+                      <select
+                        value={filters.regiao || ''}
+                        onChange={(e) => setFilters({ ...filters, regiao: e.target.value, linha: undefined })}
+                        disabled={!filters.empresa}
+                        className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                      >
+                        <option value="">Todas</option>
+                        {availableRegioes.map(reg => (
+                          <option key={reg} value={reg}>{reg}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {/* Linha */}
                   <div>
@@ -137,14 +163,25 @@ const FilterPanel = ({ onApplyFilters, children }: FilterPanelProps) => {
                     <select 
                       value={filters.linha || ''} 
                       onChange={(e) => setFilters({ ...filters, linha: e.target.value })}
-                      disabled={!filters.regiao}
+                      disabled={SHOULD_USE_DEMO_API ? !filters.regiao : linhasQuery.isLoading}
                       className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                     >
                       <option value="">Todas</option>
-                      {availableLinhas.map(linha => (
-                        <option key={linha} value={linha}>{linha}</option>
-                      ))}
+                      {SHOULD_USE_DEMO_API
+                        ? availableLinhas.map((linha) => (
+                            <option key={linha} value={linha}>{linha}</option>
+                          ))
+                        : linhasQuery.data.map((linha) => (
+                            <option key={linha.linhaId} value={linha.linhaId}>
+                              {linha.nome}
+                            </option>
+                          ))}
                     </select>
+                    {!SHOULD_USE_DEMO_API && !linhasQuery.isLoading && linhasQuery.data.length === 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Nenhuma linha ingerida ainda.
+                      </p>
+                    )}
                   </div>
 
                   {/* Material */}

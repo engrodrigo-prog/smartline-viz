@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
 
 const app = new Hono();
 
@@ -31,61 +32,25 @@ const emptyFeatureCollection = (meta?: Record<string, unknown>): FeatureCollecti
 
 const nowIso = () => new Date().toISOString();
 
-const demoLines = [
-  {
-    linha_id: 'LT-001',
-    codigo_linha: 'LT-001',
-    nome_linha: 'Linha 1 - SP Norte',
-    tensao_kv: 500,
-    concessionaria: 'Enerlytics',
-    regiao: 'A',
-  },
-  {
-    linha_id: 'LT-002',
-    codigo_linha: 'LT-002',
-    nome_linha: 'Linha 2 - SP Sul',
-    tensao_kv: 230,
-    concessionaria: 'Enerlytics',
-    regiao: 'B',
-  },
-  {
-    linha_id: 'LT-003',
-    codigo_linha: 'LT-003',
-    nome_linha: 'Linha 3 - Litoral',
-    tensao_kv: 138,
-    concessionaria: 'Enerlytics',
-    regiao: 'C',
-  },
-];
+const supabaseEnv = (() => {
+  const url = (process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '').trim();
+  const key = (
+    process.env.VITE_SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_ANON_KEY ??
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+    ''
+  ).trim();
+  return { url, key, enabled: Boolean(url && key) };
+})();
 
-const demoScenariosByLine: Record<string, any[]> = {
-  'LT-001': [
-    {
-      cenario_id: 'LT-001-pre-demo',
-      descricao: 'Pré-demo (estimado)',
-      data_referencia: nowIso(),
-      tipo_cenario: 'pre-demo',
-      status: 'ativo',
+const createRlsClient = (authHeader: string) => {
+  if (!supabaseEnv.enabled) return null;
+  return createClient(supabaseEnv.url, supabaseEnv.key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      headers: { Authorization: authHeader },
     },
-  ],
-  'LT-002': [
-    {
-      cenario_id: 'LT-002-pre-demo',
-      descricao: 'Pré-demo (estimado)',
-      data_referencia: nowIso(),
-      tipo_cenario: 'pre-demo',
-      status: 'ativo',
-    },
-  ],
-  'LT-003': [
-    {
-      cenario_id: 'LT-003-pre-demo',
-      descricao: 'Pré-demo (estimado)',
-      data_referencia: nowIso(),
-      tipo_cenario: 'pre-demo',
-      status: 'ativo',
-    },
-  ],
+  });
 };
 
 app.use(
@@ -151,28 +116,96 @@ app.post('/auth/demo/login', async (c) => {
 app.post('/auth/demo/logout', (c) => c.json({ ok: true }));
 
 // ---- Lipowerline API (stub MVP) ----
-app.get('/linhas', (c) => c.json(demoLines));
+app.get('/linhas', async (c) => {
+  if (!supabaseEnv.enabled) {
+    return c.json([]);
+  }
+
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) return c.json([]);
+
+  const supabase = createRlsClient(authHeader);
+  if (!supabase) return c.json([]);
+
+  const { data, error } = await supabase
+    .from('line_asset')
+    .select('line_code,name,created_at')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[api] /linhas error:', error);
+    return c.json({ error: error.message }, 500);
+  }
+
+  return c.json(
+    (data ?? []).map((row: any) => ({
+      linha_id: row.line_code,
+      codigo_linha: row.line_code,
+      nome_linha: row.name ?? row.line_code,
+      tensao_kv: null,
+      concessionaria: null,
+      regiao: null,
+    })),
+  );
+});
+
 app.get('/cenarios', (c) => {
   const linhaId = c.req.query('linha_id');
   if (!linhaId) return c.json([]);
-  return c.json(demoScenariosByLine[linhaId] ?? []);
+  return c.json([
+    {
+      cenario_id: `${linhaId}-base`,
+      descricao: 'Base (ingestão)',
+      data_referencia: nowIso(),
+      tipo_cenario: 'base',
+      status: 'ativo',
+    },
+  ]);
 });
-app.get('/kpi-linha', (c) => {
-  const linhaId = c.req.query('linha_id') ?? 'LT-001';
-  const cenarioId = c.req.query('cenario_id') ?? `${linhaId}-pre-demo`;
+
+app.get('/kpi-linha', async (c) => {
+  if (!supabaseEnv.enabled) {
+    return c.json([]);
+  }
+
+  const linhaId = c.req.query('linha_id');
+  if (!linhaId) return c.json([]);
+
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) return c.json([]);
+
+  const supabase = createRlsClient(authHeader);
+  if (!supabase) return c.json([]);
+
+  const cenarioId = c.req.query('cenario_id') ?? `${linhaId}-base`;
+
+  const [{ data: line, error: lineError }, { count: spansCount, error: spansError }, { count: towersCount, error: towersError }] =
+    await Promise.all([
+      supabase.from('line_asset').select('line_code,name').eq('line_code', linhaId).maybeSingle(),
+      supabase.from('span_analysis').select('id', { count: 'exact', head: true }).eq('line_code', linhaId),
+      supabase.from('tower_asset').select('id', { count: 'exact', head: true }).eq('line_code', linhaId),
+    ]);
+
+  if (lineError || spansError || towersError) {
+    const message = lineError?.message ?? spansError?.message ?? towersError?.message ?? 'query_failed';
+    console.error('[api] /kpi-linha error:', { lineError, spansError, towersError });
+    return c.json({ error: message }, 500);
+  }
+
   return c.json([
     {
       linha_id: linhaId,
       codigo_linha: linhaId,
-      nome_linha: demoLines.find((l) => l.linha_id === linhaId)?.nome_linha ?? linhaId,
+      nome_linha: line?.name ?? line?.line_code ?? linhaId,
       cenario_id: cenarioId,
-      cenario_descricao: 'Pré-demo (estimado)',
-      tipo_cenario: 'pre-demo',
-      km_linha: 245,
-      total_vaos: 120,
-      arvores_criticas: 6,
-      cruzamentos_criticos: 2,
-      total_riscos_vegetacao: 18,
+      cenario_descricao: 'Base (ingestão)',
+      tipo_cenario: 'base',
+      km_linha: 0,
+      total_vaos: spansCount ?? 0,
+      arvores_criticas: 0,
+      cruzamentos_criticos: 0,
+      total_riscos_vegetacao: 0,
+      total_torres: towersCount ?? 0,
     },
   ]);
 });

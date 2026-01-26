@@ -12,6 +12,7 @@ export const useLipowerlineKpi = (linhaId?: string, cenarioId?: string) => {
   }));
 
   const fallback = useMemo<LipKpiResumo | null>(() => {
+    if (!SHOULD_USE_DEMO_API) return null;
     if (!linhaId || !cenarioId) return null;
     const km = dataset.extensoes?.[linhaId] ?? 0;
     const eventosLinha = dataset.eventos?.filter((evt) => evt.linha === linhaId) ?? [];
@@ -42,8 +43,8 @@ export const useLipowerlineKpi = (linhaId?: string, cenarioId?: string) => {
     staleTime: 60 * 1000,
   });
 
-  const data = query.data ?? fallback;
-  const isFallback = SHOULD_USE_DEMO_API || !query.data;
+  const data = SHOULD_USE_DEMO_API ? fallback : (query.data ?? null);
+  const isFallback = SHOULD_USE_DEMO_API;
 
   return useMemo(
     () => ({

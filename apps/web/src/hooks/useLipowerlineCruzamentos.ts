@@ -55,10 +55,13 @@ export const useLipowerlineCruzamentos = (linhaId?: string, cenarioId?: string) 
         .filter((feature): feature is Feature<Point> => Boolean(feature));
       return { type: "FeatureCollection", features };
     }
-    return fallbackPointFeaturesFromEventos(dataset.eventos, linhaId, {
-      tipo: "Travessias",
-      color: "#0ea5e9",
-    });
+    if (SHOULD_USE_DEMO_API) {
+      return fallbackPointFeaturesFromEventos(dataset.eventos, linhaId, {
+        tipo: "Travessias",
+        color: "#0ea5e9",
+      });
+    }
+    return emptyPointCollection;
   }, [dataset.eventos, linhaId, query.data]);
 
   return {
@@ -66,6 +69,6 @@ export const useLipowerlineCruzamentos = (linhaId?: string, cenarioId?: string) 
     isLoading: shouldQuery ? query.isLoading : false,
     error: shouldQuery ? query.error : undefined,
     refetch: query.refetch,
-    isFallback: SHOULD_USE_DEMO_API || !query.data?.length,
+    isFallback: SHOULD_USE_DEMO_API,
   };
 };
