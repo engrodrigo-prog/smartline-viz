@@ -230,6 +230,198 @@ app.post('/simulacoes/riscos', async (c) => {
   });
 });
 
+// ---- File assets (docs/images catalog) ----
+app.get('/files', async (c) => {
+  if (!supabaseEnv.enabled) return c.json([]);
+
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) return c.json([]);
+
+  const supabase = createRlsClient(authHeader);
+  if (!supabase) return c.json([]);
+
+  const lineCode = c.req.query('line_code') ?? undefined;
+  const format = (c.req.query('format') ?? 'list').toLowerCase();
+
+  let query = supabase
+    .from('file_asset')
+    .select(
+      'id,tenant_id,line_code,category,description,bucket_id,object_path,file_name,original_name,mime_type,size_bytes,created_by,created_at,geom,meta',
+    )
+    .order('created_at', { ascending: false });
+
+  if (lineCode) query = query.eq('line_code', lineCode);
+
+  const { data, error } = await query;
+
+  if (error) {
+    const message = (error as any)?.message ?? 'query_failed';
+    const code = (error as any)?.code ?? null;
+    const lower = String(message).toLowerCase();
+    if (code === '42P01' || lower.includes('file_asset')) {
+      return c.json(
+        {
+          error: 'file_asset_not_initialized',
+          hint: 'Aplique as migrations do Supabase (apps/web/supabase/migrations), incluindo 20260126170000_create_file_assets.sql.',
+        },
+        501,
+      );
+    }
+    console.error('[api] /files error:', error);
+    return c.json({ error: message }, 500);
+  }
+
+  const rows = data ?? [];
+
+  if (format === 'geojson') {
+    const features = rows
+      .filter((row: any) => row.geom)
+      .map((row: any) => ({
+        type: 'Feature',
+        id: row.id,
+        geometry: typeof row.geom === 'string' ? JSON.parse(row.geom) : row.geom,
+        properties: {
+          line_code: row.line_code,
+          category: row.category,
+          description: row.description,
+          bucket_id: row.bucket_id,
+          object_path: row.object_path,
+          file_name: row.file_name,
+          original_name: row.original_name,
+          mime_type: row.mime_type,
+          size_bytes: row.size_bytes,
+          created_at: row.created_at,
+        },
+      }));
+
+    return c.json({ type: 'FeatureCollection', features });
+  }
+
+  const withUrls = await Promise.all(
+    rows.map(async (row: any) => {
+      const bucket = (row.bucket_id as string | null) ?? 'asset-files';
+      let url: string | null = null;
+      try {
+        const { data: signed, error: signedError } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(row.object_path, 60 * 60);
+        if (!signedError) url = signed?.signedUrl ?? null;
+      } catch {
+        // ignore signed url failures
+      }
+      return { ...row, url };
+    }),
+  );
+
+  return c.json(withUrls);
+});
+
+app.post('/files', async (c) => {
+  if (!supabaseEnv.enabled) {
+    return c.json({ error: 'supabase_not_configured' }, 500);
+  }
+
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) return c.json({ error: 'Unauthorized' }, 401);
+
+  const supabase = createRlsClient(authHeader);
+  if (!supabase) return c.json({ error: 'supabase_not_configured' }, 500);
+
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  const { data: auth, error: authError } = await supabase.auth.getUser(token);
+  const user = auth?.user ?? null;
+  if (authError || !user) {
+    return c.json({ error: 'Invalid authentication token' }, 401);
+  }
+
+  const body = await c.req.json().catch(() => ({} as any));
+  const lineCode = typeof body?.line_code === 'string' ? body.line_code.trim() : '';
+  const objectPath = typeof body?.object_path === 'string' ? body.object_path.trim() : '';
+  const bucketId = typeof body?.bucket_id === 'string' && body.bucket_id.trim() ? body.bucket_id.trim() : 'asset-files';
+
+  if (!lineCode) return c.json({ error: 'line_code_required' }, 400);
+  if (!objectPath) return c.json({ error: 'object_path_required' }, 400);
+
+  const { data: appUser, error: appUserError } = await supabase
+    .from('app_user')
+    .select('tenant_id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (appUserError) {
+    console.error('[api] /files app_user error:', appUserError);
+    return c.json({ error: appUserError.message }, 500);
+  }
+
+  const tenantId = (appUser?.tenant_id as string | null | undefined) ?? null;
+  if (!tenantId) {
+    return c.json(
+      {
+        error: 'tenant_not_set',
+        hint: 'Faça a ingestão de uma linha (KML/KMZ) primeiro para criar/associar sua empresa (tenant).',
+      },
+      400,
+    );
+  }
+
+  const { data: lineAsset, error: lineError } = await supabase
+    .from('line_asset')
+    .select('line_code')
+    .eq('line_code', lineCode)
+    .maybeSingle();
+
+  if (lineError) {
+    console.error('[api] /files line_asset error:', lineError);
+    return c.json({ error: lineError.message }, 500);
+  }
+  if (!lineAsset) {
+    return c.json({ error: 'line_not_found', line_code: lineCode }, 400);
+  }
+
+  const lat = typeof body?.lat === 'number' ? body.lat : undefined;
+  const lon = typeof body?.lon === 'number' ? body.lon : undefined;
+  const hasPoint = Number.isFinite(lat) && Number.isFinite(lon);
+
+  const { data: inserted, error: insertError } = await supabase
+    .from('file_asset')
+    .insert({
+      tenant_id: tenantId,
+      line_code: lineCode,
+      category: typeof body?.category === 'string' ? body.category.trim() : null,
+      description: typeof body?.description === 'string' ? body.description.trim() : null,
+      bucket_id: bucketId,
+      object_path: objectPath,
+      file_name: typeof body?.file_name === 'string' ? body.file_name : null,
+      original_name: typeof body?.original_name === 'string' ? body.original_name : null,
+      mime_type: typeof body?.mime_type === 'string' ? body.mime_type : null,
+      size_bytes: typeof body?.size_bytes === 'number' ? Math.round(body.size_bytes) : null,
+      created_by: user.id,
+      geom: hasPoint ? `SRID=4326;POINT(${lon} ${lat})` : null,
+      meta: typeof body?.meta === 'object' && body.meta !== null ? body.meta : {},
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    const message = (insertError as any)?.message ?? 'insert_failed';
+    const code = (insertError as any)?.code ?? null;
+    const lower = String(message).toLowerCase();
+    if (code === '42P01' || lower.includes('file_asset')) {
+      return c.json(
+        {
+          error: 'file_asset_not_initialized',
+          hint: 'Aplique as migrations do Supabase (apps/web/supabase/migrations), incluindo 20260126170000_create_file_assets.sql.',
+        },
+        501,
+      );
+    }
+    console.error('[api] /files insert error:', insertError);
+    return c.json({ error: message }, 400);
+  }
+
+  return c.json({ success: true, data: inserted });
+});
+
 // ---- Media API (stub MVP) ----
 app.get('/media/search', (c) => c.json({ total: 0, items: [] }));
 app.post('/media/upload', (c) => c.json({ error: 'not_implemented' }, 501));
