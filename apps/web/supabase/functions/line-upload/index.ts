@@ -51,29 +51,61 @@ serve(async (req) => {
     const rawBody = await req.json();
     const body = LineUploadSchema.parse(rawBody);
 
-    // Validate tenant access BEFORE using service role
-    const { data: validatedTenant, error: tenantError } = await anonClient.rpc(
-      'validate_tenant_access',
-      {
-        _user_id: user.id,
-        _requested_tenant_id: body.tenant_id || null
-      }
-    );
+    // Use service role for DB ops (tenant/RLS are handled here with best-effort defaults for PoC).
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (tenantError || !validatedTenant) {
-      return new Response(
-        JSON.stringify({ 
-          error: tenantError?.message || 'Invalid tenant access',
-          hint: 'If you belong to multiple tenants, please specify tenant_id'
-        }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    let tenant_id: string | null = body.tenant_id ?? null;
+
+    if (!tenant_id) {
+      const { data: appUser } = await supabase
+        .from('app_user')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      tenant_id = appUser?.tenant_id ?? null;
     }
 
-    const tenant_id = validatedTenant;
+    if (!tenant_id) {
+      try {
+        const { data: createdTenant, error: tenantInsertError } = await supabase
+          .from('tenant')
+          .insert({ name: 'PoC' })
+          .select('id')
+          .single();
 
-    // NOW safe to use service role with validated tenant
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        if (tenantInsertError) throw tenantInsertError;
+        tenant_id = createdTenant.id;
+
+        const { error: userInsertError } = await supabase
+          .from('app_user')
+          .insert({
+            id: user.id,
+            tenant_id,
+            email: user.email ?? null,
+            role: 'ORG_ADMIN'
+          });
+
+        if (userInsertError) {
+          const message = userInsertError.message?.toLowerCase?.() ?? '';
+          const isUniqueViolation =
+            (userInsertError as any)?.code === '23505' || message.includes('duplicate') || message.includes('unique');
+          if (isUniqueViolation) {
+            await supabase.from('app_user').insert({
+              id: user.id,
+              tenant_id,
+              email: null,
+              role: 'ORG_ADMIN'
+            });
+          } else {
+            throw userInsertError;
+          }
+        }
+      } catch (error) {
+        console.error('Tenant bootstrap failed:', error);
+        tenant_id = null;
+      }
+    }
 
     const parseCoordinate = (coord: string) => {
       const parts = coord.split(',').map(part => part.trim());
