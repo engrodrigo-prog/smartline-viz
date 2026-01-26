@@ -190,7 +190,15 @@ serve(async (req) => {
 
     if (insertError) {
       console.error('Insert error:', insertError);
-      throw new Error('Failed to insert line asset');
+      return new Response(
+        JSON.stringify({
+          error: 'Failed to insert line asset',
+          details: insertError.details ?? null,
+          hint: insertError.hint ?? null,
+          code: insertError.code ?? null
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(
