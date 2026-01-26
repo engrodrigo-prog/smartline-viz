@@ -1,0 +1,3 @@
+-- NOTE: This migration exists in the linked Supabase project's history.
+-- It is intentionally a no-op in this repository because later migrations
+-- replace the `profiles` schema and policies.

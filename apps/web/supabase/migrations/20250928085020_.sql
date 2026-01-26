@@ -1,0 +1,7 @@
+-- NOTE: This migration exists in the linked Supabase project's history but its
+-- original contents conflict with later migrations in this repository (notably
+-- the `profiles` table + trigger definitions).
+--
+-- We keep this file as an intentional no-op so that `supabase db push` stays
+-- aligned with the remote migration versions while new environments can apply
+-- the canonical schema from later migrations.

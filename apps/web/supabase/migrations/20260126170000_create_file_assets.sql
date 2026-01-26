@@ -2,6 +2,20 @@
 -- SmartLine-Viz: File catalog (docs/images) + tenant-scoped storage bucket
 -- ============================================================================
 
+-- Ensure PostGIS exists for geom columns
+create extension if not exists postgis;
+
+-- Ensure helper function exists even if older migrations weren't applied correctly
+CREATE OR REPLACE FUNCTION public.user_tenant_id(_user_id UUID)
+RETURNS UUID
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT tenant_id FROM public.app_user WHERE id = _user_id
+$$;
+
 -- 1) Storage bucket for generic attachments (docs, images, PDFs, spreadsheets)
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('asset-files', 'asset-files', false)
@@ -15,6 +29,7 @@ DROP POLICY IF EXISTS "Tenant users can upload asset files" ON storage.objects;
 CREATE POLICY "Tenant users can upload asset files"
 ON storage.objects
 FOR INSERT
+TO authenticated
 WITH CHECK (
   bucket_id = 'asset-files'
   AND (storage.foldername(name))[1] = public.user_tenant_id(auth.uid())::text
@@ -25,6 +40,7 @@ DROP POLICY IF EXISTS "Tenant users can read asset files" ON storage.objects;
 CREATE POLICY "Tenant users can read asset files"
 ON storage.objects
 FOR SELECT
+TO authenticated
 USING (
   bucket_id = 'asset-files'
   AND (storage.foldername(name))[1] = public.user_tenant_id(auth.uid())::text
@@ -34,26 +50,22 @@ DROP POLICY IF EXISTS "Users can update own asset files" ON storage.objects;
 CREATE POLICY "Users can update own asset files"
 ON storage.objects
 FOR UPDATE
+TO authenticated
 USING (
   bucket_id = 'asset-files'
   AND (storage.foldername(name))[1] = public.user_tenant_id(auth.uid())::text
-  AND (
-    (storage.foldername(name))[2] = auth.uid()::text
-    OR public.has_role(auth.uid(), 'admin')
-  )
+  AND (storage.foldername(name))[2] = auth.uid()::text
 );
 
 DROP POLICY IF EXISTS "Users can delete own asset files" ON storage.objects;
 CREATE POLICY "Users can delete own asset files"
 ON storage.objects
 FOR DELETE
+TO authenticated
 USING (
   bucket_id = 'asset-files'
   AND (storage.foldername(name))[1] = public.user_tenant_id(auth.uid())::text
-  AND (
-    (storage.foldername(name))[2] = auth.uid()::text
-    OR public.has_role(auth.uid(), 'admin')
-  )
+  AND (storage.foldername(name))[2] = auth.uid()::text
 );
 
 -- 2) Catalog table for uploaded files
@@ -86,11 +98,13 @@ ALTER TABLE public.file_asset ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own tenant files" ON public.file_asset;
 CREATE POLICY "Users can view own tenant files" ON public.file_asset
 FOR SELECT
+TO authenticated
 USING (tenant_id = public.user_tenant_id(auth.uid()));
 
 DROP POLICY IF EXISTS "Users can insert own tenant files" ON public.file_asset;
 CREATE POLICY "Users can insert own tenant files" ON public.file_asset
 FOR INSERT
+TO authenticated
 WITH CHECK (
   tenant_id = public.user_tenant_id(auth.uid())
   AND created_by = auth.uid()
@@ -99,16 +113,11 @@ WITH CHECK (
 DROP POLICY IF EXISTS "Users can update own files" ON public.file_asset;
 CREATE POLICY "Users can update own files" ON public.file_asset
 FOR UPDATE
-USING (
-  created_by = auth.uid()
-  OR public.has_role(auth.uid(), 'admin')
-);
+TO authenticated
+USING (created_by = auth.uid());
 
 DROP POLICY IF EXISTS "Users can delete own files" ON public.file_asset;
 CREATE POLICY "Users can delete own files" ON public.file_asset
 FOR DELETE
-USING (
-  created_by = auth.uid()
-  OR public.has_role(auth.uid(), 'admin')
-);
-
+TO authenticated
+USING (created_by = auth.uid());
