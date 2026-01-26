@@ -125,7 +125,6 @@ serve(async (req) => {
 
     if (bufferError) {
       console.error('Buffer calculation error:', bufferError);
-      throw new Error(`Failed to calculate buffer zone: ${bufferError.message}`);
     }
 
     // Determine UTM zone from line centroid
@@ -143,14 +142,15 @@ serve(async (req) => {
         x_left: body.x_left,
         x_right: body.x_right,
         geom: `SRID=4674;${wkt}`,
-        domain_geom: bufferResult,
+        domain_geom: bufferResult ?? null,
         utm_zone: utmZone,
         utm_srid: utmSrid,
         src_source: 'kml_upload',
         meta: {
           uploaded_by: user.id,
           uploaded_at: new Date().toISOString(),
-          kml_source: true
+          kml_source: true,
+          buffer_error: bufferError?.message ?? null
         }
       })
       .select()
