@@ -190,11 +190,20 @@ serve(async (req) => {
 
     if (insertError) {
       console.error('Insert error:', insertError);
+      const message = (insertError.message ?? '').toLowerCase();
+      let hint: string | null = insertError.hint ?? null;
+
+      if (insertError.code === '42P01' || message.includes('relation') || message.includes('line_asset')) {
+        hint = 'Tabela line_asset não existe. Aplique as migrations do Supabase em apps/web/supabase/migrations.';
+      } else if (message.includes('geometry') || message.includes('postgis')) {
+        hint = 'PostGIS não está habilitado. Aplique a migration que cria a extensão PostGIS.';
+      }
+
       return new Response(
         JSON.stringify({
           error: 'Failed to insert line asset',
           details: insertError.details ?? null,
-          hint: insertError.hint ?? null,
+          hint,
           code: insertError.code ?? null
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
