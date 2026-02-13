@@ -8,6 +8,8 @@ import { Activity } from 'lucide-react';
 import MapLibreViewer from '@/components/MapLibreViewer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+const SENSOR_DB_ENABLED = import.meta.env.VITE_ENABLE_SENSOR_DB === 'true';
+
 const fallbackSensors = [
   {
     id: 'sensor-orla-01',
@@ -46,7 +48,7 @@ export default function PainelSensores() {
   const fetchSensors = useCallback(async () => {
     setLoading(true);
     
-    if (!supabase) {
+    if (!supabase || !SENSOR_DB_ENABLED) {
       setSensors(fallbackSensors);
       setLoading(false);
       return;
@@ -63,7 +65,7 @@ export default function PainelSensores() {
     if (!error && data) {
       const sensorsWithReadings = await Promise.all(
         data.map(async (sensor) => {
-          const { data: reading } = await supabase
+          const { data: reading, error: readingError } = await supabase
             .from('sensor_readings')
             .select('*')
             .eq('sensor_id', sensor.id)
@@ -71,10 +73,12 @@ export default function PainelSensores() {
             .limit(1)
             .single();
           
-          return { ...sensor, ...reading };
+          return readingError ? sensor : { ...sensor, ...reading };
         })
       );
       setSensors(sensorsWithReadings);
+    } else {
+      setSensors(fallbackSensors);
     }
     setLoading(false);
   }, [filters.lineCode, filters.region, filters.sensorType]);

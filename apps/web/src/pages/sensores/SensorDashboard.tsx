@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, AlertTriangle, TrendingUp, Thermometer } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+const SENSOR_DB_ENABLED = import.meta.env.VITE_ENABLE_SENSOR_DB === 'true';
+
 export default function SensorDashboard() {
   const [stats, setStats] = useState({
     total: 0,
@@ -20,33 +22,37 @@ export default function SensorDashboard() {
   }, []);
 
   const fetchDashboardData = async () => {
-    if (!supabase) {
+    if (!supabase || !SENSOR_DB_ENABLED) {
       setStats({ total: 0, online: 0, warning: 0, critical: 0 });
       setChartData([]);
       return;
     }
 
-    const { data: sensors } = await supabase.from('sensors').select('status');
-    if (sensors) {
+    const { data: sensors, error: sensorsError } = await supabase.from('sensors').select('status');
+    if (!sensorsError && sensors) {
       setStats({
         total: sensors.length,
         online: sensors.filter(s => s.status === 'active').length,
         warning: 0,
         critical: 0
       });
+    } else {
+      setStats({ total: 0, online: 0, warning: 0, critical: 0 });
     }
 
-    const { data: readings } = await supabase
+    const { data: readings, error: readingsError } = await supabase
       .from('sensor_readings')
       .select('timestamp, temperature')
       .gte('timestamp', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .order('timestamp');
     
-    if (readings) {
+    if (!readingsError && readings) {
       setChartData(readings.map(r => ({
         time: new Date(r.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         temp: r.temperature
       })));
+    } else {
+      setChartData([]);
     }
   };
 

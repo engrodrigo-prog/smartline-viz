@@ -44,6 +44,8 @@ interface CameraItem {
   description?: string;
 }
 
+const SENSOR_DB_ENABLED = import.meta.env.VITE_ENABLE_SENSOR_DB === 'true';
+
 const YT_FALLBACK_THUMB =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'%3E%3Crect width='640' height='360' fill='%231e293b'/%3E%3Cpath d='M271 116v128l110-64z' fill='%23f43f5e'/%3E%3Ctext x='320' y='320' text-anchor='middle' fill='%23e2e8f0' font-family='Arial' font-size='32'%3Estream indispon%C3%ADvel%3C/text%3E%3C/svg%3E";
 
@@ -71,12 +73,6 @@ const extractYoutubeId = (url?: string) => {
 };
 
 const resolveThumbnail = (camera: CameraItem) => {
-  if (camera.streamType === 'youtube') {
-    const id = extractYoutubeId(camera.stream_url);
-    if (id) {
-      return `https://img.youtube.com/vi/${id}/0.jpg`;
-    }
-  }
   if (camera.thumbnail_url) {
     return camera.thumbnail_url;
   }
@@ -261,7 +257,7 @@ export default function Cameras() {
       return regionMatch && lineMatch && sourceMatch;
     };
 
-    if (!supabase) {
+    if (!supabase || !SENSOR_DB_ENABLED) {
       const fallback = cameraCatalog.filter(matchesFilters);
       setCameras(fallback);
       return;
@@ -271,7 +267,12 @@ export default function Cameras() {
     if (filters.region) query = query.eq('region', filters.region);
     if (filters.lineCode) query = query.eq('line_code', filters.lineCode);
 
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) {
+      const fallback = cameraCatalog.filter(matchesFilters);
+      setCameras(fallback);
+      return;
+    }
     const supabaseCameras: CameraItem[] = (data ?? []).map((camera: any) => ({
       ...camera,
       source: 'Santos Mapeada',

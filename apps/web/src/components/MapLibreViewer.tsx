@@ -15,23 +15,27 @@ interface MapLibreViewerProps {
   zoom?: number;
 }
 
+const DEFAULT_CENTER: [number, number] = [-47.0, -15.8];
+
 const MapLibreViewer = ({ 
   data, 
   onFeatureClick, 
   height = '600px',
-  center = [-47.0, -15.8], // Centro do Brasil
+  center = DEFAULT_CENTER, // Centro do Brasil
   zoom = 5 
 }: MapLibreViewerProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+  const initialCenterRef = useRef(center);
+  const initialZoomRef = useRef(zoom);
 
   useEffect(() => {
     if (!mapContainer.current) return;
     if (map.current) return; // Initialize map only once
 
     map.current = initializeESRIMap(mapContainer.current, {
-      center,
-      zoom,
+      center: initialCenterRef.current,
+      zoom: initialZoomRef.current,
       basemap: 'imagery'
     });
 
@@ -43,8 +47,9 @@ const MapLibreViewer = ({
 
     return () => {
       map.current?.remove();
+      map.current = null;
     };
-  }, [center, zoom]);
+  }, []);
 
   useEffect(() => {
     if (!map.current || !data || data.length === 0) return;
@@ -155,19 +160,24 @@ const MapLibreViewer = ({
       }
     };
 
-    if (map.current.isStyleLoaded()) {
-      applyData();
-      return;
+    const mapInstance = map.current;
+    const handleLoad = () => applyData();
+
+    try {
+      if (mapInstance.isStyleLoaded()) {
+        applyData();
+        return;
+      }
+      mapInstance.once('load', handleLoad);
+    } catch {
+      // Guard against "There is no style added to the map" when a stale map instance exists.
+      mapInstance.once('styledata', handleLoad);
     }
 
-    const handleLoad = () => {
-      applyData();
-    };
-
-    map.current.once('load', handleLoad);
     return () => {
       try {
-        map.current?.off('load', handleLoad);
+        mapInstance.off('load', handleLoad);
+        mapInstance.off('styledata', handleLoad);
       } catch {
         /* ignore */
       }
