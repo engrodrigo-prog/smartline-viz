@@ -1,132 +1,140 @@
-import { Droplets, Trees, Mountain, Link2, GitBranch, Users, Plane, BrainCircuit } from "lucide-react";
+import { BrainCircuit, Droplets, GitBranch, Link2, Mountain, Plane, Trees, Users } from "lucide-react";
 
 export const modulosSmartline = [
   {
-    modulo: "Áreas Alagadas",
+    id: "floodedAreas",
+    moduleKey: "landing.modules.items.floodedAreas.module",
     icon: Droplets,
-    categoria: "Ambiental",
-    desafio: {
-      titulo: "Enchentes comprometem estruturas",
-      descricao: "Áreas alagadas causam corrosão acelerada, colapso de torres e desligamentos emergenciais, com custos de reparo elevados.",
-      impacto: "Prejuízo médio de R$ 500k por evento + multas regulatórias",
+    categoryKey: "landing.modules.categories.environmental",
+    challenge: {
+      titleKey: "landing.modules.items.floodedAreas.challenge.title",
+      descriptionKey: "landing.modules.items.floodedAreas.challenge.description",
+      impactKey: "landing.modules.items.floodedAreas.challenge.impact",
     },
-    solucao: {
-      titulo: "Monitoramento proativo de áreas de risco",
-      descricao: "Análise geoespacial com imagens de satélite e dados históricos identifica zonas críticas. Proteção de pássaros e sensores de umidade previnem falhas.",
-      beneficio: "Redução de 70% em desligamentos por enchentes + manutenção preditiva",
+    solution: {
+      titleKey: "landing.modules.items.floodedAreas.solution.title",
+      descriptionKey: "landing.modules.items.floodedAreas.solution.description",
+      benefitKey: "landing.modules.items.floodedAreas.solution.benefit",
     },
     path: "/ambiental/alagadas",
   },
   {
-    modulo: "Vegetação",
+    id: "vegetation",
+    moduleKey: "landing.modules.items.vegetation.module",
     icon: Trees,
-    categoria: "Ambiental",
-    desafio: {
-      titulo: "Crescimento vegetal causa desligamentos",
-      descricao: "Árvores e vegetação não controladas próximas aos cabos geram arcos elétricos, interrupções e riscos de incêndio.",
-      impacto: "40% das interrupções não programadas são causadas por vegetação",
+    categoryKey: "landing.modules.categories.environmental",
+    challenge: {
+      titleKey: "landing.modules.items.vegetation.challenge.title",
+      descriptionKey: "landing.modules.items.vegetation.challenge.description",
+      impactKey: "landing.modules.items.vegetation.challenge.impact",
     },
-    solucao: {
-      titulo: "Mapas preditivos de risco de vegetação",
-      descricao: "IA analisa nuvens de pontos LIDAR e ortomosaicos para identificar vegetação crítica. Cronograma otimizado de poda baseado em crescimento previsto.",
-      beneficio: "Economia de 35% em custos de poda + priorização inteligente",
+    solution: {
+      titleKey: "landing.modules.items.vegetation.solution.title",
+      descriptionKey: "landing.modules.items.vegetation.solution.description",
+      benefitKey: "landing.modules.items.vegetation.solution.benefit",
     },
     path: "/ambiental/vegetacao",
   },
   {
-    modulo: "Ocupação de Faixa",
+    id: "rightOfWay",
+    moduleKey: "landing.modules.items.rightOfWay.module",
     icon: Mountain,
-    categoria: "Ambiental",
-    desafio: {
-      titulo: "Invasões comprometem segurança",
-      descricao: "Construções irregulares na faixa de servidão criam riscos de acidentes, dificultam manutenções e geram processos jurídicos.",
-      impacto: "Processos judiciais longos e custosos + riscos à população",
+    categoryKey: "landing.modules.categories.environmental",
+    challenge: {
+      titleKey: "landing.modules.items.rightOfWay.challenge.title",
+      descriptionKey: "landing.modules.items.rightOfWay.challenge.description",
+      impactKey: "landing.modules.items.rightOfWay.challenge.impact",
     },
-    solucao: {
-      titulo: "Gestão automatizada de ocupações",
-      descricao: "Detecção de invasões via satélite e drones. Timeline completa de processos, notificações automatizadas e documentação legal integrada.",
-      beneficio: "Tempo médio de resolução reduzido em 50% + documentação completa",
+    solution: {
+      titleKey: "landing.modules.items.rightOfWay.solution.title",
+      descriptionKey: "landing.modules.items.rightOfWay.solution.description",
+      benefitKey: "landing.modules.items.rightOfWay.solution.benefit",
     },
     path: "/ambiental/ocupacao",
   },
   {
-    modulo: "Emendas e Conexões",
+    id: "splices",
+    moduleKey: "landing.modules.items.splices.module",
     icon: Link2,
-    categoria: "Estrutura",
-    desafio: {
-      titulo: "Aquecimento de emendas causa falhas",
-      descricao: "Emendas mal executadas ou degradadas geram aquecimento, podendo romper cabos e causar desligamentos graves.",
-      impacto: "Rompimento de cabo: R$ 2M+ por evento + risco de blackout",
+    categoryKey: "landing.modules.categories.structure",
+    challenge: {
+      titleKey: "landing.modules.items.splices.challenge.title",
+      descriptionKey: "landing.modules.items.splices.challenge.description",
+      impactKey: "landing.modules.items.splices.challenge.impact",
     },
-    solucao: {
-      titulo: "Monitoramento térmico contínuo",
-      descricao: "Câmeras termográficas em drones e sensores IoT detectam aquecimento anormal. Alertas em tempo real priorizam manutenção preventiva.",
-      beneficio: "Prevenção de 95% das falhas críticas + economia de milhões",
+    solution: {
+      titleKey: "landing.modules.items.splices.solution.title",
+      descriptionKey: "landing.modules.items.splices.solution.description",
+      benefitKey: "landing.modules.items.splices.solution.benefit",
     },
     path: "/estrutura/emendas",
   },
   {
-    modulo: "Travessias",
+    id: "crossings",
+    moduleKey: "landing.modules.items.crossings.module",
     icon: GitBranch,
-    categoria: "Estrutura",
-    desafio: {
-      titulo: "Cruzamentos com rodovias e ferrovias são críticos",
-      descricao: "Distâncias inadequadas em travessias geram não conformidade com NBR 5422 e riscos operacionais graves.",
-      impacto: "Multas regulatórias + interdição por órgãos fiscalizadores",
+    categoryKey: "landing.modules.categories.structure",
+    challenge: {
+      titleKey: "landing.modules.items.crossings.challenge.title",
+      descriptionKey: "landing.modules.items.crossings.challenge.description",
+      impactKey: "landing.modules.items.crossings.challenge.impact",
     },
-    solucao: {
-      titulo: "Validação automática de conformidade",
-      descricao: "Medição precisa de distâncias via LIDAR. Verificação automática de normas técnicas com relatórios para ANEEL.",
-      beneficio: "100% de conformidade comprovada + relatórios automáticos",
+    solution: {
+      titleKey: "landing.modules.items.crossings.solution.title",
+      descriptionKey: "landing.modules.items.crossings.solution.description",
+      benefitKey: "landing.modules.items.crossings.solution.benefit",
     },
     path: "/estrutura/travessias",
   },
   {
-    modulo: "Missões de Drones",
+    id: "droneMissions",
+    moduleKey: "landing.modules.items.droneMissions.module",
     icon: Plane,
-    categoria: "Operações",
-    desafio: {
-      titulo: "Inspeções manuais são perigosas e caras",
-      descricao: "Escalada em torres expõe equipes a riscos de queda e demora semanas para inspecionar grandes extensões.",
-      impacto: "Acidentes de trabalho + custos elevados de R$ 15k por km inspecionado",
+    categoryKey: "landing.modules.categories.operations",
+    challenge: {
+      titleKey: "landing.modules.items.droneMissions.challenge.title",
+      descriptionKey: "landing.modules.items.droneMissions.challenge.description",
+      impactKey: "landing.modules.items.droneMissions.challenge.impact",
     },
-    solucao: {
-      titulo: "Inspeções autônomas e seguras",
-      descricao: "Drones autônomos com IA detectam anomalias em tempo real. Biblioteca de missões reutilizáveis e gêmeos digitais para planejamento.",
-      beneficio: "Custo 80% menor + zero acidentes + inspeções 10x mais rápidas",
+    solution: {
+      titleKey: "landing.modules.items.droneMissions.solution.title",
+      descriptionKey: "landing.modules.items.droneMissions.solution.description",
+      benefitKey: "landing.modules.items.droneMissions.solution.benefit",
     },
     path: "/operacao/missoes",
   },
   {
-    modulo: "Gestão de Equipes",
+    id: "teamManagement",
+    moduleKey: "landing.modules.items.teamManagement.module",
     icon: Users,
-    categoria: "Operações",
-    desafio: {
-      titulo: "Coordenação de equipes dispersas é complexa",
-      descricao: "Equipes em campo sem rastreamento em tempo real dificultam logística, geram desperdício de tempo e aumentam custos operacionais.",
-      impacto: "30% de tempo perdido em deslocamentos + coordenação ineficiente",
+    categoryKey: "landing.modules.categories.operations",
+    challenge: {
+      titleKey: "landing.modules.items.teamManagement.challenge.title",
+      descriptionKey: "landing.modules.items.teamManagement.challenge.description",
+      impactKey: "landing.modules.items.teamManagement.challenge.impact",
     },
-    solucao: {
-      titulo: "Rastreamento em tempo real e escalas inteligentes",
-      descricao: "Integração com Frotolog e rastreamento de equipes. Escalas otimizadas, checklists digitais e gestão de certificações centralizada.",
-      beneficio: "Aumento de 40% na produtividade + redução de custos logísticos",
+    solution: {
+      titleKey: "landing.modules.items.teamManagement.solution.title",
+      descriptionKey: "landing.modules.items.teamManagement.solution.description",
+      benefitKey: "landing.modules.items.teamManagement.solution.benefit",
     },
-    path: "/equipes/painel",
+    path: "/equipes/rastreamento",
   },
   {
-    modulo: "Gêmeo Digital & IA",
+    id: "digitalTwinAI",
+    moduleKey: "landing.modules.items.digitalTwinAI.module",
     icon: BrainCircuit,
-    categoria: "Análises Avançadas",
-    desafio: {
-      titulo: "Falta de visão preditiva gera manutenções reativas",
-      descricao: "Sem análise preditiva, manutenções são sempre emergenciais, aumentando custos e tempo de indisponibilidade.",
-      impacto: "Custos de manutenção 3x maiores + indisponibilidade não planejada",
+    categoryKey: "landing.modules.categories.advancedAnalytics",
+    challenge: {
+      titleKey: "landing.modules.items.digitalTwinAI.challenge.title",
+      descriptionKey: "landing.modules.items.digitalTwinAI.challenge.description",
+      impactKey: "landing.modules.items.digitalTwinAI.challenge.impact",
     },
-    solucao: {
-      titulo: "Análise preditiva com gêmeos digitais 3D",
-      descricao: "Modelos digitais 3D com nuvens de pontos LIDAR. IA detecta padrões de falha e prevê degradação de ativos.",
-      beneficio: "Manutenção preditiva reduz custos em 60% + uptime de 99.9%",
+    solution: {
+      titleKey: "landing.modules.items.digitalTwinAI.solution.title",
+      descriptionKey: "landing.modules.items.digitalTwinAI.solution.description",
+      benefitKey: "landing.modules.items.digitalTwinAI.solution.benefit",
     },
     path: "/analises/gemeo-digital",
   },
-];
+] as const;

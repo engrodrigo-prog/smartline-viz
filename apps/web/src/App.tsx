@@ -54,6 +54,16 @@ import Legal from "./pages/Legal";
 import Quizzes from "./pages/treinamento/Quizzes";
 import QuizRunner from "./pages/treinamento/QuizRunner";
 import RequestsPage from "./pages/admin/Requests";
+import VegetacaoDashboardPage from "./modules/vegetacao/pages/VegetacaoDashboardPage";
+import AnomaliasPage from "./modules/vegetacao/pages/AnomaliasPage";
+import InspecoesPage from "./modules/vegetacao/pages/InspecoesPage";
+import OsPage from "./modules/vegetacao/pages/OsPage";
+import ExecucoesPage from "./modules/vegetacao/pages/ExecucoesPage";
+import AuditoriasPage from "./modules/vegetacao/pages/AuditoriasPage";
+import AgendaPage from "./modules/vegetacao/pages/AgendaPage";
+import RiscoPage from "./modules/vegetacao/pages/RiscoPage";
+import RelatoriosPage from "./modules/vegetacao/pages/RelatoriosPage";
+import DocumentosPage from "./modules/vegetacao/pages/DocumentosPage";
 
 const queryClient = new QueryClient();
 
@@ -90,8 +100,20 @@ const App = () => (
           <Route path="/upload/tracados" element={<ProtectedRoute><UploadTracados /></ProtectedRoute>} />
           <Route path="/upload/kml" element={<ProtectedRoute><UploadKml /></ProtectedRoute>} />
           <Route path="/upload/midia" element={<ProtectedRoute><UploadMidiaPage /></ProtectedRoute>} />
+
+          {/* Vegetação (Poda & Roçada) */}
+          <Route path="/vegetacao" element={<ProtectedRoute><VegetacaoDashboardPage /></ProtectedRoute>} />
+          <Route path="/vegetacao/anomalias" element={<ProtectedRoute><AnomaliasPage /></ProtectedRoute>} />
+          <Route path="/vegetacao/inspecoes" element={<ProtectedRoute><InspecoesPage /></ProtectedRoute>} />
+          <Route path="/vegetacao/os" element={<ProtectedRoute><OsPage /></ProtectedRoute>} />
+          <Route path="/vegetacao/execucoes" element={<ProtectedRoute><ExecucoesPage /></ProtectedRoute>} />
+          <Route path="/vegetacao/auditorias" element={<ProtectedRoute><AuditoriasPage /></ProtectedRoute>} />
+          <Route path="/vegetacao/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
+          <Route path="/vegetacao/risco" element={<ProtectedRoute><RiscoPage /></ProtectedRoute>} />
+          <Route path="/vegetacao/relatorios" element={<ProtectedRoute><RelatoriosPage /></ProtectedRoute>} />
+          <Route path="/vegetacao/documentos" element={<ProtectedRoute><DocumentosPage /></ProtectedRoute>} />
           
-          {/* Ambiental */}
+          {/* Ambiente */}
           <Route path="/ambiental/alagadas" element={<ProtectedRoute><AreasAlagadas /></ProtectedRoute>} />
           <Route path="/ambiental/erosao" element={<ProtectedRoute><Erosao /></ProtectedRoute>} />
           <Route path="/ambiental/queimadas" element={<ProtectedRoute><QueimadasModern /></ProtectedRoute>} />

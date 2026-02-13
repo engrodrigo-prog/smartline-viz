@@ -9,7 +9,6 @@ import {
   FileText,
   Upload,
   Droplets,
-  Trees,
   Mountain,
   Ruler,
   ShieldCheck,
@@ -42,112 +41,185 @@ import {
   BarChart3,
   Database,
   GraduationCap,
+  Trees,
+  Scissors,
+  CalendarDays,
+  ClipboardCheck,
+  AlertTriangle,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
 import { LucideIcon } from "lucide-react";
+import { useI18n } from "@/context/I18nContext";
+import { Badge } from "@/components/ui/badge";
 
 interface MenuItem {
-  title: string;
+  id: string;
+  titleKey: string;
   path: string;
   icon?: LucideIcon;
 }
 
 interface MenuGroup {
-  category: string;
+  id: string;
+  legacyTitle: string;
+  titleKey: string;
   items: MenuItem[];
+  icon?: LucideIcon;
+  featured?: boolean;
+  badgeText?: string;
 }
 
 const menuGroups: MenuGroup[] = [
   {
-    category: "Visão Geral",
+    id: "overview",
+    legacyTitle: "Visão Geral",
+    titleKey: "sidebar.categories.overview",
     items: [
-      { title: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-      { title: "Mapa de Eventos", path: "/visual/mapa", icon: Map },
-      { title: "Diagrama Unifilar", path: "/visual/unifilar", icon: Network },
-      { title: "Relatórios Gerais", path: "/relatorios", icon: FileText },
+      { id: "dashboard", titleKey: "sidebar.items.dashboard", path: "/dashboard", icon: LayoutDashboard },
+      { id: "eventMap", titleKey: "sidebar.items.eventMap", path: "/visual/mapa", icon: Map },
+      { id: "singleLine", titleKey: "sidebar.items.singleLine", path: "/visual/unifilar", icon: Network },
+      { id: "generalReports", titleKey: "sidebar.items.generalReports", path: "/relatorios", icon: FileText },
     ],
   },
   {
-    category: "Upload",
+    id: "upload",
+    legacyTitle: "Upload",
+    titleKey: "sidebar.categories.upload",
     items: [
-      { title: "Upload Unificado", path: "/upload", icon: Upload },
-      { title: "Histórico", path: "/upload/historico", icon: History },
-      { title: "Upload de Mídia", path: "/upload/midia", icon: Camera },
+      { id: "unifiedUpload", titleKey: "sidebar.items.unifiedUpload", path: "/upload", icon: Upload },
+      { id: "history", titleKey: "sidebar.items.history", path: "/upload/historico", icon: History },
+      { id: "mediaUpload", titleKey: "sidebar.items.mediaUpload", path: "/upload/midia", icon: Camera },
     ],
   },
   {
-    category: "Ambiental",
+    id: "vegetationOps",
+    legacyTitle: "Vegetação (Poda & Roçada)",
+    titleKey: "sidebar.categories.vegetationOps",
+    icon: Scissors,
+    featured: true,
+    badgeText: "Campo",
     items: [
-      { title: "Áreas Alagadas", path: "/ambiental/alagadas", icon: Droplets },
-      { title: "Erosão", path: "/ambiental/erosao", icon: Mountain },
-      { title: "Queimadas", path: "/ambiental/queimadas", icon: Flame },
-      { title: "Meteorologia", path: "/ambiental/meteorologia", icon: CloudRain },
-      { title: "Vegetação", path: "/ambiental/vegetacao", icon: Trees },
-      { title: "Ocupação de Faixa", path: "/ambiental/ocupacao", icon: Home },
-      { title: "Distância Cabo x Solo", path: "/ambiental/distancia", icon: Ruler },
-      { title: "Compliance Ambiental", path: "/ambiental/compliance", icon: ShieldCheck },
+      { id: "vegDashboard", titleKey: "sidebar.items.vegDashboard", path: "/vegetacao", icon: LayoutDashboard },
+      { id: "vegAnomalias", titleKey: "sidebar.items.vegAnomalias", path: "/vegetacao/anomalias", icon: AlertTriangle },
+      { id: "vegInspecoes", titleKey: "sidebar.items.vegInspecoes", path: "/vegetacao/inspecoes", icon: ClipboardCheck },
+      { id: "vegOs", titleKey: "sidebar.items.vegOs", path: "/vegetacao/os", icon: ClipboardList },
+      { id: "vegExecucoes", titleKey: "sidebar.items.vegExecucoes", path: "/vegetacao/execucoes", icon: Trees },
+      { id: "vegAuditorias", titleKey: "sidebar.items.vegAuditorias", path: "/vegetacao/auditorias", icon: ClipboardCheck },
+      { id: "vegAgenda", titleKey: "sidebar.items.vegAgenda", path: "/vegetacao/agenda", icon: CalendarDays },
+      { id: "vegRisco", titleKey: "sidebar.items.vegRisco", path: "/vegetacao/risco", icon: ShieldAlert },
+      { id: "vegRelatorios", titleKey: "sidebar.items.vegRelatorios", path: "/vegetacao/relatorios", icon: FileText },
+      { id: "vegDocumentos", titleKey: "sidebar.items.vegDocumentos", path: "/vegetacao/documentos", icon: FileText },
     ],
   },
   {
-    category: "Estrutura",
+    id: "environmental",
+    legacyTitle: "Ambiente",
+    titleKey: "sidebar.categories.environmental",
     items: [
-      { title: "Estruturas", path: "/estrutura/estruturas", icon: Building2 },
-      { title: "Emendas e Conexões", path: "/estrutura/emendas", icon: Link2 },
-      { title: "Travessias", path: "/estrutura/travessias", icon: GitBranch },
-      { title: "Perfil da Linha", path: "/estrutura/perfil-linha", icon: Ruler },
-      { title: "Compliance Cruzamentos", path: "/estrutura/compliance", icon: Shield },
-      { title: "Corrosão e Furto", path: "/estrutura/corrosao", icon: Skull },
-      { title: "Inspeção Termográfica", path: "/modules/estrutura/inspecao-termografica", icon: Thermometer },
+      { id: "floodedAreas", titleKey: "sidebar.items.floodedAreas", path: "/ambiental/alagadas", icon: Droplets },
+      { id: "erosion", titleKey: "sidebar.items.erosion", path: "/ambiental/erosao", icon: Mountain },
+      { id: "wildfires", titleKey: "sidebar.items.wildfires", path: "/ambiental/queimadas", icon: Flame },
+      { id: "weather", titleKey: "sidebar.items.weather", path: "/ambiental/meteorologia", icon: CloudRain },
+      { id: "rightOfWay", titleKey: "sidebar.items.rightOfWay", path: "/ambiental/ocupacao", icon: Home },
+      { id: "clearance", titleKey: "sidebar.items.clearance", path: "/ambiental/distancia", icon: Ruler },
+      { id: "envCompliance", titleKey: "sidebar.items.envCompliance", path: "/ambiental/compliance", icon: ShieldCheck },
     ],
   },
   {
-    category: "Sensores e Câmeras",
+    id: "structure",
+    legacyTitle: "Estrutura",
+    titleKey: "sidebar.categories.structure",
     items: [
-      { title: "Painel de Sensores", path: "/sensores/painel", icon: Gauge },
-      { title: "Câmeras", path: "/sensores/cameras", icon: Camera },
-      { title: "Dashboard", path: "/sensores/dashboard", icon: ChartArea },
-      { title: "Alertas", path: "/sensores/alertas", icon: Bell },
+      { id: "structures", titleKey: "sidebar.items.structures", path: "/estrutura/estruturas", icon: Building2 },
+      { id: "splices", titleKey: "sidebar.items.splices", path: "/estrutura/emendas", icon: Link2 },
+      { id: "crossings", titleKey: "sidebar.items.crossings", path: "/estrutura/travessias", icon: GitBranch },
+      { id: "lineProfile", titleKey: "sidebar.items.lineProfile", path: "/estrutura/perfil-linha", icon: Ruler },
+      { id: "crossingCompliance", titleKey: "sidebar.items.crossingCompliance", path: "/estrutura/compliance", icon: Shield },
+      { id: "corrosionTheft", titleKey: "sidebar.items.corrosionTheft", path: "/estrutura/corrosao", icon: Skull },
+      { id: "thermography", titleKey: "sidebar.items.thermography", path: "/modules/estrutura/inspecao-termografica", icon: Thermometer },
     ],
   },
   {
-    category: "Operações",
+    id: "sensors",
+    legacyTitle: "Sensores e Câmeras",
+    titleKey: "sidebar.categories.sensors",
     items: [
-      { title: "Missões de Drones", path: "/operacao/missoes", icon: Plane },
-      { title: "Rastreamento de Equipes", path: "/equipes/rastreamento", icon: Users },
-      { title: "Gestão de Demandas", path: "/operacao/demandas", icon: ClipboardList },
-      { title: "Eventos Históricos", path: "/operacao/eventos", icon: ClockIcon },
-      { title: "Veículos On-Line", path: "/operacao/veiculos", icon: Truck },
-      { title: "Compliance Operacional", path: "/operacao/compliance", icon: FileCheck },
-      { title: "Relatórios", path: "/operacao/relatorios", icon: FileText },
+      { id: "sensorPanel", titleKey: "sidebar.items.sensorPanel", path: "/sensores/painel", icon: Gauge },
+      { id: "cameras", titleKey: "sidebar.items.cameras", path: "/sensores/cameras", icon: Camera },
+      { id: "sensorDashboard", titleKey: "sidebar.items.sensorDashboard", path: "/sensores/dashboard", icon: ChartArea },
+      { id: "alerts", titleKey: "sidebar.items.alerts", path: "/sensores/alertas", icon: Bell },
     ],
   },
   {
-    category: "Análises Avançadas",
+    id: "operations",
+    legacyTitle: "Operações",
+    titleKey: "sidebar.categories.operations",
     items: [
-      { title: "Comparativo Execução", path: "/analytics/comparativo", icon: BarChart3 },
-      { title: "Gêmeo Digital & IA", path: "/analises/gemeo-digital", icon: BrainCircuit },
-      { title: "Fiscalização & Obras", path: "/fiscalizacao/obras", icon: HardHat },
-      { title: "Auditorias de Qualidade", path: "/auditorias/qualidade", icon: Award },
+      { id: "droneMissions", titleKey: "sidebar.items.droneMissions", path: "/operacao/missoes", icon: Plane },
+      { id: "teamTracking", titleKey: "sidebar.items.teamTracking", path: "/equipes/rastreamento", icon: Users },
+      { id: "demandas", titleKey: "sidebar.items.demandManagement", path: "/operacao/demandas", icon: ClipboardList },
+      { id: "historicalEvents", titleKey: "sidebar.items.historicalEvents", path: "/operacao/eventos", icon: ClockIcon },
+      { id: "vehicles", titleKey: "sidebar.items.vehiclesOnline", path: "/operacao/veiculos", icon: Truck },
+      { id: "opCompliance", titleKey: "sidebar.items.opCompliance", path: "/operacao/compliance", icon: FileCheck },
+      { id: "opReports", titleKey: "sidebar.items.opReports", path: "/operacao/relatorios", icon: FileText },
     ],
   },
   {
-    category: "Treinamento",
+    id: "analytics",
+    legacyTitle: "Análises Avançadas",
+    titleKey: "sidebar.categories.analytics",
     items: [
-      { title: "Quizzes", path: "/treinamento/quizzes", icon: GraduationCap },
+      { id: "executionCompare", titleKey: "sidebar.items.executionCompare", path: "/analytics/comparativo", icon: BarChart3 },
+      { id: "digitalTwin", titleKey: "sidebar.items.digitalTwinAI", path: "/analises/gemeo-digital", icon: BrainCircuit },
+      { id: "oversightWorks", titleKey: "sidebar.items.oversightWorks", path: "/fiscalizacao/obras", icon: HardHat },
+      { id: "qualityAudits", titleKey: "sidebar.items.qualityAudits", path: "/auditorias/qualidade", icon: Award },
     ],
   },
   {
-    category: "Configurações",
+    id: "training",
+    legacyTitle: "Treinamento",
+    titleKey: "sidebar.categories.training",
     items: [
-      { title: "Configurações Gerais", path: "/config/geral", icon: Settings },
-      { title: "Usuários", path: "/config/usuarios", icon: Users },
-      { title: "Permissões", path: "/config/permissoes", icon: Lock },
-      { title: "Gerenciar Camadas", path: "/config/layers", icon: MapPin },
-      { title: "Dataset Demo", path: "/config/dataset", icon: Database },
+      { id: "quizzes", titleKey: "sidebar.items.quizzes", path: "/treinamento/quizzes", icon: GraduationCap },
+    ],
+  },
+  {
+    id: "settings",
+    legacyTitle: "Configurações",
+    titleKey: "sidebar.categories.settings",
+    items: [
+      { id: "general", titleKey: "sidebar.items.generalSettings", path: "/config/geral", icon: Settings },
+      { id: "users", titleKey: "sidebar.items.users", path: "/config/usuarios", icon: Users },
+      { id: "permissions", titleKey: "sidebar.items.permissions", path: "/config/permissoes", icon: Lock },
+      { id: "layers", titleKey: "sidebar.items.layers", path: "/config/layers", icon: MapPin },
+      { id: "demoDataset", titleKey: "sidebar.items.demoDataset", path: "/config/dataset", icon: Database },
     ],
   },
 ];
+
+const normalizeOpenGroups = (value: unknown): Record<string, boolean> => {
+  if (!value || typeof value !== "object") return {};
+
+  const legacyToId = new Map(menuGroups.map((group) => [group.legacyTitle, group.id]));
+  // Backward compatibility: prior builds stored "Ambiental" as the group key.
+  legacyToId.set("Ambiental", "environmental");
+  const record = value as Record<string, unknown>;
+  const normalized: Record<string, boolean> = {};
+
+  for (const [rawKey, rawValue] of Object.entries(record)) {
+    if (typeof rawValue !== "boolean") continue;
+
+    const isGroupId = menuGroups.some((group) => group.id === rawKey);
+    const key = isGroupId ? rawKey : legacyToId.get(rawKey);
+    if (!key) continue;
+
+    normalized[key] = rawValue;
+  }
+
+  return normalized;
+};
 
 const SidebarGroup = ({ 
   group, 
@@ -159,6 +231,9 @@ const SidebarGroup = ({
   onToggle: () => void;
 }) => {
   const location = useLocation();
+  const { t } = useI18n();
+  const GroupIcon = group.icon;
+  const isFeatured = Boolean(group.featured);
 
   return (
     <div className="mb-4">
@@ -166,7 +241,28 @@ const SidebarGroup = ({
         onClick={onToggle}
         className="w-full flex items-center justify-between px-4 py-2 text-sm font-semibold text-smartline-green hover:text-primary/80 hover:bg-sidebar-accent rounded-lg transition-all duration-200"
       >
-        <span>{group.category}</span>
+        <span className="flex items-center gap-2">
+          {GroupIcon && (
+            <GroupIcon
+              className={cn(
+                "w-4 h-4",
+                isFeatured ? "text-emerald-300" : "text-smartline-green",
+              )}
+            />
+          )}
+          <span className={cn(isFeatured && "text-emerald-200")}>{t(group.titleKey)}</span>
+          {group.badgeText && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "ml-1 border-emerald-500/30 text-emerald-200 bg-emerald-500/10",
+                isFeatured && "shadow-sm",
+              )}
+            >
+              {group.badgeText}
+            </Badge>
+          )}
+        </span>
         {isOpen ? (
           <ChevronDown className="w-4 h-4 transition-transform duration-200" />
         ) : (
@@ -193,7 +289,7 @@ const SidebarGroup = ({
                 )}
               >
                 {Icon && <Icon className="w-4 h-4 flex-shrink-0" />}
-                <span>{item.title}</span>
+                <span>{t(item.titleKey)}</span>
               </Link>
             );
           })}
@@ -210,12 +306,21 @@ const Sidebar = () => {
   useEffect(() => {
     const savedState = localStorage.getItem("sidebar-groups");
     if (savedState) {
-      setOpenGroups(JSON.parse(savedState));
-    } else {
-      const currentGroup = menuGroups.find((g) => g.items.some((item) => location.pathname === item.path));
-      if (currentGroup) {
-        setOpenGroups({ [currentGroup.category]: true });
+      try {
+        const parsed = JSON.parse(savedState);
+        const normalized = normalizeOpenGroups(parsed);
+        if (Object.keys(normalized).length > 0) {
+          setOpenGroups(normalized);
+          return;
+        }
+      } catch {
+        // ignore
       }
+    }
+
+    const currentGroup = menuGroups.find((g) => g.items.some((item) => location.pathname === item.path));
+    if (currentGroup) {
+      setOpenGroups({ [currentGroup.id]: true });
     }
   }, [location.pathname, setOpenGroups]);
 
@@ -229,18 +334,18 @@ const Sidebar = () => {
   // Auto-open group when navigating to a route
   useEffect(() => {
     const currentGroup = menuGroups.find((g) => g.items.some((item) => location.pathname === item.path));
-    if (currentGroup && !openGroups[currentGroup.category]) {
+    if (currentGroup && !openGroups[currentGroup.id]) {
       setOpenGroups((prev) => ({
         ...prev,
-        [currentGroup.category]: true,
+        [currentGroup.id]: true,
       }));
     }
   }, [location.pathname, openGroups]);
 
-  const toggleGroup = (category: string) => {
+  const toggleGroup = (groupId: string) => {
     setOpenGroups(prev => ({
       ...prev,
-      [category]: !prev[category]
+      [groupId]: !prev[groupId]
     }));
   };
 
@@ -259,10 +364,10 @@ const Sidebar = () => {
       <nav className="flex-1 p-4">
         {menuGroups.map((group) => (
           <SidebarGroup 
-            key={group.category} 
+            key={group.id} 
             group={group} 
-            isOpen={!!openGroups[group.category]}
-            onToggle={() => toggleGroup(group.category)}
+            isOpen={!!openGroups[group.id]}
+            onToggle={() => toggleGroup(group.id)}
           />
         ))}
       </nav>
