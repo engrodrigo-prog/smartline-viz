@@ -23,15 +23,16 @@ export const useLipowerlineLinhas = () => {
     queryFn: listLinhas,
     staleTime: 5 * 60 * 1000,
     enabled: shouldQuery,
+    retry: false,
   });
 
   return useMemo(
     () => ({
-      data: SHOULD_USE_DEMO_API ? fallback : (query.data ?? []),
+      data: SHOULD_USE_DEMO_API ? fallback : query.error ? fallback : (query.data ?? []),
       isLoading: shouldQuery ? query.isLoading : false,
       error: shouldQuery ? query.error : undefined,
       refetch: query.refetch,
-      isFallback: SHOULD_USE_DEMO_API,
+      isFallback: SHOULD_USE_DEMO_API || Boolean(query.error),
     }),
     [fallback, query.data, query.error, query.isLoading, query.refetch, shouldQuery],
   );

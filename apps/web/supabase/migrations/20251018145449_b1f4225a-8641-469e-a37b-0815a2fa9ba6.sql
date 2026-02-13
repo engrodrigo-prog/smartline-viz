@@ -1,5 +1,5 @@
 -- ============================================================================
--- SmartLine-Viz: Comprehensive Database Schema
+-- SmartLine: Comprehensive Database Schema
 -- Tasks: Storage structure, IBGE layers, Custom layers, Weather, NDVI, Health
 -- ============================================================================
 

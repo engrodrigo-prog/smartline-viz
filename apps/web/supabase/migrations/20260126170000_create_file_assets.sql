@@ -1,5 +1,5 @@
 -- ============================================================================
--- SmartLine-Viz: File catalog (docs/images) + tenant-scoped storage bucket
+-- SmartLine: File catalog (docs/images) + tenant-scoped storage bucket
 -- ============================================================================
 
 -- Ensure PostGIS exists for geom columns

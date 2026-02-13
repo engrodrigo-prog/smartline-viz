@@ -378,7 +378,7 @@ const Erosao = () => {
             <li>Ingestão de chuva observada (INMET + IMERG NRT) e prevista (GFS/ECMWF).</li>
             <li>Processamento do DTM por linha/corredor (Fill/Breach, Slope, TWI, SPI, LS canônico).</li>
             <li>Cálculo de A_RUSLE e composição de risco (0–100) para cada trecho.</li>
-            <li>Publicação de COGs para o SmartLine Viz como fonte raster geoespacial.</li>
+            <li>Publicação de COGs para o SmartLine como fonte raster geoespacial.</li>
           </ol>
         </div>
         

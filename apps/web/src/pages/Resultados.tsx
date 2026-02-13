@@ -16,111 +16,117 @@ import corrosao from "@/assets/preditivo corrosao.png";
 import aves from "@/assets/reducao eventos aves.png";
 import erosao from "@/assets/erosao.png";
 import geodados from "@/assets/cadastro_geodados.png";
+import LanguageMenu from "@/components/LanguageMenu";
+import { useI18n } from "@/context/I18nContext";
 
 const Resultados = () => {
+  const { t } = useI18n();
   const cases = [
     {
       id: 1,
       image: geodados,
-      title: "Manejo de vegetação assertivo",
-      description: "Redução de áreas críticas e intervenções mais precisas através de análise geoespacial e IA.",
+      title: t("resultados.cases.assertiveVegetation.title"),
+      description: t("resultados.cases.assertiveVegetation.description"),
       icon: TreeDeciduous,
     },
     {
       id: 2,
       image: escalada,
-      title: "Redução da escalada de estruturas",
-      description: "Diminuição de invasões e riscos de furto com monitoramento contínuo e alertas inteligentes.",
+      title: t("resultados.cases.reducedClimbing.title"),
+      description: t("resultados.cases.reducedClimbing.description"),
       icon: TowerControl,
     },
     {
       id: 4,
       image: missoes,
-      title: "Aumento da frequência de inspeções",
-      description: "Planejamento dinâmico de inspeções aéreas e terrestres com drones autônomos.",
+      title: t("resultados.cases.inspectionsFrequency.title"),
+      description: t("resultados.cases.inspectionsFrequency.description"),
       icon: Eye,
     },
     {
       id: 5,
       image: aves,
-      title: "Redução de eventos causados por aves",
-      description: "Correlação com sensores e câmeras para prevenir interrupções de serviço.",
+      title: t("resultados.cases.birdEvents.title"),
+      description: t("resultados.cases.birdEvents.description"),
       icon: Bird,
     },
     {
       id: 6,
       image: erosao,
-      title: "Análise de erosão e ocupação de faixa",
-      description: "Modelos de terreno e satélite integrados para monitoramento contínuo.",
+      title: t("resultados.cases.erosionAndRightOfWay.title"),
+      description: t("resultados.cases.erosionAndRightOfWay.description"),
       icon: Mountain,
     },
     {
       id: 7,
       image: queimadas,
-      title: "Acompanhamento online de queimadas",
-      description: "Alertas automáticos com dados do INPE e detecção em tempo real.",
+      title: t("resultados.cases.wildfires.title"),
+      description: t("resultados.cases.wildfires.description"),
       icon: Flame,
     },
     {
       id: 8,
       image: corrosao,
-      title: "Estudo preditivo em corrosão",
-      description: "Modelos com IA para prever degradação e planejar manutenções preventivas.",
+      title: t("resultados.cases.corrosion.title"),
+      description: t("resultados.cases.corrosion.description"),
       icon: Activity,
     },
     {
       id: 9,
       image: furto,
-      title: "Análise estrutural e furto de peças",
-      description: "Relatórios técnicos e mapas de ocorrência para ação rápida.",
+      title: t("resultados.cases.theft.title"),
+      description: t("resultados.cases.theft.description"),
       icon: Package,
     },
     {
       id: 10,
       image: fiscalizacao,
-      title: "Fiscalização de atividades e obras",
-      description: "Monitoramento de campo e conformidade com evidências georreferenciadas.",
+      title: t("resultados.cases.fieldOversight.title"),
+      description: t("resultados.cases.fieldOversight.description"),
       icon: Construction,
     },
     {
       id: 11,
       image: auditoria,
-      title: "Auditorias de qualidade",
-      description: "Relatórios e evidências vinculadas a ativos e linhas de transmissão.",
+      title: t("resultados.cases.qualityAudits.title"),
+      description: t("resultados.cases.qualityAudits.description"),
       icon: ClipboardCheck,
     },
     {
       id: 12,
       image: compliance,
-      title: "Compliance normativo e regulatório",
-      description: "100% de conformidade com NBR 5422 através de validação automática contínua.",
+      title: t("resultados.cases.compliance.title"),
+      description: t("resultados.cases.compliance.description"),
       icon: ShieldCheck,
     },
     {
       id: 13,
       image: gemeoDigital,
-      title: "Criação de gêmeo digital e análise com IA",
-      description: "Modelagem inteligente e predição operacional para manutenção preventiva.",
+      title: t("resultados.cases.digitalTwinAI.title"),
+      description: t("resultados.cases.digitalTwinAI.description"),
       icon: BrainCircuit,
     },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageMenu className="bg-background/60 hover:bg-background/80 border border-border/50" />
+      </div>
       <div className="pt-28 pb-20 px-6 lg:px-10">
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-12"
-          >
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Resultados & <span className="gradient-text">Casos de Sucesso</span>
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Cases reais de implementação da plataforma Smartline AssetHealth
-            </p>
-          </motion.div>
+	          >
+	            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+	              {t("resultados.title.before")} <span className="gradient-text">{t("resultados.title.highlight")}</span>
+	            </h1>
+	            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+	              {t("resultados.subtitle")}
+	            </p>
+	          </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {cases.map((item, index) => (
@@ -168,16 +174,16 @@ const Resultados = () => {
             transition={{ delay: 0.4 }}
             className="mt-16 text-center"
           >
-            <a
-              href="/"
-              className="btn-secondary text-lg inline-block"
-            >
-              Voltar para Home
-            </a>
-          </motion.div>
-        </div>
-      </div>
-    </div>
+	            <a
+	              href="/"
+	              className="btn-secondary text-lg inline-block"
+	            >
+	              {t("resultados.backHome")}
+	            </a>
+	          </motion.div>
+	        </div>
+	      </div>
+	    </div>
   );
 };
 

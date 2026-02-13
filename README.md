@@ -1,6 +1,6 @@
-# SmartLine Viz Monorepo
+# SmartLine Monorepo
 
-SmartLine Viz agora opera como um monorepo focado em visualização geoespacial e serviços de apoio. O frontend original foi movido intacto para `apps/web` e será acompanhado por uma API Hono e pacotes compartilhados.
+SmartLine agora opera como um monorepo focado em visualização geoespacial e serviços de apoio. O frontend original foi movido intacto para `apps/web` e será acompanhado por uma API Hono e pacotes compartilhados.
 
 ## Estrutura
 
@@ -58,7 +58,7 @@ Fluxo:
 1) Ingerir chuva observada (INMET + IMERG NRT) e prevista (GFS/ECMWF).
 2) Processar DTM por linha/corredor (Fill/Breach, Slope, TWI, SPI, LS canônico).
 3) Calcular A_RUSLE e compor risco (0–100).
-4) Publicar COGs p/ SmartLine-Viz (raster source).
+4) Publicar COGs p/ SmartLine (raster source).
 ### Instalação
 ```bash
 python -m venv .venv && source .venv/bin/activate      # Win: .venv\Scripts\activate

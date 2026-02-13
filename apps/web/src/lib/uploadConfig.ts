@@ -151,12 +151,12 @@ export const FILE_TYPES: FileType[] = [
     edgeFunction: 'process-unifilar-diagram',
     category: 'outros',
     icon: Network,
-    requiredFields: ['line_code', 'name', 'integration_target'],
-    integrationTargets: [
-      { value: 'smartline', label: 'Somente SmartLine Viz', description: 'Disponibilizar apenas na plataforma de visualização' },
-      { value: 'adms', label: 'Exportar para ADMS', description: 'Enviar atualizações para sistemas ADMS/SCADA' },
-      { value: 'supervisory', label: 'Integrar com Supervisório', description: 'Sincronizar com supervisórios externos ou EMS' }
-    ],
+	    requiredFields: ['line_code', 'name', 'integration_target'],
+	    integrationTargets: [
+	      { value: 'smartline', label: 'Somente SmartLine', description: 'Disponibilizar apenas na plataforma de visualização' },
+	      { value: 'adms', label: 'Exportar para ADMS', description: 'Enviar atualizações para sistemas ADMS/SCADA' },
+	      { value: 'supervisory', label: 'Integrar com Supervisório', description: 'Sincronizar com supervisórios externos ou EMS' }
+	    ],
     defaultIntegrationTarget: 'smartline',
     metadata: { supportsCad: true }
   }

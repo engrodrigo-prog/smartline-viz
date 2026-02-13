@@ -39,16 +39,20 @@ export const useLipowerlineCenarios = (linhaId?: string, options?: Options) => {
     queryFn: () => listCenarios(linhaId!),
     enabled: shouldQuery,
     staleTime: 2 * 60 * 1000,
+    retry: false,
   });
+
+  const fallback = useMemo(() => buildFallbackCenarios(linhaId), [linhaId]);
+  const shouldFallback = SHOULD_USE_DEMO_API || Boolean(query.error);
 
   return useMemo(
     () => ({
-      data: SHOULD_USE_DEMO_API ? buildFallbackCenarios(linhaId) : (query.data ?? []),
+      data: shouldFallback ? fallback : (query.data ?? []),
       isLoading: shouldQuery ? query.isLoading : false,
       error: shouldQuery ? query.error : undefined,
       refetch: query.refetch,
-      isFallback: SHOULD_USE_DEMO_API,
+      isFallback: shouldFallback,
     }),
-    [linhaId, query.data, query.error, query.isLoading, query.refetch, shouldQuery],
+    [fallback, query.data, query.error, query.isLoading, query.refetch, shouldFallback, shouldQuery],
   );
 };

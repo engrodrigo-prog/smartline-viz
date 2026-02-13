@@ -21,7 +21,7 @@ export function AdditionalFieldsForm({ fileType, values, onChange }: AdditionalF
   }
 
   const integrationTargets = fileType.integrationTargets ?? [
-    { value: "smartline", label: "Somente SmartLine Viz" },
+    { value: "smartline", label: "Somente SmartLine" },
     { value: "adms", label: "Exportar para ADMS" },
     { value: "supervisory", label: "Integração Supervisório" }
   ];

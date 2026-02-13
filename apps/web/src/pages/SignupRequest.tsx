@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
+import LanguageMenu from "@/components/LanguageMenu";
+import { useI18n } from "@/context/I18nContext";
 
 const SignupRequest = () => {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -17,7 +20,7 @@ const SignupRequest = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) {
-      toast({ title: "Indisponível", description: "Supabase não configurado para receber solicitações.", variant: "destructive" });
+      toast({ title: t("signupRequest.toasts.unavailable.title"), description: t("signupRequest.toasts.unavailable.description"), variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -33,8 +36,8 @@ const SignupRequest = () => {
       } as any);
       if (error) throw error;
       toast({
-        title: "Solicitação enviada",
-        description: "Nossa equipe vai revisar e liberar o acesso. Você receberá instruções por e-mail.",
+        title: t("signupRequest.toasts.success.title"),
+        description: t("signupRequest.toasts.success.description"),
       });
       setFullName("");
       setEmail("");
@@ -47,16 +50,16 @@ const SignupRequest = () => {
 
       const friendly =
         code === "23505"
-          ? "Já existe uma solicitação pendente para este e-mail. Aguarde a aprovação ou fale com a equipe."
+          ? t("signupRequest.errors.duplicate")
           : code === "42P01" || normalized.includes("relation") || normalized.includes("does not exist")
-            ? "Cadastro temporariamente indisponível (tabela de solicitações não configurada)."
+            ? t("signupRequest.errors.tableNotConfigured")
             : code === "42501" || normalized.includes("row-level security") || normalized.includes("permission")
-              ? "Cadastro temporariamente indisponível (permissão/RLS)."
+              ? t("signupRequest.errors.permission")
               : null;
 
       toast({
-        title: "Não foi possível enviar",
-        description: friendly ?? err?.message ?? "Tente novamente em instantes.",
+        title: t("signupRequest.toasts.error.title"),
+        description: friendly ?? err?.message ?? t("signupRequest.toasts.error.description"),
         variant: "destructive",
       });
     } finally {
@@ -65,43 +68,46 @@ const SignupRequest = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 relative">
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageMenu className="bg-background/60 hover:bg-background/80 border border-border/50" />
+      </div>
       <div className="tech-card w-full max-w-2xl p-8">
-        <h1 className="text-2xl font-bold mb-2">Solicitar acesso</h1>
+        <h1 className="text-2xl font-bold mb-2">{t("signupRequest.title")}</h1>
         <p className="text-sm text-muted-foreground mb-6">
-          Preencha os dados para solicitar acesso ao Smartline. Admins (Rodrigo ou Guilherme) aprovarão e você receberá um e-mail com instruções.
+          {t("signupRequest.subtitle")}
         </p>
         <form className="grid gap-4" onSubmit={handleSubmit}>
           <Input
-            placeholder="Nome completo"
+            placeholder={t("signupRequest.form.fullName")}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
           />
           <Input
             type="email"
-            placeholder="E-mail corporativo"
+            placeholder={t("signupRequest.form.email")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
           <Input
-            placeholder="Telefone (WhatsApp)"
+            placeholder={t("signupRequest.form.phone")}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             required
           />
           <Textarea
-            placeholder="Mensagem (opcional)"
+            placeholder={t("signupRequest.form.message")}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={3}
           />
           <Button type="submit" disabled={loading}>
-            {loading ? "Enviando..." : "Enviar solicitação"}
+            {loading ? t("signupRequest.form.sending") : t("signupRequest.form.submit")}
           </Button>
           <div className="text-center text-xs text-muted-foreground">
-            <Link to="/" className="hover:underline">← Voltar para home</Link>
+            <Link to="/" className="hover:underline">{t("signupRequest.links.backHome")}</Link>
           </div>
         </form>
       </div>

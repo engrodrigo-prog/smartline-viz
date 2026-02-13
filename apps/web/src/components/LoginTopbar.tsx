@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { getJSON, postJSON } from "@/services/api";
 import { SHOULD_USE_DEMO_API, nowIso } from "@/lib/demoApi";
+import { useI18n } from "@/context/I18nContext";
 
 interface DemoUser {
   id: string;
@@ -49,6 +50,7 @@ const randomId = () => `demo-${Math.random().toString(36).slice(2, 10)}`;
 
 export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<DemoUser | null>(() => loadStoredUser());
@@ -95,8 +97,8 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
     event.preventDefault();
     if (!displayName.trim()) {
       toast({
-        title: "Informe um nome",
-        description: "Digite pelo menos 2 caracteres para continuar.",
+        title: t("loginTopbar.toasts.missingName.title"),
+        description: t("loginTopbar.toasts.missingName.description"),
         variant: "destructive"
       });
       return;
@@ -122,14 +124,14 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
         storeUser(response.user);
       }
       toast({
-        title: "Sessão iniciada",
-        description: `Bem-vindo(a), ${displayName.trim()}!`
+        title: t("loginTopbar.toasts.sessionStarted.title"),
+        description: t("loginTopbar.toasts.sessionStarted.description", { name: displayName.trim() })
       });
       setOpen(false);
     } catch (error: any) {
       toast({
-        title: "Não foi possível entrar",
-        description: error?.message || "Tente novamente em instantes.",
+        title: t("loginTopbar.toasts.loginError.title"),
+        description: error?.message || t("loginTopbar.toasts.loginError.description"),
         variant: "destructive"
       });
     } finally {
@@ -147,7 +149,7 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
     }
     setUser(null);
     storeUser(null);
-    toast({ title: "Sessão encerrada", description: "O cookie demo foi removido." });
+    toast({ title: t("loginTopbar.toasts.sessionEnded.title"), description: t("loginTopbar.toasts.sessionEnded.description") });
   };
 
   const renderDialog = (trigger: React.ReactNode) => (
@@ -155,34 +157,34 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle>Entrar com conta demo</DialogTitle>
+          <DialogTitle>{t("loginTopbar.dialog.title")}</DialogTitle>
         </DialogHeader>
         <form className="space-y-3" onSubmit={handleLogin}>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Nome para exibição</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("loginTopbar.dialog.displayNameLabel")}</label>
             <Input
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Ex.: SmartLine Convidado"
+              placeholder={t("loginTopbar.dialog.displayNamePlaceholder")}
               required
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">E-mail (opcional)</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("loginTopbar.dialog.emailLabel")}</label>
             <Input
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="email@empresa.com"
+              placeholder={t("loginTopbar.dialog.emailPlaceholder")}
             />
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-              Cancelar
+              {t("common.cancel")}
             </Button>
             <Button type="submit" size="sm" disabled={loading}>
               <LogIn className="w-3 h-3 mr-1" />
-              Entrar
+              {t("loginTopbar.actions.signIn")}
             </Button>
           </div>
         </form>
@@ -214,13 +216,13 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
     ? renderDialog(
         <Button size="sm" variant="secondary" className="h-8 px-3">
           <LogIn className="w-3 h-3 mr-1" />
-          Login
+          {t("loginTopbar.actions.login")}
         </Button>
       )
     : renderDialog(
         <Button size="sm" className="h-8 px-4 bg-emerald-500/80 hover:bg-emerald-500">
           <LogIn className="w-3 h-3 mr-1" />
-          Login
+          {t("loginTopbar.actions.login")}
         </Button>
       );
 
@@ -231,7 +233,7 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
           <div className="flex items-center gap-2 text-foreground">
             {statusIcon}
             <span className="uppercase tracking-[0.22em] text-[10px] font-semibold">
-              {user ? "Sessão demo ativa" : "Login demo disponível"}
+              {user ? t("loginTopbar.status.active") : t("loginTopbar.status.available")}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -240,7 +242,7 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
                 {userBadge}
                 <Button variant="ghost" size="sm" className="h-8 px-3" onClick={handleLogout}>
                   <LogOut className="w-3 h-3 mr-1" />
-                  Sair
+                  {t("loginTopbar.actions.logout")}
                 </Button>
               </>
             ) : (
@@ -258,7 +260,7 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
         <div className="flex items-center gap-2">
           {statusIcon}
           <span className="uppercase tracking-[0.28em] text-[11px] font-semibold">
-            {user ? "Sessão demo ativa" : "Login demo disponível"}
+            {user ? t("loginTopbar.status.active") : t("loginTopbar.status.available")}
           </span>
         </div>
 
@@ -268,7 +270,7 @@ export const LoginTopbar = ({ variant = "landing" }: LoginTopbarProps) => {
               {userBadge}
               <Button variant="ghost" size="sm" className="h-8 px-4 text-white/80" onClick={handleLogout}>
                 <LogOut className="w-3 h-3 mr-1" />
-                Sair
+                {t("loginTopbar.actions.logout")}
               </Button>
             </>
           ) : (

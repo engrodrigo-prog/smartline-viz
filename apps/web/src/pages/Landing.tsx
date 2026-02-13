@@ -5,6 +5,7 @@ import LandingHeader from "@/components/LandingHeader";
 import { LoginTopbar } from "@/components/LoginTopbar";
 import { cn } from "@/lib/utils";
 import { modulosSmartline } from "@/lib/modulosSmartline";
+import { useI18n } from "@/context/I18nContext";
 import {
   Activity,
   Shield,
@@ -56,7 +57,10 @@ const Landing = () => {
   const [apiAvailable, setApiAvailable] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [surveyOpen, setSurveyOpen] = useState(false);
-  const contactMailto = `mailto:${ENV.CONTACT_EMAIL}?subject=Contato%20Smartline&body=Olá,%0A%0AGostaria de falar com a equipe sobre o Smartline AssetHealth.%0A%0AObrigado!`;
+  const { t, formatDateTime } = useI18n();
+  const contactMailtoSubject = t("landing.contact.mailto.subject");
+  const contactMailtoBody = t("landing.contact.mailto.body");
+  const contactMailto = `mailto:${ENV.CONTACT_EMAIL}?subject=${encodeURIComponent(contactMailtoSubject)}&body=${encodeURIComponent(contactMailtoBody)}`;
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -87,66 +91,60 @@ const Landing = () => {
   const missoesQuery = useMissoes({ enabled: apiAvailable || SHOULD_USE_DEMO_API });
 
   const automationCards = useMemo(() => {
-    const cards: {
+    return [
+      {
+        title: t("landing.automations.cards.firms.title"),
+        description: t("landing.automations.cards.firms.description"),
+        status: firmsQuery.isError
+          ? "error"
+          : firmsQuery.isFetching
+            ? "running"
+            : firmsQuery.data
+              ? "ok"
+              : "error",
+        timestamp: firmsQuery.data?.meta?.lastFetchedAt,
+        cta: { href: "/ambiental/queimadas", label: t("landing.automations.cards.firms.cta") }
+      },
+      {
+        title: t("landing.automations.cards.media.title"),
+        description: t("landing.automations.cards.media.description"),
+        status: mediaQuery.isPending ? "running" : mediaQuery.isError ? "error" : "ok",
+        timestamp: mediaQuery.data?.items?.[0]?.uploadedAt,
+        cta: { href: "/upload", label: t("landing.automations.cards.media.cta") }
+      },
+      {
+        title: t("landing.automations.cards.las.title"),
+        description: t("landing.automations.cards.las.description"),
+        status: "ok",
+        timestamp: analyticsQuery.data?.atualizadoEm,
+        cta: { href: "/estrutura/perfil-linha", label: t("landing.automations.cards.las.cta") }
+      },
+      {
+        title: t("landing.automations.cards.analytics.title"),
+        description: t("landing.automations.cards.analytics.description"),
+        status: analyticsQuery.isSuccess ? "ok" : analyticsQuery.isPending ? "running" : "error",
+        timestamp: analyticsQuery.data?.atualizadoEm,
+        cta: { href: "/analytics/comparativo", label: t("landing.automations.cards.analytics.cta") }
+      },
+      {
+        title: t("landing.automations.cards.missions.title"),
+        description: t("landing.automations.cards.missions.description"),
+        status: missoesQuery.isSuccess ? "ok" : missoesQuery.isPending ? "running" : "error",
+        timestamp: missoesQuery.data?.items?.[0]?.atualizadoEm,
+        cta: { href: "/operacao/missoes", label: t("landing.automations.cards.missions.cta") }
+      },
+    ] satisfies {
       title: string;
       description: string;
       status: "ok" | "running" | "error";
       timestamp?: string;
       cta: { href: string; label: string };
-    }[] = [];
-
-    cards.push({
-      title: "FIRMS (última sincronização)",
-      description: "Hotspots NASA/VIIRS integrados ao módulo de ambiental para resposta rápida a queimadas.",
-      status: firmsQuery.isError
-        ? "error"
-        : firmsQuery.isFetching
-          ? "running"
-          : firmsQuery.data
-            ? "ok"
-            : "error",
-      timestamp: firmsQuery.data?.meta?.lastFetchedAt,
-      cta: { href: "/ambiental/queimadas", label: "Ver Queimadas" }
-    });
-
-    cards.push({
-      title: "Processamento de Vídeos/Frames",
-      description: "Worker Python extrai frames georreferenciados, EXIF e temas para inspeções visual e térmica.",
-      status: mediaQuery.isPending ? "running" : mediaQuery.isError ? "error" : "ok",
-      timestamp: mediaQuery.data?.items?.[0]?.uploadedAt,
-      cta: { href: "/upload", label: "Abrir Upload Unificado" }
-    });
-
-    cards.push({
-      title: "Indexação Nuvens LAS/LAZ",
-      description: "Pipeline PDAL/LASPy gera plan_points.geojson e perfil longitudinal para engenharia.",
-      status: "ok",
-      timestamp: analyticsQuery.data?.atualizadoEm,
-      cta: { href: "/estrutura/perfil-linha", label: "Ver Perfil da Linha" }
-    });
-
-    cards.push({
-      title: "Análises Operacionais",
-      description: "Comparativo Próprio vs Terceiros com SLA, custo por km, retrabalho e reincidências.",
-      status: analyticsQuery.isSuccess ? "ok" : analyticsQuery.isPending ? "running" : "error",
-      timestamp: analyticsQuery.data?.atualizadoEm,
-      cta: { href: "/analytics/comparativo", label: "Abrir Analytics" }
-    });
-
-    cards.push({
-      title: "Missões (exportadas/enviadas)",
-      description: "Biblioteca de planos LiDAR, circulares e inspeções finas com exportação DJI, Autel e Ardupilot.",
-      status: missoesQuery.isSuccess ? "ok" : missoesQuery.isPending ? "running" : "error",
-      timestamp: missoesQuery.data?.items?.[0]?.atualizadoEm,
-      cta: { href: "/operacao/missoes", label: "Gerenciar Missões" }
-    });
-
-    return cards;
-  }, [analyticsQuery.data, analyticsQuery.isPending, analyticsQuery.isSuccess, firmsQuery.data, firmsQuery.isError, firmsQuery.isFetching, mediaQuery.data, mediaQuery.isError, mediaQuery.isPending, missoesQuery.data, missoesQuery.isPending, missoesQuery.isSuccess]);
+    }[];
+  }, [analyticsQuery.data, analyticsQuery.isPending, analyticsQuery.isSuccess, firmsQuery.data, firmsQuery.isError, firmsQuery.isFetching, mediaQuery.data, mediaQuery.isError, mediaQuery.isPending, missoesQuery.data, missoesQuery.isPending, missoesQuery.isSuccess, t]);
 
   const statusBadge = (status: "ok" | "running" | "error", timestamp?: string) => {
     const label =
-      status === "ok" ? "OK" : status === "running" ? "Em execução" : "Verificar configuração";
+      status === "ok" ? t("common.ok") : status === "running" ? t("common.running") : t("common.checkConfiguration");
     const variant = status === "ok" ? "secondary" : status === "running" ? "outline" : "destructive";
     return (
       <div className="flex flex-col gap-1">
@@ -155,7 +153,7 @@ const Landing = () => {
         </Badge>
         {timestamp ? (
           <span className="text-xs text-muted-foreground">
-            Atualizado {new Date(timestamp).toLocaleString("pt-BR")}
+            {t("common.updated", { date: formatDateTime(timestamp) })}
           </span>
         ) : null}
       </div>
@@ -165,20 +163,20 @@ const Landing = () => {
   const features = [
     {
       icon: Activity,
-      title: "Monitoramento em Tempo Real",
-      description: "Sensores IoT e câmeras integradas para vigilância 24/7 dos ativos elétricos",
+      title: t("landing.features.items.realtime.title"),
+      description: t("landing.features.items.realtime.description"),
       image: bannerIA,
     },
     {
       icon: Shield,
-      title: "Compliance Automatizado",
-      description: "Análise automática de conformidade ambiental e operacional",
+      title: t("landing.features.items.compliance.title"),
+      description: t("landing.features.items.compliance.description"),
       image: bannerCompliance,
     },
     {
       icon: Zap,
-      title: "Missões com Drones",
-      description: "Inspeções aéreas inteligentes com IA para detecção de anomalias",
+      title: t("landing.features.items.drones.title"),
+      description: t("landing.features.items.drones.description"),
       image: bannerMissoes,
     },
   ];
@@ -220,22 +218,20 @@ const Landing = () => {
               </h1>
 
               <p className="text-xl md:text-2xl text-foreground/80 mb-4">
-                Monitoramento Inteligente de Ativos Elétricos
+                {t("landing.hero.subtitle")}
               </p>
 
               <p className="text-lg text-muted-foreground max-w-3xl mx-auto mb-12">
-                Plataforma corporativa para gestão técnica, ambiental e operacional de infraestrutura elétrica,
-                integrando nuvens de pontos LIDAR, Ortomosaicos nos gêmeos digitais, imagens de satélite IoT, IA e
-                análise de compliance com normas vigentes e processos de cada cliente.
+                {t("landing.hero.description")}
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <div className="flex flex-col items-center gap-1">
                   <Link to="/dashboard" className="btn-primary text-lg inline-block">
-                    Acessar Sistema
+                    {t("landing.hero.accessSystem")}
                   </Link>
                   <div className="text-[11px] text-yellow-200/80 px-2 py-0.5 bg-yellow-500/10 border border-yellow-400/40 rounded-md">
-                    Em desenvolvimento
+                    {t("common.inDevelopment")}
                   </div>
                 </div>
                 <button
@@ -243,20 +239,20 @@ const Landing = () => {
                   onClick={() => setSurveyOpen(true)}
                   className="btn-secondary text-lg inline-block"
                 >
-                  Pesquisa de Acesso Smartline
+                  {t("landing.hero.accessSurvey")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setContactOpen(true)}
                   className="btn-secondary text-lg inline-block"
                 >
-                  Falar com a equipe
+                  {t("landing.hero.talkToTeam")}
                 </button>
                 <Link
                   to="/signup-request"
                   className="btn-secondary text-lg inline-block"
                 >
-                  Solicitar acesso direto
+                  {t("landing.hero.requestDirectAccess")}
                 </Link>
               </div>
             </motion.div>
@@ -278,7 +274,7 @@ const Landing = () => {
               >
                 <img
                   src={droneLidar}
-                  alt="Drone com LiDAR inspecionando linhas"
+                  alt={t("landing.sections.lidar.imageAlt")}
                   className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
                 />
               </motion.div>
@@ -290,10 +286,9 @@ const Landing = () => {
                 transition={{ duration: 0.6 }}
                 className="tech-card p-8 order-1 lg:order-2"
               >
-                <h2 className="text-3xl font-bold mb-4 text-white">LiDAR em drones, ortomosaicos de precisão</h2>
+                <h2 className="text-3xl font-bold mb-4 text-white">{t("landing.sections.lidar.title")}</h2>
                 <p className="text-white/90 text-lg">
-                  Voos fotogramétricos e LiDAR embarcado geram nuvens de pontos densas, MDT/MDS e ortomosaicos
-                  georreferenciados. Essa base geoespacial alimenta todo o SmartLine.
+                  {t("landing.sections.lidar.description")}
                 </p>
               </motion.div>
             </div>
@@ -311,10 +306,9 @@ const Landing = () => {
                 transition={{ duration: 0.6 }}
                 className="tech-card p-8"
               >
-                <h2 className="text-3xl font-bold mb-4 text-white">Operação descentralizada, controle central</h2>
+                <h2 className="text-3xl font-bold mb-4 text-white">{t("landing.sections.operation.title")}</h2>
                 <p className="text-white/90 text-lg">
-                  Acompanhe vegetação, travessias, estruturas e sensores em um único painel técnico. Decisões baseadas em
-                  dados reais, processados em tempo real.
+                  {t("landing.sections.operation.description")}
                 </p>
               </motion.div>
 
@@ -327,7 +321,7 @@ const Landing = () => {
               >
                 <img
                   src={controlRoom}
-                  alt="Centro de Controle Smartline"
+                  alt={t("landing.sections.operation.imageAlt")}
                   className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
                 />
               </motion.div>
@@ -348,7 +342,7 @@ const Landing = () => {
               >
                 <img
                   src={teamAnalysis}
-                  alt="Equipe Analisando Ativos"
+                  alt={t("landing.sections.team.imageAlt")}
                   className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
                 />
               </motion.div>
@@ -360,11 +354,9 @@ const Landing = () => {
                 transition={{ duration: 0.6 }}
                 className="tech-card p-8 order-1 lg:order-2"
               >
-                <h2 className="text-3xl font-bold mb-4 text-white">Análise colaborativa e preditiva</h2>
+                <h2 className="text-3xl font-bold mb-4 text-white">{t("landing.sections.team.title")}</h2>
                 <p className="text-white/90 text-lg">
-                  Equipes multidisciplinares trabalham com gêmeos digitais 3D, identificando riscos antes que se tornem
-                  problemas. IA e machine learning detectam padrões objetivamente, priorizados que estavam invisíveis ao
-                  olho humano.
+                  {t("landing.sections.team.description")}
                 </p>
               </motion.div>
             </div>
@@ -382,10 +374,9 @@ const Landing = () => {
                 transition={{ duration: 0.6 }}
                 className="tech-card p-8"
               >
-                <h2 className="text-3xl font-bold mb-4 text-white">Dashboards inteligentes e acionáveis</h2>
+                <h2 className="text-3xl font-bold mb-4 text-white">{t("landing.sections.dashboards.title")}</h2>
                 <p className="text-white/90 text-lg">
-                  Visualize KPIs críticos, níveis de risco e anomalias. Desenhe e estude tendências, tudo numa interface
-                  intuitiva e acessível.
+                  {t("landing.sections.dashboards.description")}
                 </p>
               </motion.div>
 
@@ -398,7 +389,7 @@ const Landing = () => {
               >
                 <img
                   src={dashboardControl}
-                  alt="Dashboard de Controle"
+                  alt={t("landing.sections.dashboards.imageAlt")}
                   className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
                 />
               </motion.div>
@@ -419,7 +410,7 @@ const Landing = () => {
               >
                 <img
                   src="/training.png"
-                  alt="Treinamento e Capacitação"
+                  alt={t("landing.sections.trainingPreview.imageAlt")}
                   className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
                 />
               </motion.div>
@@ -431,13 +422,10 @@ const Landing = () => {
                 transition={{ duration: 0.6 }}
                 className="tech-card p-8 order-1 lg:order-2"
               >
-                <h2 className="text-3xl font-bold mb-4 text-white">Treinamento & Capacitação</h2>
-                <p className="text-white/90 text-lg mb-4">
-                  Capacite sua equipe para estudar nuvem de pontos, gerar camadas e indicadores e transformar dados em
-                  informação para decisões ágeis na gestão de linhas.
-                </p>
+                <h2 className="text-3xl font-bold mb-4 text-white">{t("landing.sections.trainingPreview.title")}</h2>
+                <p className="text-white/90 text-lg mb-4">{t("landing.sections.trainingPreview.description")}</p>
                 <a href="#treinamento" className="btn-primary inline-block">
-                  Ver Programa de Treinamento
+                  {t("landing.sections.trainingPreview.cta")}
                 </a>
               </motion.div>
             </div>
@@ -454,11 +442,11 @@ const Landing = () => {
               className="text-center mb-16"
             >
               <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white">
-                Tecnologia <span className="gradient-text">de Ponta</span>
+                {t("landing.sections.technology.title.before")}{" "}
+                <span className="gradient-text">{t("landing.sections.technology.title.highlight")}</span>
               </h2>
               <p className="text-lg text-white/70 max-w-2xl mx-auto">
-                Integração completa de sensores e câmeras, classificação de nuvens de pontos com IA e análise preditiva
-                para máxima eficiência operacional.
+                {t("landing.sections.technology.description")}
               </p>
             </motion.div>
 
@@ -472,7 +460,7 @@ const Landing = () => {
                   transition={{ delay: index * 0.1 }}
                   className="tech-card overflow-hidden group relative"
                 >
-                  <div className="postit">simulação</div>
+                  <div className="postit">{t("common.simulation")}</div>
                   <div className="h-48 overflow-hidden relative">
                     <img
                       src={feature.image}
@@ -502,10 +490,11 @@ const Landing = () => {
               className="text-center mb-16"
             >
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                Desafios em <span className="text-destructive">Linhas de Transmissão</span>
+                {t("landing.challenges.title.before")}{" "}
+                <span className="text-destructive">{t("landing.challenges.title.highlight")}</span>
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Desafios críticos que impactam operações de transmissão
+                {t("landing.challenges.subtitle")}
               </p>
             </motion.div>
 
@@ -513,34 +502,34 @@ const Landing = () => {
               {[
                 {
                   icon: AlertTriangle,
-                  title: "Interrupções Não Programadas",
-                  description: "Falhas inesperadas geram multas regulatórias e perda de receita significativa",
+                  title: t("landing.challenges.items.unplanned.title"),
+                  description: t("landing.challenges.items.unplanned.description"),
                 },
                 {
                   icon: TreePine,
-                  title: "Risco de Vegetação",
-                  description: "Crescimento vegetal não controlado causa desligamentos e riscos operacionais",
+                  title: t("landing.challenges.items.vegetation.title"),
+                  description: t("landing.challenges.items.vegetation.description"),
                 },
                 {
                   icon: FileWarning,
-                  title: "Não Conformidade Regulatória",
-                  description: "Dificuldade em atender normas técnicas como NBR 5422 de forma contínua",
+                  title: t("landing.challenges.items.regulatory.title"),
+                  description: t("landing.challenges.items.regulatory.description"),
                 },
                 {
                   icon: ClipboardCheck,
-                  title: "Inspeções Ineficientes",
-                  description: "Métodos manuais são custosos, demorados e sujeitos a falhas humanas",
+                  title: t("landing.challenges.items.inspections.title"),
+                  description: t("landing.challenges.items.inspections.description"),
                 },
                 {
                   icon: Users,
-                  title: "Tempo e Segurança na Escalada de Estruturas",
+                  title: t("landing.challenges.items.climbing.title"),
                   description:
-                    "Escaladas manuais expõem equipes a riscos de queda, acidentes e condições climáticas adversas, além de serem demoradas e dispendiosas",
+                    t("landing.challenges.items.climbing.description"),
                 },
                 {
                   icon: MapPin,
-                  title: "Ocupação Irregular de Faixa",
-                  description: "Invasões e construções não autorizadas na faixa de servidão comprometem a segurança",
+                  title: t("landing.challenges.items.rightOfWay.title"),
+                  description: t("landing.challenges.items.rightOfWay.description"),
                 },
               ].map((challenge, index) => (
                 <motion.div
@@ -576,10 +565,10 @@ const Landing = () => {
               className="text-center mb-16"
             >
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                <span className="gradient-text">Soluções SmartLine</span>
+                <span className="gradient-text">{t("landing.solutions.title")}</span>
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Tecnologia preditiva para cada desafio operacional
+                {t("landing.solutions.subtitle")}
               </p>
             </motion.div>
 
@@ -587,40 +576,40 @@ const Landing = () => {
               {[
                 {
                   icon: Brain,
-                  title: "Monitoramento Preditivo",
-                  description: "IA identifica padrões de falha antes que ocorram, permitindo manutenção preventiva",
+                  title: t("landing.solutions.items.predictiveMonitoring.title"),
+                  description: t("landing.solutions.items.predictiveMonitoring.description"),
                 },
                 {
                   icon: Map,
-                  title: "Mapas de Risco de Vegetação",
-                  description: "Análise geoespacial identifica pontos críticos, otimizando cronogramas de poda",
+                  title: t("landing.solutions.items.vegetationRisk.title"),
+                  description: t("landing.solutions.items.vegetationRisk.description"),
                 },
                 {
                   icon: FileCheck,
-                  title: "Validação de Conformidade NBR 5422",
-                  description: "Verificação automática de distâncias mínimas e parâmetros normativos em tempo real",
+                  title: t("landing.solutions.items.nbrValidation.title"),
+                  description: t("landing.solutions.items.nbrValidation.description"),
                 },
                 {
                   icon: BarChart3,
-                  title: "Analytics de Eventos",
-                  description: "Análise avançada de dados históricos para identificar tendências e causas raiz",
+                  title: t("landing.solutions.items.eventAnalytics.title"),
+                  description: t("landing.solutions.items.eventAnalytics.description"),
                 },
                 {
                   icon: Home,
-                  title: "Gestão de Ocupação de Faixa",
+                  title: t("landing.solutions.items.rightOfWay.title"),
                   description:
-                    "Controle automatizado de invasões com notificações, processos judiciais e timeline completa",
+                    t("landing.solutions.items.rightOfWay.description"),
                 },
                 {
                   icon: Plane,
-                  title: "Missões Autônomas para Drones",
+                  title: t("landing.solutions.items.autonomousDrones.title"),
                   description:
-                    "Inspeções automatizadas com biblioteca de missões e solicitação para trechos com gêmeo digital",
+                    t("landing.solutions.items.autonomousDrones.description"),
                 },
                 {
                   icon: Box,
-                  title: "Exploração de Gêmeos Digitais",
-                  description: "Análise preditiva avançada através de modelos digitais 3D das linhas de transmissão",
+                  title: t("landing.solutions.items.digitalTwins.title"),
+                  description: t("landing.solutions.items.digitalTwins.description"),
                 },
               ].map((solution, index) => (
                 <motion.div
@@ -657,11 +646,11 @@ const Landing = () => {
               className="text-center mb-16"
             >
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                <span className="text-destructive">Desafios Reais</span> ⚡{" "}
-                <span className="gradient-text">Soluções Concretas</span>
+                <span className="text-destructive">{t("landing.moduleShowcase.title.before")}</span> ⚡{" "}
+                <span className="gradient-text">{t("landing.moduleShowcase.title.after")}</span>
               </h2>
               <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                Para cada desafio operacional crítico, a Smartline oferece uma solução tecnológica comprovada
+                {t("landing.moduleShowcase.subtitle")}
               </p>
             </motion.div>
 
@@ -687,18 +676,18 @@ const Landing = () => {
                         <item.icon className="w-6 h-6 text-destructive" />
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-muted-foreground mb-1">
-                          DESAFIO - {item.categoria}
+                          <div className="text-xs font-semibold text-muted-foreground mb-1">
+                          {t("landing.moduleShowcase.challengeLabel", { category: t(item.categoryKey) })}
                         </div>
                         <h3 className="text-xl font-bold text-destructive">
-                          {item.desafio.titulo}
+                          {t(item.challenge.titleKey)}
                         </h3>
                       </div>
                     </div>
-                    <p className="text-muted-foreground mb-3">{item.desafio.descricao}</p>
+                    <p className="text-muted-foreground mb-3">{t(item.challenge.descriptionKey)}</p>
                     <div className="p-3 bg-destructive/5 rounded-lg border border-destructive/20">
-                      <div className="text-xs font-semibold text-destructive mb-1">IMPACTO</div>
-                      <div className="text-sm text-foreground">{item.desafio.impacto}</div>
+                      <div className="text-xs font-semibold text-destructive mb-1">{t("landing.moduleShowcase.impact")}</div>
+                      <div className="text-sm text-foreground">{t(item.challenge.impactKey)}</div>
                     </div>
                   </div>
 
@@ -715,23 +704,23 @@ const Landing = () => {
                       </div>
                       <div>
                         <div className="text-xs font-semibold text-muted-foreground mb-1">
-                          SOLUÇÃO - {item.modulo}
+                          {t("landing.moduleShowcase.solutionLabel", { module: t(item.moduleKey) })}
                         </div>
                         <h3 className="text-xl font-bold text-primary">
-                          {item.solucao.titulo}
+                          {t(item.solution.titleKey)}
                         </h3>
                       </div>
                     </div>
-                    <p className="text-muted-foreground mb-3">{item.solucao.descricao}</p>
+                    <p className="text-muted-foreground mb-3">{t(item.solution.descriptionKey)}</p>
                     <div className="p-3 bg-primary/5 rounded-lg border border-primary/20 mb-4">
-                      <div className="text-xs font-semibold text-primary mb-1">BENEFÍCIO</div>
-                      <div className="text-sm text-foreground">{item.solucao.beneficio}</div>
+                      <div className="text-xs font-semibold text-primary mb-1">{t("landing.moduleShowcase.benefit")}</div>
+                      <div className="text-sm text-foreground">{t(item.solution.benefitKey)}</div>
                     </div>
                     <Link
                       to={item.path}
                       className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
                     >
-                      Ver módulo completo →
+                      {t("landing.moduleShowcase.viewModule")} →
                     </Link>
                   </div>
                 </motion.div>
@@ -750,10 +739,12 @@ const Landing = () => {
               className="text-center mb-16"
             >
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                Benefícios <span className="gradient-text">Comprovados</span> para Seu Negócio
+                {t("landing.benefits.title.before")}{" "}
+                <span className="gradient-text">{t("landing.benefits.title.highlight")}</span>{" "}
+                {t("landing.benefits.title.after")}
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                ROI mensurável e impacto direto nos resultados operacionais
+                {t("landing.benefits.subtitle")}
               </p>
             </motion.div>
 
@@ -762,26 +753,26 @@ const Landing = () => {
                 {
                   icon: Clock,
                   percentage: "85%",
-                  title: "Redução de Downtime",
-                  description: "Menos interrupções - Causa Árvore - através de manutenção preditiva",
+                  title: t("landing.benefits.items.downtime.title"),
+                  description: t("landing.benefits.items.downtime.description"),
                 },
                 {
                   icon: ShieldCheck,
                   percentage: "80%",
-                  title: "Melhoria na Segurança",
-                  description: "Identificação proativa de riscos operacionais sem escalada",
+                  title: t("landing.benefits.items.safety.title"),
+                  description: t("landing.benefits.items.safety.description"),
                 },
                 {
                   icon: DollarSign,
                   percentage: "60%",
-                  title: "Economia de Custos",
-                  description: "Redução significativa em custos operacionais e de manutenção",
+                  title: t("landing.benefits.items.cost.title"),
+                  description: t("landing.benefits.items.cost.description"),
                 },
                 {
                   icon: CheckCircle2,
                   percentage: "100%",
-                  title: "Confiança em Conformidade",
-                  description: "Atendimento contínuo às normas técnicas e regulatórias",
+                  title: t("landing.benefits.items.compliance.title"),
+                  description: t("landing.benefits.items.compliance.description"),
                 },
               ].map((benefit, index) => (
                 <motion.div
@@ -814,15 +805,14 @@ const Landing = () => {
               transition={{ duration: 0.6 }}
               className="text-center mb-12"
             >
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 flex items-center gap-3 justify-center">
-                <GraduationCap className="w-8 h-8 text-primary" />
-                Programa de Treinamento & Capacitação
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                Do estudo de nuvens de pontos à geração de camadas técnicas e indicadores: capacitamos sua equipe
-                para transformar dados em informação e acelerar a tomada de decisão na gestão de linhas.
-              </p>
-            </motion.div>
+	              <h2 className="text-4xl md:text-5xl font-bold mb-4 flex items-center gap-3 justify-center">
+	                <GraduationCap className="w-8 h-8 text-primary" />
+	                {t("landing.training.program.title")}
+	              </h2>
+	              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+	                {t("landing.training.program.subtitle")}
+	              </p>
+	            </motion.div>
 
             <div className="grid lg:grid-cols-2 gap-8 items-stretch">
               {/* Conteúdo */}
@@ -830,88 +820,89 @@ const Landing = () => {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="tech-card p-8 h-full"
-              >
-                <h3 className="text-2xl font-semibold mb-4">Trilhas práticas</h3>
-                <ul className="space-y-3 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-3">
-                    <Layers className="w-5 h-5 text-primary mt-0.5" />
-                    <span>
-                      Estudo e tratamento de <strong className="text-foreground">nuvens de pontos (LAS/LAZ)</strong>,
-                      ortomosaicos e registro 3D para gêmeos digitais.
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <FileCheck className="w-5 h-5 text-primary mt-0.5" />
-                    <span>
-                      <strong className="text-foreground">Geração de dados</strong>: extração de feições, perfis e
-                      métricas; validação e qualidade (QC) com boas práticas.
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <BarChart3 className="w-5 h-5 text-primary mt-0.5" />
-                    <span>
-                      <strong className="text-foreground">Jornada dados → informação → decisão</strong> com
-                      dashboards, alertas e compliance aplicados à operação.
-                    </span>
-                  </li>
-                </ul>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Badge variant="secondary">Workshops hands‑on</Badge>
-                  <Badge variant="secondary">Onboarding guiado</Badge>
-                  <Badge variant="secondary">Mentoria técnica</Badge>
-                </div>
-              </motion.div>
+	                transition={{ duration: 0.6, delay: 0.1 }}
+	                className="tech-card p-8 h-full"
+	              >
+	                <h3 className="text-2xl font-semibold mb-4">{t("landing.training.tracks.title")}</h3>
+	                <ul className="space-y-3 text-sm text-muted-foreground">
+	                  <li className="flex items-start gap-3">
+	                    <Layers className="w-5 h-5 text-primary mt-0.5" />
+	                    <span>
+	                      {t("landing.training.tracks.items.pointClouds.before")}{" "}
+	                      <strong className="text-foreground">{t("landing.training.tracks.items.pointClouds.highlight")}</strong>
+	                      {t("landing.training.tracks.items.pointClouds.after")}
+	                    </span>
+	                  </li>
+	                  <li className="flex items-start gap-3">
+	                    <FileCheck className="w-5 h-5 text-primary mt-0.5" />
+	                    <span>
+	                      <strong className="text-foreground">{t("landing.training.tracks.items.dataGeneration.highlight")}</strong>
+	                      {t("landing.training.tracks.items.dataGeneration.after")}
+	                    </span>
+	                  </li>
+	                  <li className="flex items-start gap-3">
+	                    <BarChart3 className="w-5 h-5 text-primary mt-0.5" />
+	                    <span>
+	                      <strong className="text-foreground">{t("landing.training.tracks.items.journey.highlight")}</strong>
+	                      {t("landing.training.tracks.items.journey.after")}
+	                    </span>
+	                  </li>
+	                </ul>
+	                <div className="mt-6 flex flex-wrap gap-3">
+	                  <Badge variant="secondary">{t("landing.training.tracks.badges.workshops")}</Badge>
+	                  <Badge variant="secondary">{t("landing.training.tracks.badges.onboarding")}</Badge>
+	                  <Badge variant="secondary">{t("landing.training.tracks.badges.mentoring")}</Badge>
+	                </div>
+	              </motion.div>
 
               {/* Modalidades de adoção */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.15 }}
-                className="tech-card p-8 h-full"
-              >
-                <h3 className="text-2xl font-semibold mb-4">Modalidades de adoção</h3>
-                <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <CloudUpload className="w-6 h-6 text-primary shrink-0" />
-                    <div>
-                      <div className="font-semibold">Terceirização completa</div>
-                      <p className="text-sm text-muted-foreground">
-                        Subimos seus dados desde o início (upload, padronização e indexação) com SLA e rastreabilidade.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <Users className="w-6 h-6 text-primary shrink-0" />
-                    <div>
-                      <div className="font-semibold">Operação híbrida</div>
-                      <p className="text-sm text-muted-foreground">
-                        Seu time decide quando trabalhar os dados. Nosso suporte carrega e publica na plataforma sob demanda.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <GraduationCap className="w-6 h-6 text-primary shrink-0" />
-                    <div>
-                      <div className="font-semibold">Autonomia assistida</div>
-                      <p className="text-sm text-muted-foreground">
-                        Capacitação contínua para que a equipe evolua até a autonomia total, com tutoria Smartline.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+	                transition={{ duration: 0.6, delay: 0.15 }}
+	                className="tech-card p-8 h-full"
+	              >
+	                <h3 className="text-2xl font-semibold mb-4">{t("landing.training.adoption.title")}</h3>
+	                <div className="space-y-4">
+	                  <div className="flex gap-3">
+	                    <CloudUpload className="w-6 h-6 text-primary shrink-0" />
+	                    <div>
+	                      <div className="font-semibold">{t("landing.training.adoption.items.fullOutsourcing.title")}</div>
+	                      <p className="text-sm text-muted-foreground">
+	                        {t("landing.training.adoption.items.fullOutsourcing.description")}
+	                      </p>
+	                    </div>
+	                  </div>
+	                  <div className="flex gap-3">
+	                    <Users className="w-6 h-6 text-primary shrink-0" />
+	                    <div>
+	                      <div className="font-semibold">{t("landing.training.adoption.items.hybrid.title")}</div>
+	                      <p className="text-sm text-muted-foreground">
+	                        {t("landing.training.adoption.items.hybrid.description")}
+	                      </p>
+	                    </div>
+	                  </div>
+	                  <div className="flex gap-3">
+	                    <GraduationCap className="w-6 h-6 text-primary shrink-0" />
+	                    <div>
+	                      <div className="font-semibold">{t("landing.training.adoption.items.guided.title")}</div>
+	                      <p className="text-sm text-muted-foreground">
+	                        {t("landing.training.adoption.items.guided.description")}
+	                      </p>
+	                    </div>
+	                  </div>
+	                </div>
 
-                <div className="mt-6 flex flex-wrap gap-4">
-                  <Button className="btn-primary" onClick={() => setContactOpen(true)}>
-                    Quero capacitar meu time
-                  </Button>
-                  <Link to="/upload" className="btn-secondary">
-                    Ver fluxo de dados
-                  </Link>
-                </div>
-              </motion.div>
+	                <div className="mt-6 flex flex-wrap gap-4">
+	                  <Button className="btn-primary" onClick={() => setContactOpen(true)}>
+	                    {t("landing.training.adoption.ctas.trainTeam")}
+	                  </Button>
+	                  <Link to="/upload" className="btn-secondary">
+	                    {t("landing.training.adoption.ctas.viewDataFlow")}
+	                  </Link>
+	                </div>
+	              </motion.div>
             </div>
           </div>
         </section>
@@ -928,15 +919,14 @@ const Landing = () => {
             >
               <div>
                 <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
-                  <Clock className="w-7 h-7 text-primary" /> Automações Inteligentes
+                  <Clock className="w-7 h-7 text-primary" /> {t("landing.automations.title")}
                 </h2>
                 <p className="text-muted-foreground max-w-2xl">
-                  Status ao vivo das rotinas críticas: ingestão FIRMS (NASA/VIIRS), processamento de mídias, indexação de
-                  nuvens de pontos e análises operacionais. Tudo pronto para rodar 24/7.
+                  {t("landing.automations.subtitle")}
                 </p>
                 {!apiAvailable && (
                   <p className="text-xs mt-2 text-amber-300/80">
-                    API offline no momento — exibindo indicadores em modo demonstração (nenhuma chamada será feita).
+                    {t("landing.automations.apiOffline")}
                   </p>
                 )}
               </div>
@@ -952,7 +942,7 @@ const Landing = () => {
                   transition={{ duration: 0.4 }}
                   className="tech-card p-6 space-y-4 border border-white/10 relative"
                 >
-                  <div className="postit">simulação</div>
+                  <div className="postit">{t("common.simulation")}</div>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-lg font-semibold text-white">{card.title}</h3>
@@ -982,14 +972,15 @@ const Landing = () => {
               className="tech-card p-12 text-center"
             >
               <h2 className="text-4xl font-bold mb-6">
-                Pronto para <span className="gradient-text">Transformar</span> sua Operação?
+                {t("landing.cta.title.before")}{" "}
+                <span className="gradient-text">{t("landing.cta.title.highlight")}</span>{" "}
+                {t("landing.cta.title.after")}
               </h2>
               <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-                Junte-se às empresas que já utilizam o Smartline AssetHealth para maximizar a eficiência e segurança de
-                seus ativos elétricos.
+                {t("landing.cta.subtitle")}
               </p>
               <Link to="/dashboard" className="btn-primary text-lg inline-block">
-                Começar Agora
+                {t("landing.cta.button")}
               </Link>
             </motion.div>
           </div>
@@ -998,7 +989,7 @@ const Landing = () => {
         {/* Footer */}
         <footer className="border-t border-white/10 py-8 px-4">
           <div className="container mx-auto text-center text-white/60">
-            <p>© 2025 Smartline AssetHealth. Todos os direitos reservados.</p>
+            <p>{t("landing.footer.rights", { year: "2025" })}</p>
           </div>
         </footer>
       </div>
@@ -1006,11 +997,11 @@ const Landing = () => {
       <Dialog open={contactOpen} onOpenChange={setContactOpen}>
         <DialogContent className="w-[95vw] sm:max-w-3xl lg:max-w-4xl" aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle>Contato Smartline</DialogTitle>
+            <DialogTitle>{t("landing.contact.dialog.title")}</DialogTitle>
           </DialogHeader>
           <div className="h-[80vh]">
             <iframe
-              title="Formulário de Contato Smartline"
+              title={t("landing.contact.dialog.iframeTitle")}
               src="https://form.jotform.com/252925666837674"
               className="w-full h-full rounded-md border"
               allowFullScreen
@@ -1018,8 +1009,12 @@ const Landing = () => {
             />
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            As respostas são armazenadas com segurança no Jotform para acompanhamento da equipe Smartline.
-            Preferir e-mail direto? <a className="text-primary underline" href={contactMailto}>Envie para {ENV.CONTACT_EMAIL}</a>.
+            {t("landing.contact.dialog.note")}{" "}
+            {t("landing.contact.dialog.preferEmail")}{" "}
+            <a className="text-primary underline" href={contactMailto}>
+              {t("landing.contact.dialog.sendTo", { email: ENV.CONTACT_EMAIL })}
+            </a>
+            .
           </p>
         </DialogContent>
       </Dialog>
@@ -1027,11 +1022,11 @@ const Landing = () => {
       <Dialog open={surveyOpen} onOpenChange={setSurveyOpen}>
         <DialogContent className="w-[95vw] sm:max-w-3xl lg:max-w-4xl" aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle>Pesquisa de Acesso Smartline</DialogTitle>
+            <DialogTitle>{t("landing.survey.dialog.title")}</DialogTitle>
           </DialogHeader>
           <div className="h-[80vh]">
             <iframe
-              title="Pesquisa de Acesso Smartline"
+              title={t("landing.survey.dialog.iframeTitle")}
               src="https://form.jotform.com/251775321495058"
               className="w-full h-full rounded-md border"
               allowFullScreen
@@ -1039,7 +1034,7 @@ const Landing = () => {
             />
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Suas respostas ajudam a personalizar o acesso e a experiência no Smartline AssetHealth.
+            {t("landing.survey.dialog.note")}
           </p>
         </DialogContent>
       </Dialog>

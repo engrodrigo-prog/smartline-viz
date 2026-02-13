@@ -1,4 +1,4 @@
-# Arquitetura do Front-end SmartLine Viz
+# Arquitetura do Front-end SmartLine
 
 Este documento descreve como o app web está estruturado atualmente (abril/2024) e onde os dados são orquestrados entre mocks locais e integrações reais (Supabase + API Hono).
 

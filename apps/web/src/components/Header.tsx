@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useDatasetContext } from "@/context/DatasetContext";
 import { ENV } from "@/config/env";
 import { useQuery } from "@tanstack/react-query";
+import LanguageMenu from "@/components/LanguageMenu";
+import { useI18n } from "@/context/I18nContext";
 
 interface HeaderProps {
   title: string;
@@ -26,6 +28,7 @@ const Header = ({ title, subtitle }: HeaderProps) => {
   const { toast } = useToast();
   const { resetDataset, lastUpdated } = useDatasetContext();
   const [isAdmin, setIsAdmin] = useState(false);
+  const { t, formatDateTime } = useI18n();
 
   useEffect(() => {
     if (!supabase) return;
@@ -67,14 +70,14 @@ const Header = ({ title, subtitle }: HeaderProps) => {
         window.localStorage.removeItem("smartline-demo-user");
       }
       toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado com sucesso.",
+        title: t("header.toasts.logoutSuccess.title"),
+        description: t("header.toasts.logoutSuccess.description"),
       });
       navigate("/login");
     } catch (error: any) {
       toast({
-        title: "Erro ao sair",
-        description: error?.message ?? "Não foi possível encerrar a sessão.",
+        title: t("header.toasts.logoutError.title"),
+        description: error?.message ?? t("header.toasts.logoutError.description"),
         variant: "destructive",
       });
     }
@@ -83,8 +86,8 @@ const Header = ({ title, subtitle }: HeaderProps) => {
   const handleResetDemo = () => {
     resetDataset();
     toast({
-      title: "Dataset demo reiniciado",
-      description: "Os dados simulados foram restaurados.",
+      title: t("header.toasts.demoReset.title"),
+      description: t("header.toasts.demoReset.description"),
     });
   };
 
@@ -98,12 +101,14 @@ const Header = ({ title, subtitle }: HeaderProps) => {
           )}
           {ENV.DEMO_MODE && (
             <p className="text-[11px] text-muted-foreground mt-1">
-              Demo ativo {lastUpdated ? `• atualizado em ${new Date(lastUpdated).toLocaleString("pt-BR")}` : ""}
+              {t("header.demo.active")}{" "}
+              {lastUpdated ? `• ${t("header.demo.updatedAt", { date: formatDateTime(lastUpdated) })}` : ""}
             </p>
           )}
         </div>
 
         <div className="flex items-center gap-3">
+          <LanguageMenu showShortLabel={false} />
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
@@ -119,7 +124,7 @@ const Header = ({ title, subtitle }: HeaderProps) => {
           {ENV.DEMO_MODE && (
             <Button variant="outline" size="sm" onClick={handleResetDemo} className="flex items-center gap-2">
               <RefreshCw className="w-4 h-4" />
-              Reset demo
+              {t("header.demo.reset")}
             </Button>
           )}
 
@@ -129,21 +134,21 @@ const Header = ({ title, subtitle }: HeaderProps) => {
                 <User className="w-5 h-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>{t("header.account.label")}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <User className="w-4 h-4 mr-2" />
-                Perfil
+                {t("header.account.profile")}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="w-4 h-4 mr-2" />
-                Configurações
+                {t("header.account.settings")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                 <LogOut className="w-4 h-4 mr-2" />
-                Sair
+                {t("header.account.logout")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

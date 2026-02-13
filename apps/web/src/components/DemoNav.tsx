@@ -1,17 +1,19 @@
 import { Link, useLocation } from "react-router-dom";
 import { Compass, Map, Upload, Flame, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/context/I18nContext";
 
 const demoLinks = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/visual/mapa", label: "Mapa", icon: Map },
-  { to: "/upload", label: "Upload", icon: Upload },
-  { to: "/ambiental/queimadas", label: "Queimadas", icon: Flame },
-  { to: "/", label: "Landing", icon: Compass },
+  { to: "/dashboard", labelKey: "demoNav.links.dashboard", icon: LayoutDashboard },
+  { to: "/visual/mapa", labelKey: "demoNav.links.map", icon: Map },
+  { to: "/upload", labelKey: "demoNav.links.upload", icon: Upload },
+  { to: "/ambiental/queimadas", labelKey: "demoNav.links.wildfires", icon: Flame },
+  { to: "/", labelKey: "demoNav.links.landing", icon: Compass },
 ];
 
 const DemoNav = () => {
   const location = useLocation();
+  const { t } = useI18n();
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-6 py-2 bg-gradient-to-r from-emerald-500/10 via-sky-500/10 to-purple-500/10 border-b border-border/50">
@@ -30,7 +32,7 @@ const DemoNav = () => {
             )}
           >
             <Icon className="w-4 h-4" />
-            {item.label}
+            {t(item.labelKey)}
           </Link>
         );
       })}
@@ -39,4 +41,3 @@ const DemoNav = () => {
 };
 
 export default DemoNav;
-
