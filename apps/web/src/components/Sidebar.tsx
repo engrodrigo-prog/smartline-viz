@@ -98,8 +98,6 @@ const menuGroups: MenuGroup[] = [
     legacyTitle: "Vegetação (Poda & Roçada)",
     titleKey: "sidebar.categories.vegetationOps",
     icon: Scissors,
-    featured: true,
-    badgeText: "Campo",
     items: [
       { id: "vegDashboard", titleKey: "sidebar.items.vegDashboard", path: "/vegetacao", icon: LayoutDashboard },
       { id: "vegAnomalias", titleKey: "sidebar.items.vegAnomalias", path: "/vegetacao/anomalias", icon: AlertTriangle },

@@ -258,26 +258,15 @@ const resolveTenantForToken = async (token: string) => {
     return { ok: false as const, status: 500 as const, error: 'service_role_not_configured' as const };
   }
 
-  let auth: any;
-  let authError: any;
-  try {
-    const result = await supabase.auth.getUser(token);
-    auth = result.data;
-    authError = result.error;
-  } catch (err) {
-    authError = asErrorLike(err);
-  }
-
-  const user = auth?.user ?? null;
-  if (authError || !user) {
-    const status = statusForSupabaseAuthError(authError) ?? 401;
-    return { ok: false as const, status: status as 401, error: authError?.message ?? 'invalid_token' };
+  const userId = jwtSubject(token);
+  if (!userId) {
+    return { ok: false as const, status: 401 as const, error: 'invalid_token' };
   }
 
   let appUser: any;
   let appUserError: any;
   try {
-    const result = await supabase.from('app_user').select('tenant_id').eq('id', user.id).maybeSingle();
+    const result = await supabase.from('app_user').select('tenant_id').eq('id', userId).maybeSingle();
     appUser = result.data;
     appUserError = result.error;
   } catch (err) {
@@ -733,17 +722,8 @@ app.post('/files', async (c) => {
   const supabase = createRlsClient(`Bearer ${token}`);
   if (!supabase) return c.json({ error: 'supabase_not_configured' }, 500);
 
-  let auth: any;
-  let authError: any;
-  try {
-    const result = await supabase.auth.getUser(token);
-    auth = result.data;
-    authError = result.error;
-  } catch (err) {
-    authError = asErrorLike(err);
-  }
-  const user = auth?.user ?? null;
-  if (authError || !user) {
+  const userId = jwtSubject(token);
+  if (!userId) {
     return c.json({ error: 'Invalid authentication token' }, 401);
   }
 
@@ -758,7 +738,7 @@ app.post('/files', async (c) => {
   const { data: appUser, error: appUserError } = await supabase
     .from('app_user')
     .select('tenant_id')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle();
 
   if (appUserError) {
@@ -808,7 +788,7 @@ app.post('/files', async (c) => {
       original_name: typeof body?.original_name === 'string' ? body.original_name : null,
       mime_type: typeof body?.mime_type === 'string' ? body.mime_type : null,
       size_bytes: typeof body?.size_bytes === 'number' ? Math.round(body.size_bytes) : null,
-      created_by: user.id,
+      created_by: userId,
       geom: hasPoint ? `SRID=4326;POINT(${lon} ${lat})` : null,
       meta: typeof body?.meta === 'object' && body.meta !== null ? body.meta : {},
     })
