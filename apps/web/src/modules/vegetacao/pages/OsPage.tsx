@@ -16,6 +16,7 @@ import { useVegDeleteOs, useVegOs, useVegOsMutation } from "@/modules/vegetacao/
 import LocationPicker from "@/modules/vegetacao/components/LocationPicker";
 import EvidencePanel from "@/modules/vegetacao/components/EvidencePanel";
 import { locationPayloadFromRow } from "@/modules/vegetacao/utils/location";
+import { useI18n } from "@/context/I18nContext";
 
 type FormState = {
   id?: string;
@@ -42,24 +43,19 @@ const emptyForm: FormState = {
   location: null,
 };
 
-const STATUS_LABEL: Record<VegWorkOrderStatus, string> = {
-  pending: "Pendente",
-  assigned: "Atribuída",
-  in_progress: "Em execução",
-  executed: "Executada",
-  verified: "Verificada",
-  closed: "Fechada",
-  canceled: "Cancelada",
-};
-
-const PRIORITY_LABEL: Record<VegPriority, string> = {
-  low: "Baixa",
-  medium: "Média",
-  high: "Alta",
-  critical: "Crítica",
-};
+const WORK_ORDER_STATUS_VALUES: VegWorkOrderStatus[] = [
+  "pending",
+  "assigned",
+  "in_progress",
+  "executed",
+  "verified",
+  "closed",
+  "canceled",
+];
+const PRIORITY_VALUES: VegPriority[] = ["low", "medium", "high", "critical"];
 
 export default function OsPage() {
+  const { t, formatDateTime } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
 
@@ -73,6 +69,9 @@ export default function OsPage() {
     const janela = items.filter((o) => Boolean(o.scheduled_start && o.scheduled_end)).length;
     return { total: items.length, pendentes, janela };
   }, [items]);
+
+  const statusLabel = (status: VegWorkOrderStatus) => t(`vegetacao.enums.workOrderStatus.${status}`) || status;
+  const priorityLabel = (priority: VegPriority) => t(`vegetacao.enums.priority.${priority}`) || priority;
 
   const openCreate = () => {
     setForm(emptyForm);
@@ -125,11 +124,11 @@ export default function OsPage() {
         location: normalizeLocation(form.location),
         metadata: {},
       });
-      toast.success("OS salva");
+      toast.success(t("vegetacao.pages.os.toasts.saved"));
       setModalOpen(false);
       refetch();
     } catch (err: any) {
-      toast.error("Falha ao salvar", { description: err?.message ?? String(err) });
+      toast.error(t("vegetacao.pages.os.toasts.saveFailed.title"), { description: err?.message ?? String(err) });
     }
   };
 
@@ -137,49 +136,52 @@ export default function OsPage() {
     if (!form.id) return;
     try {
       await deleteMutation.mutateAsync(form.id);
-      toast.success("OS removida");
+      toast.success(t("vegetacao.pages.os.toasts.removed"));
       setModalOpen(false);
       refetch();
     } catch (err: any) {
-      toast.error("Falha ao remover", { description: err?.message ?? String(err) });
+      toast.error(t("vegetacao.pages.os.toasts.removeFailed.title"), { description: err?.message ?? String(err) });
     }
   };
 
   const columns = [
-    { key: "status", label: "Status", render: (_: any, row: VegWorkOrder) => STATUS_LABEL[row.status] ?? row.status },
-    { key: "priority", label: "Prior.", render: (_: any, row: VegWorkOrder) => PRIORITY_LABEL[row.priority] ?? row.priority },
-    { key: "scheduled_start", label: "Início", render: (_: any, row: VegWorkOrder) => (row.scheduled_start ? new Date(row.scheduled_start).toLocaleString() : "—") },
-    { key: "scheduled_end", label: "Fim", render: (_: any, row: VegWorkOrder) => (row.scheduled_end ? new Date(row.scheduled_end).toLocaleString() : "—") },
-    { key: "created_at", label: "Criada em", render: (_: any, row: VegWorkOrder) => new Date(row.created_at).toLocaleString() },
+    { key: "status", label: t("vegetacao.pages.os.table.status"), render: (_: any, row: VegWorkOrder) => statusLabel(row.status) },
+    { key: "priority", label: t("vegetacao.pages.os.table.priority"), render: (_: any, row: VegWorkOrder) => priorityLabel(row.priority) },
+    { key: "scheduled_start", label: t("vegetacao.pages.os.table.start"), render: (_: any, row: VegWorkOrder) => (row.scheduled_start ? formatDateTime(row.scheduled_start) : "—") },
+    { key: "scheduled_end", label: t("vegetacao.pages.os.table.end"), render: (_: any, row: VegWorkOrder) => (row.scheduled_end ? formatDateTime(row.scheduled_end) : "—") },
+    { key: "created_at", label: t("vegetacao.pages.os.table.createdAt"), render: (_: any, row: VegWorkOrder) => formatDateTime(row.created_at) },
   ];
 
   return (
     <VegetacaoModuleShell>
       <VegetacaoPageHeader
-        title="Ordens de Serviço (OS)"
-        description="Planejamento e despacho: priorização, equipe, janela e execução."
+        title={t("sidebar.items.vegOs")}
+        description={t("vegetacao.pages.os.description")}
         right={
           <Button size="sm" onClick={openCreate}>
-            Criar OS
+            {t("vegetacao.pages.os.actions.create")}
           </Button>
         }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <CardKPI title="Total" value={resumo.total} icon={ClipboardList} />
-        <CardKPI title="Pendentes" value={resumo.pendentes} icon={ClipboardList} />
-        <CardKPI title="Com janela" value={resumo.janela} icon={Clock} />
+        <CardKPI title={t("vegetacao.pages.os.kpis.total")} value={resumo.total} icon={ClipboardList} />
+        <CardKPI title={t("vegetacao.pages.os.kpis.pending")} value={resumo.pendentes} icon={ClipboardList} />
+        <CardKPI title={t("vegetacao.pages.os.kpis.windowed")} value={resumo.janela} icon={Clock} />
       </div>
 
       <div className="tech-card p-4">
         {isLoading ? (
-          <div className="text-sm text-muted-foreground">Carregando…</div>
+          <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
         ) : isError ? (
           <div className="text-sm text-muted-foreground">
-            Falha ao carregar. <Button variant="link" onClick={() => refetch()}>Tentar novamente</Button>
+            {t("vegetacao.pages.os.states.loadFailed")}{" "}
+            <Button variant="link" onClick={() => refetch()}>
+              {t("common.retry")}
+            </Button>
           </div>
         ) : items.length === 0 ? (
-          <div className="text-sm text-muted-foreground">Nenhuma OS encontrada.</div>
+          <div className="text-sm text-muted-foreground">{t("vegetacao.pages.os.states.empty")}</div>
         ) : (
           <DataTableAdvanced data={items} columns={columns} onRowClick={(row) => openEdit(row as VegWorkOrder)} exportable />
         )}
@@ -188,35 +190,35 @@ export default function OsPage() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{form.id ? "Editar OS" : "Criar OS"}</DialogTitle>
+            <DialogTitle>{form.id ? t("vegetacao.pages.os.dialog.editTitle") : t("vegetacao.pages.os.dialog.createTitle")}</DialogTitle>
           </DialogHeader>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label>{t("vegetacao.pages.os.form.status")}</Label>
               <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegWorkOrderStatus }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(STATUS_LABEL) as VegWorkOrderStatus[]).map((s) => (
+                  {WORK_ORDER_STATUS_VALUES.map((s) => (
                     <SelectItem key={s} value={s}>
-                      {STATUS_LABEL[s]}
+                      {statusLabel(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Prioridade</Label>
+              <Label>{t("vegetacao.pages.os.form.priority")}</Label>
               <Select value={form.priority} onValueChange={(v) => setForm((p) => ({ ...p, priority: v as VegPriority }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(PRIORITY_LABEL) as VegPriority[]).map((p) => (
+                  {PRIORITY_VALUES.map((p) => (
                     <SelectItem key={p} value={p}>
-                      {PRIORITY_LABEL[p]}
+                      {priorityLabel(p)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -224,16 +226,16 @@ export default function OsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Anomalia (opcional)</Label>
+              <Label>{t("vegetacao.pages.os.form.anomalyOptional")}</Label>
               <Input value={form.anomaly_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, anomaly_id: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label>Inspeção (opcional)</Label>
+              <Label>{t("vegetacao.pages.os.form.inspectionOptional")}</Label>
               <Input value={form.inspection_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, inspection_id: e.target.value }))} />
             </div>
 
             <div className="space-y-2">
-              <Label>Início previsto</Label>
+              <Label>{t("vegetacao.pages.os.form.scheduledStart")}</Label>
               <Input
                 type="datetime-local"
                 value={toLocalInput(form.scheduled_start)}
@@ -241,7 +243,7 @@ export default function OsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Fim previsto</Label>
+              <Label>{t("vegetacao.pages.os.form.scheduledEnd")}</Label>
               <Input
                 type="datetime-local"
                 value={toLocalInput(form.scheduled_end)}
@@ -250,12 +252,12 @@ export default function OsPage() {
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <Label>Notas</Label>
+              <Label>{t("vegetacao.pages.os.form.notes")}</Label>
               <Textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
             </div>
 
             <div className="md:col-span-2">
-              <Label>Localização</Label>
+              <Label>{t("vegetacao.pages.os.form.location")}</Label>
               <div className="mt-2">
                 <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
               </div>
@@ -267,17 +269,23 @@ export default function OsPage() {
               <EvidencePanel linked={{ workOrderId: form.id }} defaultLocation={form.location} />
             </div>
           ) : (
-            <div className="mt-4 text-sm text-muted-foreground">Salve a OS para anexar evidências.</div>
+            <div className="mt-4 text-sm text-muted-foreground">{t("vegetacao.pages.os.states.saveToAttachEvidence")}</div>
           )}
 
           <DialogFooter className="flex items-center justify-between gap-2">
-            <div>{form.id ? <Button variant="destructive" onClick={remove}>Remover</Button> : null}</div>
+            <div>
+              {form.id ? (
+                <Button variant="destructive" onClick={remove}>
+                  {t("common.remove")}
+                </Button>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setModalOpen(false)}>
-                Cancelar
+                {t("common.cancel")}
               </Button>
               <Button onClick={save} disabled={saveMutation.isPending}>
-                Salvar
+                {t("common.save")}
               </Button>
             </div>
           </DialogFooter>

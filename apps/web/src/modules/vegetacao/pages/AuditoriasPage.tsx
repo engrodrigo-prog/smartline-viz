@@ -16,6 +16,7 @@ import { useVegAuditoriaMutation, useVegAuditorias, useVegDeleteAuditoria } from
 import SpeciesSelect from "@/modules/vegetacao/components/SpeciesSelect";
 import type { VegSpeciesItem } from "@/modules/vegetacao/constants/species";
 import { findVegSpeciesByCommonName } from "@/modules/vegetacao/constants/species";
+import { useI18n } from "@/context/I18nContext";
 
 type FormState = {
   id?: string;
@@ -40,7 +41,10 @@ const emptyForm: FormState = {
   corrective_notes: "",
 };
 
+const AUDIT_RESULT_VALUES: VegAuditResult[] = ["approved", "rejected"];
+
 export default function AuditoriasPage() {
+  const { t, formatDateTime } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
 
@@ -97,12 +101,12 @@ export default function AuditoriasPage() {
     try {
       const parsed: unknown = JSON.parse(form.checklistText || "{}");
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        toast.error("Checklist deve ser um JSON de objeto.");
+        toast.error(t("vegetacao.pages.auditorias.toasts.checklistObject"));
         return;
       }
       checklist = parsed as Record<string, unknown>;
     } catch {
-      toast.error("Checklist deve ser um JSON válido.");
+      toast.error(t("vegetacao.pages.auditorias.toasts.checklistValidJson"));
       return;
     }
 
@@ -126,11 +130,11 @@ export default function AuditoriasPage() {
         corrective_required: form.corrective_required,
         corrective_notes: form.corrective_notes.trim() ? form.corrective_notes.trim() : null,
       });
-      toast.success("Auditoria salva");
+      toast.success(t("vegetacao.pages.auditorias.toasts.saved"));
       setModalOpen(false);
       refetch();
     } catch (err: any) {
-      toast.error("Falha ao salvar", { description: err?.message ?? String(err) });
+      toast.error(t("vegetacao.pages.auditorias.toasts.saveFailed.title"), { description: err?.message ?? String(err) });
     }
   };
 
@@ -138,47 +142,50 @@ export default function AuditoriasPage() {
     if (!form.id) return;
     try {
       await deleteMutation.mutateAsync(form.id);
-      toast.success("Auditoria removida");
+      toast.success(t("vegetacao.pages.auditorias.toasts.removed"));
       setModalOpen(false);
       refetch();
     } catch (err: any) {
-      toast.error("Falha ao remover", { description: err?.message ?? String(err) });
+      toast.error(t("vegetacao.pages.auditorias.toasts.removeFailed.title"), { description: err?.message ?? String(err) });
     }
   };
 
   const columns = [
-    { key: "result", label: "Resultado", render: (_: any, row: VegAudit) => (row.result === "approved" ? "Aprovada" : "Reprovada") },
-    { key: "corrective_required", label: "Corretiva?", render: (_: any, row: VegAudit) => (row.corrective_required ? "Sim" : "Não") },
-    { key: "created_at", label: "Criada em", render: (_: any, row: VegAudit) => new Date(row.created_at).toLocaleString() },
+    { key: "result", label: t("vegetacao.pages.auditorias.table.result"), render: (_: any, row: VegAudit) => t(`vegetacao.enums.auditResult.${row.result}`) || row.result },
+    { key: "corrective_required", label: t("vegetacao.pages.auditorias.table.correctiveRequired"), render: (_: any, row: VegAudit) => (row.corrective_required ? t("common.yes") : t("common.no")) },
+    { key: "created_at", label: t("vegetacao.pages.auditorias.table.createdAt"), render: (_: any, row: VegAudit) => formatDateTime(row.created_at) },
   ];
 
   return (
     <VegetacaoModuleShell>
       <VegetacaoPageHeader
-        title="Auditorias"
-        description="Checklist de qualidade, aprovação/reprovação e ações corretivas."
+        title={t("sidebar.items.vegAuditorias")}
+        description={t("vegetacao.pages.auditorias.description")}
         right={
           <Button size="sm" onClick={openCreate}>
-            Nova auditoria
+            {t("vegetacao.pages.auditorias.actions.create")}
           </Button>
         }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <CardKPI title="Total" value={resumo.total} icon={ClipboardCheck} />
-        <CardKPI title="Aprovadas" value={resumo.aprovadas} icon={CheckCircle2} />
-        <CardKPI title="Reprovadas" value={resumo.reprovadas} icon={XCircle} />
+        <CardKPI title={t("vegetacao.pages.auditorias.kpis.total")} value={resumo.total} icon={ClipboardCheck} />
+        <CardKPI title={t("vegetacao.pages.auditorias.kpis.approved")} value={resumo.aprovadas} icon={CheckCircle2} />
+        <CardKPI title={t("vegetacao.pages.auditorias.kpis.rejected")} value={resumo.reprovadas} icon={XCircle} />
       </div>
 
       <div className="tech-card p-4">
         {isLoading ? (
-          <div className="text-sm text-muted-foreground">Carregando…</div>
+          <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
         ) : isError ? (
           <div className="text-sm text-muted-foreground">
-            Falha ao carregar. <Button variant="link" onClick={() => refetch()}>Tentar novamente</Button>
+            {t("vegetacao.pages.auditorias.states.loadFailed")}{" "}
+            <Button variant="link" onClick={() => refetch()}>
+              {t("common.retry")}
+            </Button>
           </div>
         ) : items.length === 0 ? (
-          <div className="text-sm text-muted-foreground">Nenhuma auditoria encontrada.</div>
+          <div className="text-sm text-muted-foreground">{t("vegetacao.pages.auditorias.states.empty")}</div>
         ) : (
           <DataTableAdvanced data={items} columns={columns} onRowClick={(row) => openEdit(row as VegAudit)} exportable />
         )}
@@ -187,32 +194,37 @@ export default function AuditoriasPage() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{form.id ? "Editar auditoria" : "Nova auditoria"}</DialogTitle>
+            <DialogTitle>
+              {form.id ? t("vegetacao.pages.auditorias.dialog.editTitle") : t("vegetacao.pages.auditorias.dialog.createTitle")}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Resultado</Label>
+              <Label>{t("vegetacao.pages.auditorias.form.result")}</Label>
               <Select value={form.result} onValueChange={(v) => setForm((p) => ({ ...p, result: v as VegAuditResult }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="approved">Aprovada</SelectItem>
-                  <SelectItem value="rejected">Reprovada</SelectItem>
+                  {AUDIT_RESULT_VALUES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t(`vegetacao.enums.auditResult.${value}`) || value}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>OS (opcional)</Label>
+              <Label>{t("vegetacao.pages.auditorias.form.workOrderOptional")}</Label>
               <Input value={form.work_order_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, work_order_id: e.target.value || null }))} />
             </div>
             <div className="space-y-2">
-              <Label>Execução (opcional)</Label>
+              <Label>{t("vegetacao.pages.auditorias.form.actionOptional")}</Label>
               <Input value={form.action_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, action_id: e.target.value || null }))} />
             </div>
             <div className="space-y-2">
-              <Label>Corretiva requerida?</Label>
+              <Label>{t("vegetacao.pages.auditorias.form.correctiveRequired")}</Label>
               <Select
                 value={form.corrective_required ? "yes" : "no"}
                 onValueChange={(v) => setForm((p) => ({ ...p, corrective_required: v === "yes" }))}
@@ -221,14 +233,14 @@ export default function AuditoriasPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="no">Não</SelectItem>
-                  <SelectItem value="yes">Sim</SelectItem>
+                  <SelectItem value="no">{t("common.no")}</SelectItem>
+                  <SelectItem value="yes">{t("common.yes")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <Label>Espécie (opcional)</Label>
+              <Label>{t("vegetacao.pages.auditorias.form.speciesOptional")}</Label>
               <SpeciesSelect value={form.species} onChange={(next) => setForm((p) => ({ ...p, species: next }))} />
               {form.species?.typicalUseOrNotes ? (
                 <div className="text-xs text-muted-foreground">{form.species.typicalUseOrNotes}</div>
@@ -236,15 +248,15 @@ export default function AuditoriasPage() {
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <Label>Checklist (JSON)</Label>
+              <Label>{t("vegetacao.pages.auditorias.form.checklistJson")}</Label>
               <Textarea value={form.checklistText} onChange={(e) => setForm((p) => ({ ...p, checklistText: e.target.value }))} />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <Label>Notas</Label>
+              <Label>{t("vegetacao.pages.auditorias.form.notes")}</Label>
               <Textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <Label>Notas corretivas</Label>
+              <Label>{t("vegetacao.pages.auditorias.form.correctiveNotes")}</Label>
               <Textarea
                 value={form.corrective_notes}
                 onChange={(e) => setForm((p) => ({ ...p, corrective_notes: e.target.value }))}
@@ -253,13 +265,19 @@ export default function AuditoriasPage() {
           </div>
 
           <DialogFooter className="flex items-center justify-between gap-2">
-            <div>{form.id ? <Button variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>Remover</Button> : null}</div>
+            <div>
+              {form.id ? (
+                <Button variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>
+                  {t("common.remove")}
+                </Button>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setModalOpen(false)}>
-                Cancelar
+                {t("common.cancel")}
               </Button>
               <Button onClick={save} disabled={saveMutation.isPending}>
-                Salvar
+                {t("common.save")}
               </Button>
             </div>
           </DialogFooter>

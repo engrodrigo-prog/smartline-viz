@@ -20,6 +20,8 @@ import SpeciesSelect from "@/modules/vegetacao/components/SpeciesSelect";
 import type { VegSpeciesItem } from "@/modules/vegetacao/constants/species";
 import { findVegSpeciesByCommonName } from "@/modules/vegetacao/constants/species";
 import { locationPayloadFromRow } from "@/modules/vegetacao/utils/location";
+import { useI18n } from "@/context/I18nContext";
+import { vegEnumLabel } from "@/modules/vegetacao/i18n";
 
 type FormState = {
   id?: string;
@@ -29,6 +31,9 @@ type FormState = {
   requires_action: boolean;
   suggested_action_type: VegActionType | null;
   species: VegSpeciesItem | null;
+  tree_height_m: string;
+  tree_canopy_diameter_m: string;
+  tree_trunk_diameter_cm: string;
   findingsText: string;
   notes: string;
   location: VegLocationPayload | null;
@@ -41,19 +46,16 @@ const emptyForm: FormState = {
   requires_action: false,
   suggested_action_type: null,
   species: null,
+  tree_height_m: "",
+  tree_canopy_diameter_m: "",
+  tree_trunk_diameter_cm: "",
   findingsText: "{}",
   notes: "",
   location: null,
 };
 
-const SEVERITY_LABEL: Record<VegSeverity, string> = {
-  low: "Baixa",
-  medium: "Média",
-  high: "Alta",
-  critical: "Crítica",
-};
-
 export default function InspecoesPage() {
+  const { t, formatDateTime } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
 
@@ -91,6 +93,21 @@ export default function InspecoesPage() {
       } satisfies VegSpeciesItem;
     })();
 
+    const measurementsFromRow = (() => {
+      const f = row.findings;
+      if (!f || typeof f !== "object") return { h: "", c: "", d: "" };
+      const raw = (f as Record<string, unknown>).tree_measurements;
+      if (!raw || typeof raw !== "object") return { h: "", c: "", d: "" };
+      const height = (raw as Record<string, unknown>).height_m;
+      const canopy = (raw as Record<string, unknown>).canopy_diameter_m;
+      const trunk = (raw as Record<string, unknown>).trunk_diameter_cm;
+      return {
+        h: typeof height === "number" ? String(height) : typeof height === "string" ? height : "",
+        c: typeof canopy === "number" ? String(canopy) : typeof canopy === "string" ? canopy : "",
+        d: typeof trunk === "number" ? String(trunk) : typeof trunk === "string" ? trunk : "",
+      };
+    })();
+
     setForm({
       id: row.id,
       anomaly_id: row.anomaly_id ?? "",
@@ -99,6 +116,9 @@ export default function InspecoesPage() {
       requires_action: row.requires_action,
       suggested_action_type: row.suggested_action_type,
       species: speciesFromRow,
+      tree_height_m: measurementsFromRow.h,
+      tree_canopy_diameter_m: measurementsFromRow.c,
+      tree_trunk_diameter_cm: measurementsFromRow.d,
       findingsText: JSON.stringify(row.findings ?? {}, null, 2),
       notes: row.notes ?? "",
       location: locationPayloadFromRow(row),
@@ -119,12 +139,12 @@ export default function InspecoesPage() {
       try {
         const parsed: unknown = JSON.parse(form.findingsText);
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-          toast.error("Achados devem ser um JSON de objeto (ex.: {\"campo\":\"valor\"}).");
+          toast.error(t("vegetacao.pages.inspecoes.toasts.findingsObject"));
           return;
         }
         findings = parsed as Record<string, unknown>;
       } catch {
-        toast.error("Findings deve ser um JSON válido.");
+        toast.error(t("vegetacao.pages.inspecoes.toasts.findingsValidJson"));
         return;
       }
     }
@@ -136,6 +156,27 @@ export default function InspecoesPage() {
       };
     } else if ("species" in findings) {
       delete findings.species;
+    }
+
+    const parseNum = (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      const n = Number(trimmed.replace(",", "."));
+      if (!Number.isFinite(n)) return null;
+      return n;
+    };
+
+    const height_m = parseNum(form.tree_height_m);
+    const canopy_diameter_m = parseNum(form.tree_canopy_diameter_m);
+    const trunk_diameter_cm = parseNum(form.tree_trunk_diameter_cm);
+    if (height_m !== null || canopy_diameter_m !== null || trunk_diameter_cm !== null) {
+      findings.tree_measurements = {
+        ...(height_m !== null ? { height_m } : {}),
+        ...(canopy_diameter_m !== null ? { canopy_diameter_m } : {}),
+        ...(trunk_diameter_cm !== null ? { trunk_diameter_cm } : {}),
+      };
+    } else if ("tree_measurements" in findings) {
+      delete findings.tree_measurements;
     }
 
     try {
@@ -151,11 +192,11 @@ export default function InspecoesPage() {
         location: normalizeLocation(form.location),
         metadata: {},
       });
-      toast.success("Inspeção salva");
+      toast.success(t("vegetacao.pages.inspecoes.toasts.saved"));
       setModalOpen(false);
       refetch();
     } catch (err: any) {
-      toast.error("Falha ao salvar", { description: err?.message ?? String(err) });
+      toast.error(t("vegetacao.pages.inspecoes.toasts.saveFailed.title"), { description: err?.message ?? String(err) });
     }
   };
 
@@ -163,48 +204,51 @@ export default function InspecoesPage() {
     if (!form.id) return;
     try {
       await deleteMutation.mutateAsync(form.id);
-      toast.success("Inspeção removida");
+      toast.success(t("vegetacao.pages.inspecoes.toasts.removed"));
       setModalOpen(false);
       refetch();
     } catch (err: any) {
-      toast.error("Falha ao remover", { description: err?.message ?? String(err) });
+      toast.error(t("vegetacao.pages.inspecoes.toasts.removeFailed.title"), { description: err?.message ?? String(err) });
     }
   };
 
   const columns = [
-    { key: "status", label: "Status", render: (_: any, row: VegInspection) => row.status },
-    { key: "requires_action", label: "Ação?", render: (_: any, row: VegInspection) => (row.requires_action ? "Sim" : "Não") },
-    { key: "severity", label: "Sev.", render: (_: any, row: VegInspection) => (row.severity ? SEVERITY_LABEL[row.severity] : "—") },
-    { key: "created_at", label: "Criada em", render: (_: any, row: VegInspection) => new Date(row.created_at).toLocaleString() },
+    { key: "status", label: t("vegetacao.pages.inspecoes.table.status"), render: (_: any, row: VegInspection) => row.status },
+    { key: "requires_action", label: t("vegetacao.pages.inspecoes.table.requiresAction"), render: (_: any, row: VegInspection) => (row.requires_action ? t("common.yes") : t("common.no")) },
+    { key: "severity", label: t("vegetacao.pages.inspecoes.table.severity"), render: (_: any, row: VegInspection) => (row.severity ? vegEnumLabel.severity(t, row.severity) : "—") },
+    { key: "created_at", label: t("vegetacao.pages.inspecoes.table.createdAt"), render: (_: any, row: VegInspection) => formatDateTime(row.created_at) },
   ];
 
   return (
     <VegetacaoModuleShell>
       <VegetacaoPageHeader
-        title="Inspeções"
-        description="Inspeções de campo com achados, localização e sugestão de ação."
+        title={t("sidebar.items.vegInspecoes")}
+        description={t("vegetacao.pages.inspecoes.description")}
         right={
           <Button size="sm" onClick={openCreate}>
-            Nova inspeção
+            {t("vegetacao.pages.inspecoes.actions.create")}
           </Button>
         }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <CardKPI title="Total" value={resumo.total} icon={ClipboardList} />
-        <CardKPI title="Abertas" value={resumo.abertas} icon={ClipboardList} />
-        <CardKPI title="Requer ação" value={resumo.comAcao} icon={AlertTriangle} />
+        <CardKPI title={t("vegetacao.pages.inspecoes.kpis.total")} value={resumo.total} icon={ClipboardList} />
+        <CardKPI title={t("vegetacao.pages.inspecoes.kpis.open")} value={resumo.abertas} icon={ClipboardList} />
+        <CardKPI title={t("vegetacao.pages.inspecoes.kpis.requiresAction")} value={resumo.comAcao} icon={AlertTriangle} />
       </div>
 
       <div className="tech-card p-4">
         {isLoading ? (
-          <div className="text-sm text-muted-foreground">Carregando…</div>
+          <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
         ) : isError ? (
           <div className="text-sm text-muted-foreground">
-            Falha ao carregar. <Button variant="link" onClick={() => refetch()}>Tentar novamente</Button>
+            {t("vegetacao.pages.inspecoes.loadError")}{" "}
+            <Button variant="link" onClick={() => refetch()}>
+              {t("common.retry")}
+            </Button>
           </div>
         ) : items.length === 0 ? (
-          <div className="text-sm text-muted-foreground">Nenhuma inspeção encontrada.</div>
+          <div className="text-sm text-muted-foreground">{t("vegetacao.pages.inspecoes.empty")}</div>
         ) : (
           <DataTableAdvanced data={items} columns={columns} onRowClick={(row) => openEdit(row as VegInspection)} exportable />
         )}
@@ -213,7 +257,9 @@ export default function InspecoesPage() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{form.id ? "Editar inspeção" : "Nova inspeção"}</DialogTitle>
+            <DialogTitle>
+              {form.id ? t("vegetacao.pages.inspecoes.dialog.editTitle") : t("vegetacao.pages.inspecoes.dialog.createTitle")}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -247,6 +293,34 @@ export default function InspecoesPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("vegetacao.pages.inspecoes.tree.height")}</Label>
+              <Input
+                inputMode="decimal"
+                value={form.tree_height_m}
+                onChange={(e) => setForm((p) => ({ ...p, tree_height_m: e.target.value }))}
+                placeholder={t("vegetacao.pages.inspecoes.tree.heightPlaceholder")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("vegetacao.pages.inspecoes.tree.canopy")}</Label>
+              <Input
+                inputMode="decimal"
+                value={form.tree_canopy_diameter_m}
+                onChange={(e) => setForm((p) => ({ ...p, tree_canopy_diameter_m: e.target.value }))}
+                placeholder={t("vegetacao.pages.inspecoes.tree.canopyPlaceholder")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("vegetacao.pages.inspecoes.tree.trunk")}</Label>
+              <Input
+                inputMode="decimal"
+                value={form.tree_trunk_diameter_cm}
+                onChange={(e) => setForm((p) => ({ ...p, tree_trunk_diameter_cm: e.target.value }))}
+                placeholder={t("vegetacao.pages.inspecoes.tree.trunkPlaceholder")}
+              />
             </div>
 
             <div className="space-y-2">
@@ -288,7 +362,7 @@ export default function InspecoesPage() {
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <Label>Espécie (opcional)</Label>
+              <Label>{t("vegetacao.pages.inspecoes.form.speciesOptional")}</Label>
               <SpeciesSelect value={form.species} onChange={(next) => setForm((p) => ({ ...p, species: next }))} />
               {form.species?.typicalUseOrNotes ? (
                 <div className="text-xs text-muted-foreground">{form.species.typicalUseOrNotes}</div>
@@ -300,21 +374,21 @@ export default function InspecoesPage() {
                 checked={form.requires_action}
                 onCheckedChange={(v) => setForm((p) => ({ ...p, requires_action: Boolean(v) }))}
               />
-              <Label>Requer ação</Label>
+              <Label>{t("vegetacao.pages.inspecoes.form.requiresAction")}</Label>
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <Label>Achados (JSON)</Label>
+              <Label>{t("vegetacao.pages.inspecoes.form.findingsJson")}</Label>
               <Textarea value={form.findingsText} onChange={(e) => setForm((p) => ({ ...p, findingsText: e.target.value }))} />
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <Label>Notas</Label>
+              <Label>{t("vegetacao.pages.inspecoes.form.notes")}</Label>
               <Textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
             </div>
 
             <div className="md:col-span-2">
-              <Label>Localização</Label>
+              <Label>{t("vegetacao.pages.inspecoes.form.location")}</Label>
               <div className="mt-2">
                 <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
               </div>
@@ -326,17 +400,23 @@ export default function InspecoesPage() {
               <EvidencePanel linked={{ inspectionId: form.id }} defaultLocation={form.location} />
             </div>
           ) : (
-            <div className="mt-4 text-sm text-muted-foreground">Salve a inspeção para anexar evidências.</div>
+            <div className="mt-4 text-sm text-muted-foreground">{t("vegetacao.pages.inspecoes.states.saveToAttachEvidence")}</div>
           )}
 
           <DialogFooter className="flex items-center justify-between gap-2">
-            <div>{form.id ? <Button variant="destructive" onClick={remove}>Remover</Button> : null}</div>
+            <div>
+              {form.id ? (
+                <Button variant="destructive" onClick={remove}>
+                  {t("common.remove")}
+                </Button>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setModalOpen(false)}>
-                Cancelar
+                {t("common.cancel")}
               </Button>
               <Button onClick={save} disabled={saveMutation.isPending}>
-                Salvar
+                {t("common.save")}
               </Button>
             </div>
           </DialogFooter>

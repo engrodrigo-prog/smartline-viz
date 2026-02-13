@@ -16,6 +16,8 @@ import { useVegDeleteDocumento, useVegDocumentoMutation, useVegDocumentos } from
 import { getSupabase } from "@/integrations/supabase/client";
 import LocationPicker from "@/modules/vegetacao/components/LocationPicker";
 import { locationPayloadFromRow } from "@/modules/vegetacao/utils/location";
+import { useI18n } from "@/context/I18nContext";
+import { vegEnumLabel } from "@/modules/vegetacao/i18n";
 
 type FormState = {
   id?: string;
@@ -44,17 +46,6 @@ const emptyForm: FormState = {
   location: null,
 };
 
-const DOC_LABEL: Record<VegDocType, string> = {
-  ASV: "ASV",
-  license: "Licença",
-  environmental_report: "Relatório ambiental",
-  photo_report: "Relatório fotográfico",
-  kml: "KML",
-  geojson: "GeoJSON",
-  pdf: "PDF",
-  other: "Outro",
-};
-
 const sanitizeFileName = (name: string) =>
   name
     .trim()
@@ -69,6 +60,7 @@ const sha256Hex = async (file: File): Promise<string> => {
 };
 
 export default function DocumentosPage() {
+  const { t, formatDateTime } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -116,7 +108,7 @@ export default function DocumentosPage() {
     const supabase = getSupabase();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth.user;
-    if (!user) throw new Error("Usuário não autenticado");
+    if (!user) throw new Error(t("vegetacao.pages.documentos.errors.notAuthenticated"));
 
     const { data: appUser, error: appUserErr } = await supabase
       .from("app_user")
@@ -125,7 +117,7 @@ export default function DocumentosPage() {
       .maybeSingle();
     if (appUserErr) throw appUserErr;
     const tenantId = appUser?.tenant_id;
-    if (!tenantId) throw new Error("tenant_id ausente para o usuário");
+    if (!tenantId) throw new Error(t("vegetacao.pages.documentos.errors.missingTenantId"));
 
     const safeName = sanitizeFileName(file.name || "doc");
     const rand = Math.random().toString(36).slice(2, 8);
@@ -144,17 +136,17 @@ export default function DocumentosPage() {
       const supabase = getSupabase();
       const { data: signed, error } = await supabase.storage.from("veg-docs").createSignedUrl(filePath, 60 * 30);
       if (error) throw error;
-      if (!signed?.signedUrl) throw new Error("signedUrl ausente");
+      if (!signed?.signedUrl) throw new Error(t("vegetacao.pages.documentos.errors.missingSignedUrl"));
       window.open(signed.signedUrl, "_blank", "noopener,noreferrer");
     } catch (err: any) {
-      toast.error("Não foi possível abrir", { description: err?.message ?? String(err) });
+      toast.error(t("vegetacao.pages.documentos.toasts.openFailed.title"), { description: err?.message ?? String(err) });
     }
   };
 
   const save = async () => {
     const title = form.title.trim();
     if (!title) {
-      toast.error("Informe o título.");
+      toast.error(t("vegetacao.pages.documentos.toasts.missingTitle"));
       return;
     }
 
@@ -177,7 +169,7 @@ export default function DocumentosPage() {
       }
 
       if (!file_path) {
-        toast.error("Selecione um arquivo para enviar.");
+        toast.error(t("vegetacao.pages.documentos.toasts.missingFile"));
         return;
       }
 
@@ -198,11 +190,11 @@ export default function DocumentosPage() {
         location: normalizeLocation(form.location),
       });
 
-      toast.success("Documento salvo");
+      toast.success(t("vegetacao.pages.documentos.toasts.saved"));
       setModalOpen(false);
       refetch();
     } catch (err: any) {
-      toast.error("Falha ao salvar", { description: err?.message ?? String(err) });
+      toast.error(t("vegetacao.pages.documentos.toasts.saveFailed.title"), { description: err?.message ?? String(err) });
     } finally {
       if (fileRef.current) fileRef.current.value = "";
     }
@@ -213,25 +205,25 @@ export default function DocumentosPage() {
       const supabase = getSupabase();
       await supabase.storage.from("veg-docs").remove([doc.file_path]).catch(() => null);
       await deleteMutation.mutateAsync(doc.id);
-      toast.success("Documento removido");
+      toast.success(t("vegetacao.pages.documentos.toasts.removed"));
       refetch();
     } catch (err: any) {
-      toast.error("Falha ao remover", { description: err?.message ?? String(err) });
+      toast.error(t("vegetacao.pages.documentos.toasts.removeFailed.title"), { description: err?.message ?? String(err) });
     }
   };
 
   const columns = [
-    { key: "title", label: "Título", render: (_: any, row: VegDocument) => <span className="font-medium">{row.title}</span> },
-    { key: "doc_type", label: "Tipo", render: (_: any, row: VegDocument) => DOC_LABEL[row.doc_type] ?? row.doc_type },
-    { key: "created_at", label: "Enviado em", render: (_: any, row: VegDocument) => new Date(row.created_at).toLocaleString() },
+    { key: "title", label: t("vegetacao.pages.documentos.table.title"), render: (_: any, row: VegDocument) => <span className="font-medium">{row.title}</span> },
+    { key: "doc_type", label: t("vegetacao.pages.documentos.table.type"), render: (_: any, row: VegDocument) => vegEnumLabel.docType(t, row.doc_type) },
+    { key: "created_at", label: t("vegetacao.pages.documentos.table.createdAt"), render: (_: any, row: VegDocument) => formatDateTime(row.created_at) },
     {
       key: "file_path",
-      label: "Arquivo",
+      label: t("vegetacao.pages.documentos.table.file"),
       sortable: false,
       render: (_: any, row: VegDocument) => (
         <Button variant="outline" size="sm" onClick={() => openDocument(row.file_path)}>
           <ExternalLink className="w-4 h-4 mr-2" />
-          Abrir
+          {t("vegetacao.pages.documentos.actions.open")}
         </Button>
       ),
     },
@@ -249,7 +241,7 @@ export default function DocumentosPage() {
           }}
           disabled={deleteMutation.isPending}
         >
-          Remover
+          {t("common.remove")}
         </Button>
       ),
     },
@@ -258,30 +250,33 @@ export default function DocumentosPage() {
   return (
     <VegetacaoModuleShell>
       <VegetacaoPageHeader
-        title="Documentos"
-        description="ASVs e anexos (PDF, KML, GeoJSON) vinculados a anomalias/OS/execuções."
+        title={t("sidebar.items.vegDocumentos")}
+        description={t("vegetacao.pages.documentos.description")}
         right={
           <Button size="sm" onClick={openCreate}>
             <Upload className="w-4 h-4 mr-2" />
-            Enviar documento
+            {t("vegetacao.pages.documentos.actions.create")}
           </Button>
         }
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <CardKPI title="Total" value={resumo.total} icon={FileText} />
-        <CardKPI title="ASVs" value={resumo.asv} icon={FileText} />
+        <CardKPI title={t("vegetacao.pages.documentos.kpis.total")} value={resumo.total} icon={FileText} />
+        <CardKPI title={t("vegetacao.pages.documentos.kpis.asv")} value={resumo.asv} icon={FileText} />
       </div>
 
       <div className="tech-card p-4">
         {isLoading ? (
-          <div className="text-sm text-muted-foreground">Carregando…</div>
+          <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
         ) : isError ? (
           <div className="text-sm text-muted-foreground">
-            Falha ao carregar. <Button variant="link" onClick={() => refetch()}>Tentar novamente</Button>
+            {t("vegetacao.pages.documentos.states.loadFailed")}{" "}
+            <Button variant="link" onClick={() => refetch()}>
+              {t("common.retry")}
+            </Button>
           </div>
         ) : items.length === 0 ? (
-          <div className="text-sm text-muted-foreground">Nenhum documento encontrado.</div>
+          <div className="text-sm text-muted-foreground">{t("vegetacao.pages.documentos.states.empty")}</div>
         ) : (
           <DataTableAdvanced data={items} columns={columns} onRowClick={(row) => openEdit(row as VegDocument)} exportable />
         )}
@@ -290,37 +285,39 @@ export default function DocumentosPage() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{form.id ? "Editar documento" : "Enviar documento"}</DialogTitle>
+            <DialogTitle>
+              {form.id ? t("vegetacao.pages.documentos.dialog.editTitle") : t("vegetacao.pages.documentos.dialog.createTitle")}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Tipo</Label>
+              <Label>{t("vegetacao.pages.documentos.form.type")}</Label>
               <Select value={form.doc_type} onValueChange={(v) => setForm((p) => ({ ...p, doc_type: v as VegDocType }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(DOC_LABEL) as VegDocType[]).map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {DOC_LABEL[t]}
+                  {(["ASV", "license", "environmental_report", "photo_report", "kml", "geojson", "pdf", "other"] as VegDocType[]).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {vegEnumLabel.docType(t, value)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Título</Label>
+              <Label>{t("vegetacao.pages.documentos.form.title")}</Label>
               <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <Label>Descrição</Label>
+              <Label>{t("vegetacao.pages.documentos.form.description")}</Label>
               <Textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <Label>Arquivo</Label>
+              <Label>{t("vegetacao.pages.documentos.form.file")}</Label>
               <Input
                 ref={fileRef}
                 type="file"
@@ -330,25 +327,29 @@ export default function DocumentosPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Vincular anomalia (opcional)</Label>
+              <Label>{t("vegetacao.pages.documentos.form.linkAnomalyOptional")}</Label>
               <Input value={form.linked_anomaly_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, linked_anomaly_id: e.target.value || null }))} />
             </div>
             <div className="space-y-2">
-              <Label>Vincular OS (opcional)</Label>
+              <Label>{t("vegetacao.pages.documentos.form.linkWorkOrderOptional")}</Label>
               <Input value={form.linked_work_order_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, linked_work_order_id: e.target.value || null }))} />
             </div>
             <div className="space-y-2">
-              <Label>Vincular execução (opcional)</Label>
+              <Label>{t("vegetacao.pages.documentos.form.linkActionOptional")}</Label>
               <Input value={form.linked_action_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, linked_action_id: e.target.value || null }))} />
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <Label>Tags</Label>
-              <Input value={form.tagsText} onChange={(e) => setForm((p) => ({ ...p, tagsText: e.target.value }))} placeholder="ex.: ASV, licença" />
+              <Label>{t("vegetacao.pages.documentos.form.tags")}</Label>
+              <Input
+                value={form.tagsText}
+                onChange={(e) => setForm((p) => ({ ...p, tagsText: e.target.value }))}
+                placeholder={t("vegetacao.pages.documentos.form.tagsPlaceholder")}
+              />
             </div>
 
             <div className="md:col-span-2">
-              <Label>Localização</Label>
+              <Label>{t("vegetacao.pages.documentos.form.location")}</Label>
               <div className="mt-2">
                 <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
               </div>
@@ -366,16 +367,16 @@ export default function DocumentosPage() {
                   }}
                   disabled={deleteMutation.isPending}
                 >
-                  Remover
+                  {t("common.remove")}
                 </Button>
               ) : null}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setModalOpen(false)}>
-                Cancelar
+                {t("common.cancel")}
               </Button>
               <Button onClick={save} disabled={saveMutation.isPending}>
-                Salvar
+                {t("common.save")}
               </Button>
             </div>
           </DialogFooter>

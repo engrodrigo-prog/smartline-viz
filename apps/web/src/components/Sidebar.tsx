@@ -42,7 +42,6 @@ import {
   Database,
   GraduationCap,
   Trees,
-  Scissors,
   CalendarDays,
   ClipboardCheck,
   AlertTriangle,
@@ -52,7 +51,6 @@ import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
 import { LucideIcon } from "lucide-react";
 import { useI18n } from "@/context/I18nContext";
-import { Badge } from "@/components/ui/badge";
 
 interface MenuItem {
   id: string;
@@ -66,9 +64,6 @@ interface MenuGroup {
   legacyTitle: string;
   titleKey: string;
   items: MenuItem[];
-  icon?: LucideIcon;
-  featured?: boolean;
-  badgeText?: string;
 }
 
 const menuGroups: MenuGroup[] = [
@@ -97,7 +92,6 @@ const menuGroups: MenuGroup[] = [
     id: "vegetationOps",
     legacyTitle: "Vegetação (Poda & Roçada)",
     titleKey: "sidebar.categories.vegetationOps",
-    icon: Scissors,
     items: [
       { id: "vegDashboard", titleKey: "sidebar.items.vegDashboard", path: "/vegetacao", icon: LayoutDashboard },
       { id: "vegAnomalias", titleKey: "sidebar.items.vegAnomalias", path: "/vegetacao/anomalias", icon: AlertTriangle },
@@ -230,8 +224,6 @@ const SidebarGroup = ({
 }) => {
   const location = useLocation();
   const { t } = useI18n();
-  const GroupIcon = group.icon;
-  const isFeatured = Boolean(group.featured);
 
   return (
     <div className="mb-4">
@@ -240,26 +232,7 @@ const SidebarGroup = ({
         className="w-full flex items-center justify-between px-4 py-2 text-sm font-semibold text-smartline-green hover:text-primary/80 hover:bg-sidebar-accent rounded-lg transition-all duration-200"
       >
         <span className="flex items-center gap-2">
-          {GroupIcon && (
-            <GroupIcon
-              className={cn(
-                "w-4 h-4",
-                isFeatured ? "text-emerald-300" : "text-smartline-green",
-              )}
-            />
-          )}
-          <span className={cn(isFeatured && "text-emerald-200")}>{t(group.titleKey)}</span>
-          {group.badgeText && (
-            <Badge
-              variant="outline"
-              className={cn(
-                "ml-1 border-emerald-500/30 text-emerald-200 bg-emerald-500/10",
-                isFeatured && "shadow-sm",
-              )}
-            >
-              {group.badgeText}
-            </Badge>
-          )}
+          <span>{t(group.titleKey)}</span>
         </span>
         {isOpen ? (
           <ChevronDown className="w-4 h-4 transition-transform duration-200" />
