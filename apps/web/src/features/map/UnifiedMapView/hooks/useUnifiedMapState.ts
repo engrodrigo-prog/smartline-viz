@@ -44,6 +44,23 @@ export const useUnifiedMapState = (filters: FiltersState) => {
     () => !filters.linha && !filters.regiao && !filters.empresa,
     [filters.linha, filters.regiao, filters.empresa],
   );
+  const shouldFetchQueimadas = useMemo(
+    () => layers.some((layer) => layer.id === "queimadas" && layer.visible),
+    [layers],
+  );
+  const shouldFetchQueimadasFootprints = useMemo(
+    () => layers.some((layer) => layer.id === "queimadas_footprints" && layer.visible),
+    [layers],
+  );
+  const shouldFetchDashboardGeodata = useMemo(
+    () =>
+      layers.some(
+        (layer) =>
+          layer.visible &&
+          ["linhas", "torres", "geo_pontos", "geo_poligonos", "geo_rasters"].includes(layer.id),
+      ),
+    [layers],
+  );
 
   // TODO Simulação de risco: incorporar resultados span_analysis quando o edge function expuser novos atributos.
   const { linhaSelecionadaId, cenarioSelecionadoId } = useSelectionContext();
@@ -52,10 +69,11 @@ export const useUnifiedMapState = (filters: FiltersState) => {
     mode: "live",
     concessao: shouldShowBrazilMode ? "BRASIL" : filters.empresa || "TODAS",
     maxKm: shouldShowBrazilMode ? 999999 : 3,
+    enabled: shouldFetchQueimadas,
   });
 
   const { data: footprintsData } = useFirmsKml({
-    enabled: shouldShowBrazilMode,
+    enabled: shouldShowBrazilMode && shouldFetchQueimadasFootprints,
   });
 
   const vegetacaoRisk = useLipowerlineRiscoVegetacao(linhaSelecionadaId, cenarioSelecionadoId);
@@ -64,7 +82,7 @@ export const useUnifiedMapState = (filters: FiltersState) => {
   const tratamentos = useLipowerlineTratamentos(linhaSelecionadaId, cenarioSelecionadoId);
   const dashboardGeodata = useGeodataQuery({
     context: "dashboard",
-    enabled: true,
+    enabled: shouldFetchDashboardGeodata,
     requireGeometry: true,
     filters: {
       empresa: filters.empresa,

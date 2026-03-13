@@ -224,6 +224,96 @@ const buildVegAgendaFallback = (limit = 50) => {
   ].slice(0, Math.max(1, Math.min(limit, 4)));
 };
 
+const buildVegDashboardFallback = () => {
+  const now = nowIso();
+  return {
+    kpis: {
+      anomalies_today: 3,
+      anomalies_month: 18,
+      anomalies_open_total: 9,
+      anomalies_open_by_severity: {
+        low: 2,
+        medium: 3,
+        high: 3,
+        critical: 1,
+      },
+      work_orders_pending: 6,
+      actions_executed_month: 14,
+      audits_pending: 2,
+      pending_sync: 0,
+    },
+    recent: {
+      inspections: [
+        {
+          id: 'demo-inspection-01',
+          created_at: now,
+          created_by: null,
+          updated_at: now,
+          updated_by: null,
+          anomaly_id: null,
+          status: 'open',
+          severity: 'high',
+          findings: { source: 'fallback-api' },
+          requires_action: true,
+          suggested_action_type: 'inspection',
+          notes: 'Inspecao simulada para manter o dashboard funcional sem o schema de vegetacao.',
+          address_text: 'Trecho Baixada Santista',
+          location_method: 'manual_address',
+          location_captured_at: now,
+          metadata: { demo: true },
+          geom: null,
+        },
+      ],
+      anomalies: [
+        {
+          id: 'demo-anomaly-01',
+          created_at: now,
+          created_by: null,
+          updated_at: now,
+          updated_by: null,
+          status: 'open',
+          severity: 'critical',
+          anomaly_type: 'risk_tree',
+          source: 'drone',
+          title: 'Arvore em zona critica proxima ao corredor simulado',
+          description: 'Fallback automatico ativado porque as tabelas de vegetacao nao estao disponiveis no ambiente.',
+          due_date: null,
+          asset_ref: 'LT-003',
+          address_text: 'Cubatao - faixa operacional',
+          location_method: 'manual_address',
+          location_captured_at: now,
+          tags: ['demo', 'fallback'],
+          metadata: { demo: true },
+          geom: null,
+        },
+      ],
+      actions: [
+        {
+          id: 'demo-action-01',
+          created_at: now,
+          created_by: null,
+          updated_at: now,
+          updated_by: null,
+          work_order_id: null,
+          action_type: 'inspection',
+          status: 'planned',
+          executed_at: null,
+          team_id: null,
+          address_text: 'Baixada Santista',
+          location_method: 'manual_address',
+          location_captured_at: now,
+          notes: 'Acao simulada fornecida pelo fallback da API.',
+          metadata: { demo: true },
+          geom: null,
+        },
+      ],
+    },
+    generated_at: now,
+    degraded: true,
+    source: 'fallback-api',
+  };
+};
+
 type ApiErrorPayload = {
   error: string;
   message: string;
@@ -438,6 +528,25 @@ app.get('/firms/wfs', (c) =>
     }),
   ),
 );
+app.post('/firms/risk', async (c) => {
+  const body = await c.req.json().catch(() => ({} as any));
+  return c.json({
+    type: 'FeatureCollection',
+    features: [],
+    meta: {
+      generated_at: nowIso(),
+      horizons: Array.isArray(body?.horizons) ? body.horizons : [0, 3, 6, 24],
+      source: 'stub',
+      stats: {
+        hotspots_total: 0,
+        risk_max: 0,
+        risk_avg: 0,
+        corridor_count: 0,
+        frp_sum: 0,
+      },
+    },
+  });
+});
 app.get('/weather', (c) =>
   c.json({
     status: 'ok',
@@ -1449,6 +1558,15 @@ app.get('/vegetacao/dashboard', async (c) => {
   if (firstError) {
     const authStatus = statusForSupabaseAuthError(firstError);
     if (authStatus) return jsonError(c, authStatus, 'unauthorized', firstError.message);
+    if (
+      isMissingRelationError(firstError, 'veg_anomaly') ||
+      isMissingRelationError(firstError, 'veg_action') ||
+      isMissingRelationError(firstError, 'veg_inspection') ||
+      isMissingRelationError(firstError, 'veg_work_order') ||
+      isMissingRelationError(firstError, 'veg_audit')
+    ) {
+      return c.json(buildVegDashboardFallback());
+    }
     return jsonError(c, 500, 'db_error', firstError.message);
   }
 

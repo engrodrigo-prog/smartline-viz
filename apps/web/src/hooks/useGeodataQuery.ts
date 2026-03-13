@@ -32,6 +32,20 @@ interface UseGeodataQueryOptions {
   requireGeometry?: boolean;
 }
 
+const isMissingRelationError = (error: unknown, relation: string) => {
+  const err = typeof error === "object" && error !== null ? (error as any) : { message: String(error ?? "") };
+  const code = String(err?.code ?? "").toUpperCase();
+  const message = String(err?.message ?? "").toLowerCase();
+  const relationName = relation.toLowerCase();
+
+  return (
+    code === "42P01" ||
+    message.includes(`relation "${relationName}" does not exist`) ||
+    message.includes(`relation '${relationName}' does not exist`) ||
+    (message.includes("does not exist") && message.includes(relationName))
+  );
+};
+
 export function useGeodataQuery({
   table = "all",
   context,
@@ -92,10 +106,15 @@ export function useGeodataQuery({
       const { data, error } = await query;
 
       if (error) {
+        if (isMissingRelationError(error, "vw_dashboard_geo_features")) {
+          console.warn("[useGeodataQuery] view vw_dashboard_geo_features indisponivel; retornando lista vazia.");
+          return [];
+        }
         throw error;
       }
 
       return ((data ?? []) as DashboardGeoFeatureRow[]).map(mapDashboardGeoRow);
     },
+    retry: false,
   });
 }

@@ -64,7 +64,7 @@ export const useFirmsKml = (options: FirmsKmlOptions = {}) => {
     },
     refetchInterval: 600000, // Refresh every 10 minutes
     staleTime: 300000, // 5 minutes
-    retry: 2,
+    retry: false,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     enabled: options.enabled !== false,
   });

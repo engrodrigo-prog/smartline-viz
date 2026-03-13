@@ -9,6 +9,7 @@ interface QueimadasFilters {
   mode: 'live' | 'archive';
   startDate?: string;
   endDate?: string;
+  enabled?: boolean;
 }
 
 export const useQueimadas = (filters: QueimadasFilters) => {
@@ -56,7 +57,8 @@ export const useQueimadas = (filters: QueimadasFilters) => {
     },
     refetchInterval: filters.mode === 'live' ? 30000 : false,
     staleTime: filters.mode === 'live' ? 30000 : 60000,
-    retry: 2,
+    retry: false,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+    enabled: filters.enabled ?? true,
   });
 };
