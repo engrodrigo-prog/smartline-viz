@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import VegetacaoModuleShell from "@/modules/vegetacao/VegetacaoModuleShell";
 import { VegetacaoPageHeader } from "@/modules/vegetacao/components/VegetacaoPageHeader";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,10 +50,10 @@ export default function AgendaPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  const { data, isLoading, isError, refetch } = useVegAgenda({ limit: 500 });
+  const { data, isLoading, isError, refetch } = useVegAgenda({ limit: 200 });
   const saveMutation = useVegAgendaMutation();
   const deleteMutation = useVegDeleteAgenda();
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, VegScheduleEvent[]>();
@@ -252,6 +252,9 @@ export default function AgendaPage() {
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>{form.id ? "Editar evento" : "Novo evento"}</DialogTitle>
+            <DialogDescription>
+              Registre janelas de campo para inspeções, roçadas e operações preventivas ao longo do corredor monitorado.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 md:grid-cols-2">

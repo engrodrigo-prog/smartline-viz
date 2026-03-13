@@ -19,6 +19,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useFirmsRisk, type FirmsRiskFeatureCollection } from "@/hooks/useFirmsRisk";
 import type { FeatureCollection, Point, LineString } from "geojson";
+import {
+  baixadaSantistaCorridor,
+  baixadaSantistaDoubleCircuitCorridor,
+  baixadaSantistaWildfireSimulatedSeeds,
+  buildBaixadaWildfireCollection,
+} from "@/lib/baixadaSantistaScenario";
 
 const HORIZONS = [0, 3, 6, 24];
 const WIND_HEIGHTS = [10, 50, 100, 200] as const;
@@ -68,6 +74,10 @@ const createEnrichedList = (collection: GeoJSON.FeatureCollection) =>
       return {
         feature,
         id,
+        label: String(props?.label ?? props?.municipio ?? id),
+        municipio: String(props?.municipio ?? "Baixada Santista"),
+        bairro: props?.bairro ? String(props.bairro) : null,
+        contexto: props?.contexto ? String(props.contexto) : null,
         riskMax,
         frp,
         eta,
@@ -104,68 +114,12 @@ const Queimadas = () => {
   const [focusFilter, setFocusFilter] = useState<FocusFilter | null>(null);
 
   // Simulador de hotspots/linhas quando desejado ou quando não há dados
-  const simulatedCorridor = useMemo<FeatureCollection<LineString>>(() => {
-    const lines: FeatureCollection<LineString> = {
-      type: 'FeatureCollection',
-      features: [
-        {
-          type: 'Feature',
-          geometry: { type: 'LineString', coordinates: [ [-54.5, -22.6], [-53.0, -22.0], [-51.5, -21.4], [-50.2, -21.1] ] },
-          properties: { color: '#0ea5e9', width: 3, opacity: 0.9 },
-        },
-        {
-          type: 'Feature',
-          geometry: { type: 'LineString', coordinates: [ [-54.2, -22.9], [-52.7, -22.25], [-51.1, -21.75], [-49.8, -21.4] ] },
-          properties: { color: '#22d3ee', width: 2, opacity: 0.7 },
-        },
-      ],
-    };
-    return lines;
-  }, []);
+  const simulatedCorridor = useMemo<FeatureCollection<LineString>>(() => baixadaSantistaDoubleCircuitCorridor, []);
 
-  const simulatedHotspots = useMemo<FeatureCollection<Point>>(() => {
-    const features: any[] = [];
-    const baseLine = simulatedCorridor.features[0]?.geometry.coordinates ?? [];
-    const total = 160;
-    for (let i = 0; i < total; i++) {
-      const seg = Math.max(0, Math.min(baseLine.length - 2, Math.floor(Math.random() * (baseLine.length - 1))));
-      const [lon1, lat1] = baseLine[seg];
-      const [lon2, lat2] = baseLine[seg + 1];
-      const t = Math.random();
-      const lon = lon1 + (lon2 - lon1) * t;
-      const lat = lat1 + (lat2 - lat1) * t;
-      // deslocamento lateral pequeno
-      const offset = (Math.random() - 0.5) * 0.15;
-      const nx = -(lat2 - lat1);
-      const ny = (lon2 - lon1);
-      const norm = Math.sqrt(nx * nx + ny * ny) || 1;
-      const lonOff = lon + (ny / norm) * offset;
-      const latOff = lat + (nx / norm) * offset;
-
-      const wind = 100 + Math.random() * 60; // direção FROM (graus)
-      const speed = 2 + Math.random() * 7;
-      const risk = Math.min(100, Math.max(0, 40 + Math.random() * 60 + (Math.abs(offset) < 0.05 ? 15 : 0)));
-      const frp = Math.max(1, Math.random() * 15);
-      const intersects = Math.abs(offset) < 0.03;
-
-      features.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [lonOff, latOff] },
-        properties: {
-          id: `sim-${i}`,
-          risk_max: risk,
-          frp,
-          eta_h: 1 + Math.random() * 8,
-          wind_speed_ms: speed,
-          wind_dir_from_deg: wind,
-          distance_to_line_m: Math.round(Math.abs(offset) * 1000),
-          intersects_corridor: intersects,
-          acq_date_ts: Date.now() - Math.floor(Math.random() * 36) * 3600 * 1000,
-        },
-      });
-    }
-    return { type: 'FeatureCollection', features } as FeatureCollection<Point>;
-  }, [simulatedCorridor]);
+  const simulatedHotspots = useMemo<FeatureCollection<Point>>(
+    () => buildBaixadaWildfireCollection(Date.now(), baixadaSantistaWildfireSimulatedSeeds),
+    [],
+  );
 
   const enrichedBase = useMemo(() => createEnrichedList(collection), [collection]);
   const enrichedSim = useMemo(() => createEnrichedList(simulatedHotspots), [simulatedHotspots]);
@@ -332,27 +286,7 @@ const Queimadas = () => {
     };
   }, [activeList, enriched]);
 
-  const rsDemoLine = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: [
-      {
-        type: "Feature" as const,
-        geometry: {
-          type: "LineString" as const,
-          coordinates: [
-            [-57.08, -29.75],
-            [-55.60, -29.50],
-            [-54.10, -29.65],
-            [-53.10, -30.00],
-            [-52.00, -30.10],
-            [-51.23, -30.03],
-            [-51.18, -29.16]
-          ]
-        },
-        properties: { color: "#0284c7", width: 3, opacity: 0.9 }
-      }
-    ]
-  }), []);
+  const demoCorridor = useMemo(() => baixadaSantistaCorridor, []);
 
   const handleFocus = (focus: FocusFilter) => {
     setFocusFilter((prev) => (prev?.id === focus.id ? null : focus));
@@ -379,7 +313,8 @@ const Queimadas = () => {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm text-muted-foreground max-w-2xl">
-              Avaliação de hotspots FIRMS direcionados ao corredor Ramal Marapé, ponderando vento atual e previsão para 24h.
+              Avaliação de hotspots FIRMS direcionados ao corredor Cubatão &gt; São Vicente &gt; Marapé, ponderando
+              vento atual e previsão para 24h em um cenário comercial mais próximo da Baixada Santista.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -414,6 +349,27 @@ const Queimadas = () => {
               Limpar seleção
             </button>
           ) : null}
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="tech-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Cenário demo</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Encosta da Serra do Mar, retroárea portuária e expansão urbana costeira no mesmo corredor.
+            </p>
+          </div>
+          <div className="tech-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Leitura executiva</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Use o modo simulado para mostrar concentração de focos; use o FIRMS para sustentar a narrativa de dado vivo.
+            </p>
+          </div>
+          <div className="tech-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Decisão esperada</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Priorizar brigada, inspeção aérea e bloqueio operacional quando ETA do fogo cair abaixo de 4h.
+            </p>
+          </div>
         </div>
 
         {windMeta ? (
@@ -583,7 +539,7 @@ const Queimadas = () => {
             <MapLibreQueimadas
               geojson={displayCollection}
               fitBounds={fitBounds}
-              corridor={(usingSimulated ? simulatedCorridor : rsDemoLine) as any}
+              corridor={(usingSimulated ? simulatedCorridor : demoCorridor) as any}
               showWindOverlay
               onFeatureClick={(feature) => {
                 const id = getFeatureId(feature, 0);
@@ -621,9 +577,12 @@ const Queimadas = () => {
                             <Badge variant="secondary">No corredor</Badge>
                           ) : null}
                         </div>
+                        <p className="mt-2 text-sm font-medium">{item.label}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          FRP: {item.frp.toFixed(1)} MW · Dist: {item.distance.toFixed(0)} m · ETA: {formatEta(item.eta)}
+                          {item.municipio}
+                          {item.bairro ? ` · ${item.bairro}` : ""} · FRP: {item.frp.toFixed(1)} MW · Dist: {item.distance.toFixed(0)} m · ETA: {formatEta(item.eta)}
                         </p>
+                        {item.contexto ? <p className="text-xs text-muted-foreground mt-1">{item.contexto}</p> : null}
                       </div>
                       <div className="text-xs text-muted-foreground text-right">
                         {new Date(
@@ -643,9 +602,14 @@ const Queimadas = () => {
             {selectedFeature ? (
               <div className="border-t border-border/60 pt-3 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">Detalhes selecionado</span>
+                  <span className="font-semibold">{selectedFeature.label}</span>
                   <Badge variant="outline">{selectedFeature.riskMax.toFixed(1)}</Badge>
                 </div>
+                <p className="text-muted-foreground">
+                  {selectedFeature.municipio}
+                  {selectedFeature.bairro ? ` · ${selectedFeature.bairro}` : ""}
+                  {selectedFeature.contexto ? ` · ${selectedFeature.contexto}` : ""}
+                </p>
                 <p className="text-muted-foreground">
                   Velocidade do vento: {selectedFeature.windSpeed.toFixed(1)} m/s · Direção: {selectedFeature.windDir}°
                 </p>

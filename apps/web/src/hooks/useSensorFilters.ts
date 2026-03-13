@@ -12,11 +12,22 @@ interface SensorFilters {
 }
 
 const SENSOR_DB_ENABLED = import.meta.env.VITE_ENABLE_SENSOR_DB === 'true';
-const FALLBACK_REGIONS = ['Santos/SP', 'Praia Grande/SP', 'São Vicente/SP', 'Guarujá/SP'];
+const FALLBACK_REGIONS = [
+  'Santos/SP',
+  'Praia Grande/SP',
+  'São Vicente/SP',
+  'Guarujá/SP',
+  'Cubatão/SP',
+  'Serra do Mar/SP',
+  'São Bernardo do Campo/SP',
+];
 const FALLBACK_LINES = [
   { id: 'LT-Santos', name: 'LT-Santos' },
   { id: 'LT-Baixada', name: 'LT-Baixada Santista' },
   { id: 'LT-Litoral-Sul', name: 'LT-Litoral-Sul' },
+  { id: 'COR-Ecovias-Imigrantes', name: 'Corredor Imigrantes' },
+  { id: 'COR-Ecovias-Anchieta', name: 'Corredor Anchieta' },
+  { id: 'COR-Ecovias-Litoraneo', name: 'Corredor Litorâneo' },
 ];
 
 export function useSensorFilters() {

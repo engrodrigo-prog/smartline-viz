@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, User, Settings, LogOut, RefreshCw, FlaskConical } from "lucide-react";
+import { Bell, User, Settings, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -116,8 +116,8 @@ const Header = ({ title, subtitle }: HeaderProps) => {
 
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => navigate("/admin/requests")} className="flex items-center gap-2">
-              <FlaskConical className="w-4 h-4" />
-              Studio
+              <ShieldCheck className="w-4 h-4" />
+              Área Admin
             </Button>
           )}
 

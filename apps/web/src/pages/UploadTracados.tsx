@@ -8,9 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import GeodataClassificationTable from "@/components/GeodataClassificationTable";
 
+const getExtension = (fileName: string) => {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith(".gpkg")) return ".gpkg";
+  if (lower.endsWith(".kmz")) return ".kmz";
+  if (lower.endsWith(".kml")) return ".kml";
+  if (lower.endsWith(".zip")) return ".zip";
+  return lower.slice(lower.lastIndexOf("."));
+};
+
+const isInteractiveFormat = (extension: string) => extension === ".kml" || extension === ".kmz";
+
 const UploadTracados = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingResult, setProcessingResult] = useState<any>(null);
@@ -22,15 +34,17 @@ const UploadTracados = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const validExtensions = ['.kml', '.kmz', '.zip'];
-    const extension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+    const validExtensions = ['.kml', '.kmz', '.zip', '.gpkg'];
+    const extension = getExtension(file.name);
     
     if (!validExtensions.includes(extension)) {
-      toast.error("Formato inválido. Use KML, KMZ ou ZIP");
+      toast.error("Formato inválido. Use KML, KMZ, GPKG ou ZIP com conjunto SHP.");
       return;
     }
     
     setSelectedFile(file);
+    setProcessingResult(null);
+    setUploadedFilePath(null);
   };
 
   const handleUpload = async () => {
@@ -50,14 +64,32 @@ const UploadTracados = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const fileExt = selectedFile.name.split('.').pop()?.toLowerCase();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const extension = getExtension(selectedFile.name);
+      const sanitizedName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const fileName = `${user.id}/${Date.now()}_${sanitizedName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('geodata-uploads')
         .upload(fileName, selectedFile);
 
       if (uploadError) throw uploadError;
+      setUploadedFilePath(fileName);
+
+      if (!isInteractiveFormat(extension)) {
+        setProcessingResult({
+          success: true,
+          mode: "postgis_queue",
+          fileType: extension === ".gpkg" ? "GeoPackage (.gpkg)" : "Shapefile ZIP (.zip)",
+          storagePath: fileName,
+          stats: { linhas: 0, estruturas: 0, eventos: 0, outros: 0 },
+          errors: [],
+        });
+        setCurrentStep(4);
+        toast.success("Arquivo enviado para ingestão QGIS/PostGIS", {
+          description: "Use esta tela para subir GPKG ou SHP ZIP ao bucket geodata-uploads.",
+        });
+        return;
+      }
 
       toast.success("Arquivo carregado", {
         description: "Processando geometrias...",
@@ -111,11 +143,15 @@ const UploadTracados = () => {
     setCurrentStep(3);
 
     try {
+      if (!uploadedFilePath) {
+        throw new Error("Arquivo enviado não encontrado. Refaça o upload antes de finalizar.");
+      }
+
       // Get staging features and prepare classifications
       const { data: stagingData, error: stagingError } = await supabase
         .from('geodata_staging')
         .select('id')
-        .eq('file_name', selectedFile?.name || '');
+        .eq('file_name', uploadedFilePath);
 
       if (stagingError) throw stagingError;
 
@@ -129,7 +165,7 @@ const UploadTracados = () => {
       const { data, error: finalizeError } = await supabase.functions.invoke('finalize-geodata', {
         body: { 
           classifications: classificationsArray,
-          fileName: selectedFile?.name,
+          fileName: uploadedFilePath,
         },
       });
 
@@ -159,7 +195,7 @@ const UploadTracados = () => {
   };
 
   return (
-    <AppLayout title="Upload de Geodados" subtitle="Importar traçados e estruturas">
+    <AppLayout title="Upload de Geodados" subtitle="Porta oficial para KML/KMZ, GeoPackage e conjuntos SHP ZIP">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <div className="flex items-center justify-between max-w-3xl mx-auto">
@@ -206,17 +242,32 @@ const UploadTracados = () => {
         </div>
 
         {currentStep === 1 && (
-          <Card className="max-w-2xl mx-auto">
+          <Card className="max-w-3xl mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="w-5 h-5" />
-                Upload de Geodados
+                Upload QGIS / PostGIS
               </CardTitle>
               <CardDescription>
-                Faça upload de arquivos KML, KMZ ou Shapefile (ZIP). O sistema detectará automaticamente os tipos de geometria.
+                Esta é a tela certa para enviar arquivos geoespaciais. KML/KMZ seguem para classificação imediata; GPKG e SHP ZIP ficam armazenados no bucket oficial para ingestão PostGIS.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-border bg-muted/30 p-4">
+                  <p className="text-sm font-semibold">Classificação imediata</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Use <span className="font-medium text-foreground">KML</span> ou <span className="font-medium text-foreground">KMZ</span> quando quiser revisar as geometrias dentro do app antes de importar.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/30 p-4">
+                  <p className="text-sm font-semibold">Ingestão QGIS / PostGIS</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Use <span className="font-medium text-foreground">GeoPackage (.gpkg)</span> ou <span className="font-medium text-foreground">ZIP com conjunto SHP</span> para o fluxo de banco geoespacial.
+                  </p>
+                </div>
+              </div>
+
               <div
                 className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
                 onClick={() => document.getElementById('file-upload')?.click()}
@@ -226,12 +277,15 @@ const UploadTracados = () => {
                   {selectedFile ? selectedFile.name : 'Clique para selecionar ou arraste o arquivo aqui'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Formatos suportados: KML, KMZ, ZIP (Shapefile)
+                  Formatos suportados: KML, KMZ, GPKG, ZIP (conjunto SHP)
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  O upload é sempre feito no bucket <span className="font-mono">geodata-uploads</span>.
                 </p>
                 <input
                   id="file-upload"
                   type="file"
-                  accept=".kml,.kmz,.zip"
+                  accept=".kml,.kmz,.gpkg,.zip"
                   className="hidden"
                   onChange={handleFileChange}
                 />
@@ -242,7 +296,11 @@ const UploadTracados = () => {
                 onClick={handleUpload}
                 disabled={!selectedFile || isUploading}
               >
-                {isUploading ? 'Processando...' : 'Processar Arquivo'}
+                {isUploading
+                  ? 'Enviando...'
+                  : selectedFile && isInteractiveFormat(getExtension(selectedFile.name))
+                    ? 'Processar Arquivo'
+                    : 'Enviar para Ingestão PostGIS'}
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </CardFooter>
@@ -320,30 +378,56 @@ const UploadTracados = () => {
                 Resultado da Importação
               </CardTitle>
               <CardDescription>
-                {processingResult.success 
-                  ? 'Importação concluída com sucesso'
-                  : 'Importação concluída com alguns erros'}
+                {processingResult.mode === "postgis_queue"
+                  ? "Arquivo enviado para a fila de ingestão QGIS/PostGIS"
+                  : processingResult.success
+                    ? 'Importação concluída com sucesso'
+                    : 'Importação concluída com alguns erros'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-4 gap-4">
-                <div className="bg-muted rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-primary">{processingResult.stats.linhas}</p>
-                  <p className="text-sm text-muted-foreground">Linhas</p>
+              {processingResult.mode === "postgis_queue" ? (
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    <p className="text-sm font-semibold">Formato recebido</p>
+                    <p className="text-sm text-muted-foreground mt-1">{processingResult.fileType}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    <p className="text-sm font-semibold">Caminho no bucket</p>
+                    <p className="text-sm text-muted-foreground mt-1 break-all font-mono">
+                      {processingResult.storagePath}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+                    <p className="text-sm font-semibold">Próximo passo</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Use o conector QGIS/PostGIS ou um importador `ogr2ogr` para carregar este dataset no PostGIS do Supabase.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Esta tela é o ponto oficial para upload de GeoPackage e conjuntos SHP ZIP.
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-muted rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-primary">{processingResult.stats.estruturas}</p>
-                  <p className="text-sm text-muted-foreground">Estruturas</p>
+              ) : (
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-muted rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-primary">{processingResult.stats.linhas}</p>
+                    <p className="text-sm text-muted-foreground">Linhas</p>
+                  </div>
+                  <div className="bg-muted rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-primary">{processingResult.stats.estruturas}</p>
+                    <p className="text-sm text-muted-foreground">Estruturas</p>
+                  </div>
+                  <div className="bg-muted rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-primary">{processingResult.stats.eventos}</p>
+                    <p className="text-sm text-muted-foreground">Eventos</p>
+                  </div>
+                  <div className="bg-muted rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-primary">{processingResult.stats.outros}</p>
+                    <p className="text-sm text-muted-foreground">Outros</p>
+                  </div>
                 </div>
-                <div className="bg-muted rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-primary">{processingResult.stats.eventos}</p>
-                  <p className="text-sm text-muted-foreground">Eventos</p>
-                </div>
-                <div className="bg-muted rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-primary">{processingResult.stats.outros}</p>
-                  <p className="text-sm text-muted-foreground">Outros</p>
-                </div>
-              </div>
+              )}
 
               {processingResult.errors && processingResult.errors.length > 0 && (
                 <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
@@ -363,6 +447,7 @@ const UploadTracados = () => {
               <Button variant="outline" onClick={() => {
                 setCurrentStep(1);
                 setSelectedFile(null);
+                setUploadedFilePath(null);
                 setProcessingResult(null);
                 setFeatures([]);
                 setClassifications({});

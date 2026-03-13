@@ -10,7 +10,9 @@ const ProcessRasterSchema = z.object({
   file_path: z.string().trim().max(500).regex(/^[a-zA-Z0-9/_.-]+$/),
   line_code: z.string().trim().max(50).optional(),
   corridor_id: z.string().uuid().optional(),
-  ts_acquired: z.string().datetime(),
+  ts_acquired: z.string().trim().min(10).max(40).refine((value) => !Number.isNaN(Date.parse(value)), {
+    message: 'ts_acquired must be a valid date or datetime string',
+  }),
   bands: z.number().int().min(3).max(10).optional(),
 });
 
@@ -45,11 +47,12 @@ Deno.serve(async (req) => {
     // Parse and validate request body
     const rawBody = await req.json();
     const { file_path, line_code, corridor_id, ts_acquired, bands = 3 } = ProcessRasterSchema.parse(rawBody);
+    const tsAcquiredIso = new Date(ts_acquired).toISOString();
 
     // Use service role for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('Processing raster:', { file_path, line_code, ts_acquired, bands });
+    console.log('Processing raster:', { file_path, line_code, ts_acquired: tsAcquiredIso, bands });
 
     // TODO: Implementar processamento real com GDAL ou Sharp
     // Por enquanto, stub que retorna estatísticas simuladas
@@ -80,12 +83,17 @@ Deno.serve(async (req) => {
         src: 'local_upload',
         bands,
         crs: 'EPSG:4326',
-        ts_acquired,
+        ts_acquired: tsAcquiredIso,
         url_cog,
         thumbnail_url,
+        qgis_layer_uri: url_cog,
         stats_json: stats,
         line_code,
         corridor_id,
+        metadata: {
+          file_path,
+          uploaded_by: user.id,
+        },
       })
       .select()
       .single();

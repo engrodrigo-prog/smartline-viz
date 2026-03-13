@@ -1,9 +1,14 @@
+import {
+  baixadaSantistaRightOfWaySites,
+  baixadaSantistaWildfireSeeds,
+} from "./baixadaSantistaScenario";
+
 export const regioes = ['A', 'B', 'C'] as const;
 
 export const linhas = [
   { id: 'LT-001', nome: 'Linha 1 - SP Norte', ramais: ['R1', 'R2', 'R3'] },
   { id: 'LT-002', nome: 'Linha 2 - SP Sul', ramais: ['R1', 'R2'] },
-  { id: 'LT-003', nome: 'Linha 3 - Litoral', ramais: ['R1', 'R2', 'R3', 'R4'] },
+  { id: 'LT-003', nome: 'Linha 3 - Baixada Santista', ramais: ['R1', 'R2', 'R3', 'R4'] },
 ];
 
 export type Criticidade = 'Baixa' | 'Média' | 'Alta';
@@ -379,34 +384,39 @@ export type OcupacaoFaixa = {
   coords: [number, number];
   situacao: 'Regular' | 'Irregular' | 'Em Regularização';
   distanciaFaixa: number; // em metros
+  municipio?: string;
+  bairro?: string;
+  trechoKm?: string;
+  classeRisco?: 'Observação' | 'Alerta' | 'Crítico';
+  scoreRisco?: number;
+  edificacao?: string;
+  areaConstruidaM2?: number;
+  resumo?: string;
   prazoRegularizacao?: string;
   responsavel?: string;
 };
 
-export const ocupacoesFaixa: OcupacaoFaixa[] = Array.from({ length: 35 }, (_, i) => {
-  const linha = linhas[Math.floor(Math.random() * linhas.length)];
-  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
-  const tipos: OcupacaoFaixa['tipo'][] = ['Residencial', 'Comercial', 'Agrícola', 'Industrial'];
-  const situacoes: OcupacaoFaixa['situacao'][] = ['Regular', 'Irregular', 'Em Regularização'];
-  const situacao = situacoes[Math.floor(Math.random() * situacoes.length)];
-  
-  return {
-    id: `OCP-${String(i + 1).padStart(3, '0')}`,
-    nome: `Ocupação ${i + 1}`,
-    tipo: tipos[Math.floor(Math.random() * tipos.length)],
-    regiao: regioes[Math.floor(Math.random() * regioes.length)],
-    linha: linha.id,
-    ramal,
-    coords: [
-      -23.55 + (Math.random() - 0.5) * 2,
-      -46.63 + (Math.random() - 0.5) * 2
-    ],
-    situacao,
-    distanciaFaixa: Math.floor(Math.random() * 150) + 10,
-    prazoRegularizacao: situacao === 'Em Regularização' ? new Date(2025, 11, Math.floor(Math.random() * 30) + 1).toISOString().split('T')[0] : undefined,
-    responsavel: situacao !== 'Regular' ? `Responsável ${i + 1}` : undefined,
-  };
-});
+export const ocupacoesFaixa: OcupacaoFaixa[] = baixadaSantistaRightOfWaySites.map((site) => ({
+  id: site.id,
+  nome: site.nome,
+  tipo: site.tipo,
+  regiao: 'C',
+  linha: 'LT-003',
+  ramal: site.ramal,
+  coords: [site.center[1], site.center[0]],
+  situacao: site.situacao,
+  distanciaFaixa: site.distanciaFaixa,
+  municipio: site.municipio,
+  bairro: site.bairro,
+  trechoKm: site.trechoKm,
+  classeRisco: site.classeRisco,
+  scoreRisco: site.scoreRisco,
+  edificacao: site.edificacao,
+  areaConstruidaM2: site.areaConstruidaM2,
+  resumo: site.resumo,
+  prazoRegularizacao: site.prazoRegularizacao,
+  responsavel: site.responsavel,
+}));
 
 // Proteção de Pássaros
 export type ProtecaoPássaros = {
@@ -656,54 +666,48 @@ export type Queimada = {
   };
 };
 
-const tiposQueimada: Queimada['tipoQueimada'][] = ['Controlada', 'Acidental', 'Criminosa', 'Natural'];
-const statusIncendio: Queimada['statusIncendio'][] = ['Ativo', 'Controlado', 'Extinto'];
-const niveisRisco: Queimada['nivelRisco'][] = ['Baixo', 'Médio', 'Alto', 'Crítico'];
+export const queimadas: Queimada[] = baixadaSantistaWildfireSeeds.map((seed, index) => {
+  const riskToStatus: Record<Queimada['nivelRisco'], Queimada['statusIncendio']> = {
+    'Baixo': 'Controlado',
+    'Médio': 'Controlado',
+    'Alto': 'Ativo',
+    'Crítico': 'Ativo',
+  };
+  const nivelRisco: Queimada['nivelRisco'] =
+    seed.riskMax >= 90 ? 'Crítico' : seed.riskMax >= 75 ? 'Alto' : seed.riskMax >= 60 ? 'Médio' : 'Baixo';
+  const status = riskToStatus[nivelRisco];
+  const temperatura = Math.round(27 + seed.windSpeedMs + index * 0.4);
 
-export const queimadas: Queimada[] = Array.from({ length: 30 }, (_, i) => {
-  const linha = linhas[Math.floor(Math.random() * linhas.length)];
-  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
-  const numTorres = Math.floor(Math.random() * 8) + 1;
-  const status = statusIncendio[Math.floor(Math.random() * statusIncendio.length)];
-  const nivelRisco = niveisRisco[Math.floor(Math.random() * niveisRisco.length)];
-  const temperatura = Math.floor(Math.random() * 17) + 25;
-  const numEquipes = status === 'Ativo' ? Math.floor(Math.random() * 3) + 2 : status === 'Controlado' ? Math.floor(Math.random() * 2) + 1 : 0;
-  
-  const danosPossiveis = [
-    'Vegetação próxima à linha afetada',
-    'Isoladores danificados pelo calor',
-    'Estruturas metálicas com oxidação acelerada',
-    'Cabos de comunicação comprometidos',
-    'Acesso dificultado à área'
-  ];
-  
   return {
-    id: `QMD-${String(i + 1).padStart(3, '0')}`,
-    nome: `Queimada ${i + 1}`,
-    regiao: regioes[Math.floor(Math.random() * regioes.length)],
-    linha: linha.id,
-    ramal,
-    coords: [
-      -23.55 + (Math.random() - 0.5) * 2,
-      -46.63 + (Math.random() - 0.5) * 2
-    ],
-    dataDeteccao: new Date(2025, Math.floor(Math.random() * 10), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
-    tipoQueimada: tiposQueimada[Math.floor(Math.random() * tiposQueimada.length)],
-    extensaoQueimada: parseFloat((Math.random() * 49.5 + 0.5).toFixed(1)),
+    id: `QMD-${String(index + 1).padStart(3, '0')}`,
+    nome: seed.label,
+    regiao: 'C',
+    linha: 'LT-003',
+    ramal: index < 2 ? 'R1' : index < 5 ? 'R2' : 'R3',
+    coords: [seed.coordinates[1], seed.coordinates[0]],
+    dataDeteccao: new Date(2026, 1, 10 + index).toISOString().split('T')[0],
+    tipoQueimada: index < 2 ? 'Criminosa' : index < 4 ? 'Acidental' : 'Natural',
+    extensaoQueimada: Number((seed.frp * 1.9).toFixed(1)),
     statusIncendio: status,
     nivelRisco,
-    distanciaLinha: Math.floor(Math.random() * 2900) + 100,
-    torres_ameacadas: Array.from({ length: numTorres }, (_, j) => `TRN-${String(i * 10 + j + 100).padStart(3, '0')}`),
-    equipesAcionadas: numEquipes > 0 
-      ? Array.from({ length: numEquipes }, (_, j) => `Equipe ${String.fromCharCode(65 + j)} - Brigada de Incêndio`)
-      : undefined,
-    danosCausados: status !== 'Ativo' && Math.random() > 0.5 
-      ? danosPossiveis[Math.floor(Math.random() * danosPossiveis.length)]
-      : undefined,
+    distanciaLinha: seed.distanceToLineM,
+    torres_ameacadas: Array.from({ length: Math.max(1, Math.ceil(seed.riskMax / 30)) }, (_, itemIndex) =>
+      `TRN-${String(200 + index * 3 + itemIndex).padStart(3, '0')}`
+    ),
+    equipesAcionadas: status === 'Ativo'
+      ? [
+          'Brigada Baixada 01',
+          'Defesa Patrimonial Litoral',
+          ...(seed.riskMax >= 90 ? ['Apoio Bombeiros Cubatão'] : []),
+        ]
+      : ['Monitoramento remoto'],
+    danosCausados: seed.riskMax >= 80
+      ? 'Vegetação de encosta e faixa lateral expostas a calor radiante'
+      : 'Sem dano estrutural identificado no último sobrevoo',
     climaNoMomento: {
       temperatura,
-      umidade: Math.floor(Math.random() * 55) + 15,
-      ventoKmh: Math.floor(Math.random() * 40) + 5,
+      umidade: Math.max(18, 58 - index * 5),
+      ventoKmh: Math.round(seed.windSpeedMs * 3.6),
     },
   };
 });

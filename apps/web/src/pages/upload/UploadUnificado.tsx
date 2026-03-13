@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Aperture,
   Images,
@@ -478,6 +479,20 @@ const UploadUnificado = () => {
                     processar via Supabase Functions.
                   </CardDescription>
                 </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+                    <p className="font-medium text-foreground">Arquivos do QGIS / PostGIS</p>
+                    <p className="text-muted-foreground mt-1">
+                      Para <span className="font-medium text-foreground">GeoPackage (.gpkg)</span> e
+                      <span className="font-medium text-foreground"> ZIP com conjunto SHP</span>, use a tela dedicada
+                      de geodados em{" "}
+                      <Link to="/upload/tracados" className="font-medium text-primary underline underline-offset-4">
+                        /upload/tracados
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                </CardContent>
               </Card>
 
               {["linha", "estrutura", "analise", "perigo", "outros"].map((category) => (

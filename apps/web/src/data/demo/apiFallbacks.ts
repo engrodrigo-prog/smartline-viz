@@ -12,6 +12,10 @@ import type {
 } from "@/services/missoes";
 import type { FirmsResponse } from "@/hooks/useFirmsData";
 import { nowIso } from "@/lib/demoApi";
+import {
+  baixadaSantistaBounds,
+  buildBaixadaWildfireCollection,
+} from "@/lib/baixadaSantistaScenario";
 
 const randomId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -107,7 +111,6 @@ const demoDemandasDisponiveis = {
     "Fiscalização de Atividades",
     "Inspeção de Segurança",
     "Inspeção de Ativos",
-    "Treinamentos",
     "Situações Irregulares",
   ],
 } as DemandasResponse["disponiveis"];
@@ -293,116 +296,77 @@ export const demoMissoesStore = {
 
 // ---------- FIRMS (Queimadas) ----------
 
+const wildfireNow = Date.now();
+const demoWildfireCollection = buildBaixadaWildfireCollection(wildfireNow);
+const demoWildfireFeatures = demoWildfireCollection.features;
+const demoWildfireRiskAvg =
+  demoWildfireFeatures.reduce((sum, feature) => sum + Number(feature.properties?.risk_max ?? 0), 0) /
+  Math.max(demoWildfireFeatures.length, 1);
+const demoWildfireFrpSum = demoWildfireFeatures.reduce((sum, feature) => sum + Number(feature.properties?.frp ?? 0), 0);
+const demoWildfireCorridorCount = demoWildfireFeatures.filter((feature) => Boolean(feature.properties?.intersects_corridor)).length;
+
 export const demoFirmsResponse: FirmsResponse = {
   type: "FeatureCollection",
-  features: [
-    {
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [-53.1, -29.9],
-      },
-      properties: {
-        hotspot_id: "HS-0001",
-        brightness: 312,
-        confidence: 80,
-        satellite: "NOAA-20",
-        acq_date: nowIso(),
-        risk_max: 92,
-        frp: 23.4,
-        eta_h: 3.2,
-        wind_speed_ms: 8.1,
-        wind_dir_from_deg: 140,
-        distance_to_line_m: 380,
-        intersects_corridor: true,
-        wind_profile: {
-          10: { speed_ms: 6.4, deg_from: 135 },
-          50: { speed_ms: 7.8, deg_from: 138 },
-          100: { speed_ms: 8.1, deg_from: 140 },
-          200: { speed_ms: 9.2, deg_from: 142 },
-        },
-      },
-    },
-    {
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [-54.2, -30.2],
-      },
-      properties: {
-        hotspot_id: "HS-0002",
-        brightness: 302,
-        confidence: 70,
-        satellite: "MODIS",
-        acq_date: nowIso(),
-        risk_max: 67,
-        frp: 12.1,
-        eta_h: 6.5,
-        wind_speed_ms: 5.2,
-        wind_dir_from_deg: 190,
-        distance_to_line_m: 1200,
-        intersects_corridor: false,
-        wind_profile: {
-          10: { speed_ms: 4.7, deg_from: 188 },
-          50: { speed_ms: 5.0, deg_from: 189 },
-          100: { speed_ms: 5.2, deg_from: 190 },
-          200: { speed_ms: 6.1, deg_from: 192 },
-        },
-      },
-    },
-  ],
+  features: demoWildfireFeatures,
   meta: {
     typenames: ["ms:fires_noaa20_24hrs"],
-    bbox: "-60,-35,-45,-20",
-    count: 2,
+    bbox: baixadaSantistaBounds.bbox,
+    count: demoWildfireFeatures.length,
     source: "demo",
     cached: true,
     lastFetchedAt: nowIso(),
     formatAttempt: ["geojson"],
     wind: {
-      location: { lat: -29.9, lon: -53.1 },
+      location: baixadaSantistaBounds.center,
       height_used_for_risk: 100,
       available_heights: [10, 50, 100, 200],
       profile_by_horizon: {
         "0": [
-          { height: 10, speed: 6.4, deg: 135, dt: Math.floor(Date.now()/1000) },
-          { height: 50, speed: 7.8, deg: 138, dt: Math.floor(Date.now()/1000) },
-          { height: 100, speed: 8.1, deg: 140, dt: Math.floor(Date.now()/1000) },
-          { height: 200, speed: 9.2, deg: 142, dt: Math.floor(Date.now()/1000) },
+          { height: 10, speed: 7.4, deg: 126, dt: Math.floor(wildfireNow / 1000) },
+          { height: 50, speed: 8.8, deg: 128, dt: Math.floor(wildfireNow / 1000) },
+          { height: 100, speed: 9.3, deg: 131, dt: Math.floor(wildfireNow / 1000) },
+          { height: 200, speed: 10.1, deg: 134, dt: Math.floor(wildfireNow / 1000) },
         ],
         "3": [
-          { height: 10, speed: 6.1, deg: 136, dt: Math.floor(Date.now()/1000)+3*3600 },
-          { height: 50, speed: 7.2, deg: 139, dt: Math.floor(Date.now()/1000)+3*3600 },
-          { height: 100, speed: 7.9, deg: 141, dt: Math.floor(Date.now()/1000)+3*3600 },
-          { height: 200, speed: 8.7, deg: 143, dt: Math.floor(Date.now()/1000)+3*3600 },
+          { height: 10, speed: 7.1, deg: 129, dt: Math.floor(wildfireNow / 1000) + 3 * 3600 },
+          { height: 50, speed: 8.2, deg: 131, dt: Math.floor(wildfireNow / 1000) + 3 * 3600 },
+          { height: 100, speed: 8.9, deg: 133, dt: Math.floor(wildfireNow / 1000) + 3 * 3600 },
+          { height: 200, speed: 9.8, deg: 136, dt: Math.floor(wildfireNow / 1000) + 3 * 3600 },
         ],
         "6": [
-          { height: 10, speed: 5.5, deg: 138, dt: Math.floor(Date.now()/1000)+6*3600 },
-          { height: 50, speed: 6.7, deg: 142, dt: Math.floor(Date.now()/1000)+6*3600 },
-          { height: 100, speed: 7.5, deg: 146, dt: Math.floor(Date.now()/1000)+6*3600 },
-          { height: 200, speed: 8.1, deg: 150, dt: Math.floor(Date.now()/1000)+6*3600 },
+          { height: 10, speed: 6.8, deg: 132, dt: Math.floor(wildfireNow / 1000) + 6 * 3600 },
+          { height: 50, speed: 7.9, deg: 135, dt: Math.floor(wildfireNow / 1000) + 6 * 3600 },
+          { height: 100, speed: 8.6, deg: 138, dt: Math.floor(wildfireNow / 1000) + 6 * 3600 },
+          { height: 200, speed: 9.4, deg: 141, dt: Math.floor(wildfireNow / 1000) + 6 * 3600 },
         ],
         "24": [
-          { height: 10, speed: 4.8, deg: 150, dt: Math.floor(Date.now()/1000)+24*3600 },
-          { height: 50, speed: 5.6, deg: 155, dt: Math.floor(Date.now()/1000)+24*3600 },
-          { height: 100, speed: 6.2, deg: 160, dt: Math.floor(Date.now()/1000)+24*3600 },
-          { height: 200, speed: 6.9, deg: 165, dt: Math.floor(Date.now()/1000)+24*3600 },
+          { height: 10, speed: 5.8, deg: 142, dt: Math.floor(wildfireNow / 1000) + 24 * 3600 },
+          { height: 50, speed: 6.4, deg: 146, dt: Math.floor(wildfireNow / 1000) + 24 * 3600 },
+          { height: 100, speed: 7.1, deg: 149, dt: Math.floor(wildfireNow / 1000) + 24 * 3600 },
+          { height: 200, speed: 7.8, deg: 153, dt: Math.floor(wildfireNow / 1000) + 24 * 3600 },
         ],
       },
       timeline: Array.from({ length: 16 }, (_, i) => {
-        const dt = Math.floor(Date.now()/1000) - 3*3600 + i*3600; // 3h atrás até 12h à frente
+        const dt = Math.floor(wildfireNow / 1000) - 3 * 3600 + i * 3600;
         const make = (speed: number, deg: number) => ({ speed, deg });
         return {
           dt,
           isPast: i < 3,
           heights: {
-            10: make(5 + Math.sin(i/2)*0.8, 140 + i),
-            50: make(6 + Math.sin(i/2)*0.9, 142 + i),
-            100: make(7 + Math.sin(i/2)*1.0, 145 + i),
-            200: make(8 + Math.sin(i/2)*1.1, 150 + i),
+            10: make(6.1 + Math.sin(i / 2) * 0.8, 126 + i),
+            50: make(7.2 + Math.sin(i / 2) * 0.9, 129 + i),
+            100: make(8.1 + Math.sin(i / 2) * 1.0, 132 + i),
+            200: make(9.0 + Math.sin(i / 2) * 1.1, 136 + i),
           },
         };
       }),
+    },
+    stats: {
+      hotspots_total: demoWildfireFeatures.length,
+      risk_max: Math.max(...demoWildfireFeatures.map((feature) => Number(feature.properties?.risk_max ?? 0))),
+      risk_avg: Number(demoWildfireRiskAvg.toFixed(1)),
+      corridor_count: demoWildfireCorridorCount,
+      frp_sum: Number(demoWildfireFrpSum.toFixed(1)),
     },
   },
 };

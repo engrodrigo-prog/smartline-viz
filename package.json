@@ -22,6 +22,7 @@
     "deploy:web": "node scripts/deploy-web.mjs",
     "pub": "pnpm deploy:web",
     "deploy:web:auto": "pnpm deploy:web",
+    "supabase:web:push": "bash scripts/push-supabase-web-migrations.sh",
     "test:e2e": "pnpm playwright test --config=playwright.config.ts",
     "seed:admins": "pnpm tsx scripts/seed-admins.ts"
   },

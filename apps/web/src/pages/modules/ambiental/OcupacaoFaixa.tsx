@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Camera, Home } from "lucide-react";
+import { AlertTriangle, Camera, Home, MapPinned, Scale } from "lucide-react";
 import { toast } from "sonner";
 
 import ModuleLayout from "@/components/ModuleLayout";
@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import MapViewGeneric from "@/components/MapViewGeneric";
+import RightOfWayScenarioMap from "@/components/ambiente/RightOfWayScenarioMap";
 import { useFilters } from "@/context/FiltersContext";
 import { useFeatureStatuses, useSaveFeatureStatus } from "@/hooks/useFeatureStatus";
 import { useDatasetData } from "@/context/DatasetContext";
@@ -102,7 +102,7 @@ const OcupacaoFaixa = () => {
   const kpis = useMemo(() => ({
     total: filteredData.length,
     irregulares: filteredData.filter((item) => item.situacao === "Irregular").length,
-    emRegularizacao: filteredData.filter((item) => item.situacao === "Em Regularização").length,
+    criticos: filteredData.filter((item) => item.classeRisco === "Crítico").length,
     distanciaMedia: (
       filteredData.reduce((acc, item) => acc + item.distanciaFaixa, 0) / (filteredData.length || 1)
     ).toFixed(0)
@@ -110,7 +110,18 @@ const OcupacaoFaixa = () => {
 
   const columns = [
     { key: "nome", label: "Nome", sortable: true },
-    { key: "tipo", label: "Tipo", sortable: true },
+    {
+      key: "municipio",
+      label: "Local",
+      sortable: true,
+      render: (_value: string, row: OcupacaoItem) => (
+        <div>
+          <div className="font-medium">{row.municipio ?? "Baixada Santista"}</div>
+          <div className="text-xs text-muted-foreground">{row.bairro ?? "Trecho não informado"}</div>
+        </div>
+      )
+    },
+    { key: "tipo", label: "Uso", sortable: true },
     {
       key: "situacao",
       label: "Situação",
@@ -122,10 +133,20 @@ const OcupacaoFaixa = () => {
       )
     },
     {
+      key: "classeRisco",
+      label: "Risco",
+      sortable: true,
+      render: (value: string | undefined, row: OcupacaoItem) => (
+        <Badge variant={value === "Crítico" ? "destructive" : value === "Alerta" ? "default" : "secondary"}>
+          {value ?? "Observação"}{row.scoreRisco ? ` · ${row.scoreRisco}` : ""}
+        </Badge>
+      )
+    },
+    {
       key: "statusAtual",
       label: "Status atualizado",
       sortable: false,
-      render: (value: string, row: OcupacaoItem & { statusAtual: string }) => (
+      render: (value: string) => (
         <Badge variant={statusVariant(value)}>{value}</Badge>
       )
     },
@@ -135,11 +156,10 @@ const OcupacaoFaixa = () => {
       render: (value: number) => `${value}m`
     },
     {
-      key: "prazoRegularizacao",
-      label: "Prazo",
-      render: (value: string | undefined) => (value ? new Date(value).toLocaleDateString("pt-BR") : "-")
-    },
-    { key: "responsavel", label: "Responsável", render: (value: string | undefined) => value || "-" }
+      key: "trechoKm",
+      label: "Trecho",
+      render: (value: string | undefined) => value || "-"
+    }
   ];
 
   const openStatusDialog = (item: OcupacaoItem) => {
@@ -182,6 +202,33 @@ const OcupacaoFaixa = () => {
     <ModuleLayout title="Ocupação de Faixa" icon={Home}>
       <div className="p-6 space-y-6">
         <ModuleDemoBanner />
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <div className="tech-card p-5">
+            <div className="flex items-start gap-3">
+              <MapPinned className="mt-0.5 h-5 w-5 text-primary" />
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold">Cenário demo mais real para o MVP</h2>
+                <p className="text-sm text-muted-foreground">
+                  Esta jornada agora usa um corredor simulado na Baixada Santista, com trechos entre Cubatão,
+                  São Vicente, Marapé e Ponta da Praia. As ocupações representam casos com padrão urbano, logístico
+                  e industrial mais próximo do discurso comercial do produto.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="tech-card p-5">
+            <div className="flex items-start gap-3">
+              <Scale className="mt-0.5 h-5 w-5 text-amber-300" />
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold">Leitura recomendada</h2>
+                <p className="text-sm text-muted-foreground">
+                  Use a aba de cenário para mostrar o traçado da linha, as edificações simuladas e a priorização
+                  jurídica/operacional por proximidade e risco.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
         <FiltersBar>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
@@ -237,14 +284,14 @@ const OcupacaoFaixa = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <CardKPI title="Total de Ocupações" value={kpis.total} icon={Home} />
           <CardKPI title="Irregulares" value={kpis.irregulares} icon={Home} />
-          <CardKPI title="Em Regularização" value={kpis.emRegularizacao} icon={Home} />
-          <CardKPI title="Distância média" value={`${kpis.distanciaMedia}m`} icon={Home} />
+          <CardKPI title="Casos Críticos" value={kpis.criticos} icon={AlertTriangle} />
+          <CardKPI title="Distância média" value={`${kpis.distanciaMedia}m`} icon={MapPinned} />
         </div>
 
         <Tabs defaultValue="lista">
           <TabsList>
             <TabsTrigger value="lista">Lista</TabsTrigger>
-            <TabsTrigger value="mapa">Mapa</TabsTrigger>
+            <TabsTrigger value="mapa">Cenário</TabsTrigger>
           </TabsList>
 
           <TabsContent value="lista" className="mt-4">
@@ -257,11 +304,16 @@ const OcupacaoFaixa = () => {
           </TabsContent>
 
           <TabsContent value="mapa" className="mt-4">
-            <MapViewGeneric
-              items={filteredData}
-              markerIcon={Home}
-              colorBy="situacao"
-              onMarkerClick={(ocupacao) => setSelectedOcupacao(ocupacao)}
+            <RightOfWayScenarioMap
+              siteIds={filteredData.map((ocupacao) => ocupacao.id)}
+              selectedId={selectedOcupacao?.id}
+              onSelect={(siteId) =>
+                setSelectedOcupacao(
+                  filteredData.find((ocupacao) => ocupacao.id === siteId) ??
+                    ocupacoesDataset.find((ocupacao) => ocupacao.id === siteId) ??
+                    null,
+                )
+              }
             />
           </TabsContent>
         </Tabs>
@@ -274,6 +326,10 @@ const OcupacaoFaixa = () => {
           {selectedOcupacao && (
             <div className="space-y-6 p-4">
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-sm text-muted-foreground">Edificação</span>
+                  <p className="font-bold text-lg">{selectedOcupacao.edificacao ?? selectedOcupacao.nome}</p>
+                </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Tipo</span>
                   <p className="font-bold text-lg">{selectedOcupacao.tipo}</p>
@@ -295,14 +351,41 @@ const OcupacaoFaixa = () => {
                   </div>
                 </div>
                 <div>
+                  <span className="text-sm text-muted-foreground">Risco</span>
+                  <div className="mt-1">
+                    <Badge
+                      variant={
+                        selectedOcupacao.classeRisco === "Crítico"
+                          ? "destructive"
+                          : selectedOcupacao.classeRisco === "Alerta"
+                            ? "default"
+                            : "secondary"
+                      }
+                    >
+                      {selectedOcupacao.classeRisco ?? "Observação"}
+                      {selectedOcupacao.scoreRisco ? ` · ${selectedOcupacao.scoreRisco}` : ""}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
                   <span className="text-sm text-muted-foreground">Distância da Faixa</span>
                   <p className="font-bold text-lg">{selectedOcupacao.distanciaFaixa}m</p>
                 </div>
                 <div>
-                  <span className="text-sm text-muted-foreground">Região</span>
-                  <p className="font-medium">Região {selectedOcupacao.regiao}</p>
+                  <span className="text-sm text-muted-foreground">Local</span>
+                  <p className="font-medium">
+                    {selectedOcupacao.municipio ?? `Região ${selectedOcupacao.regiao}`}
+                    {selectedOcupacao.bairro ? ` · ${selectedOcupacao.bairro}` : ""}
+                  </p>
                 </div>
               </div>
+
+              {selectedOcupacao.resumo && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Resumo do caso</span>
+                  <p className="font-medium leading-relaxed">{selectedOcupacao.resumo}</p>
+                </div>
+              )}
 
               {selectedOcupacao.responsavel && (
                 <div>
@@ -321,11 +404,19 @@ const OcupacaoFaixa = () => {
               )}
 
               <div>
-                <span className="text-sm text-muted-foreground">Localização</span>
+                <span className="text-sm text-muted-foreground">Traçado e trecho</span>
                 <p className="font-medium">
                   {selectedOcupacao.linha} - {selectedOcupacao.ramal}
+                  {selectedOcupacao.trechoKm ? ` · ${selectedOcupacao.trechoKm}` : ""}
                 </p>
               </div>
+
+              {selectedOcupacao.areaConstruidaM2 ? (
+                <div>
+                  <span className="text-sm text-muted-foreground">Área estimada</span>
+                  <p className="font-medium">{selectedOcupacao.areaConstruidaM2} m²</p>
+                </div>
+              ) : null}
 
               <div className="space-y-2">
                 <span className="text-sm text-muted-foreground">Status cadastrado</span>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -139,6 +139,9 @@ export function LocationPicker({
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Marcar no mapa</DialogTitle>
+            <DialogDescription>
+              Clique no mapa para posicionar o evento de campo e vincular a ocorrência ao trecho correto do corredor.
+            </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg overflow-hidden border">
             <MapLibreUnified

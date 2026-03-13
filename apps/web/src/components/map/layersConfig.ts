@@ -1,4 +1,18 @@
-import { Zap, Radio, Activity, AlertTriangle, Trees, Home, Building2, Flame, MapPin, ShieldCheck, Camera } from "lucide-react";
+import {
+  Zap,
+  Radio,
+  Activity,
+  AlertTriangle,
+  Trees,
+  Home,
+  Building2,
+  Flame,
+  MapPin,
+  ShieldCheck,
+  Camera,
+  Layers,
+  Image,
+} from "lucide-react";
 import type { Layer } from "./LayerSelector";
 
 export const DEFAULT_LAYERS: Layer[] = [
@@ -11,6 +25,9 @@ export const DEFAULT_LAYERS: Layer[] = [
   { id: "torres", name: "Torres/Apoios", icon: Radio, visible: false },
   { id: "sensores", name: "Sensores", icon: Activity, visible: false },
   { id: "eventos", name: "Eventos", icon: AlertTriangle, visible: false },
+  { id: "geo_pontos", name: "Pontos Geo (PostGIS)", icon: MapPin, visible: false },
+  { id: "geo_poligonos", name: "Polígonos Geo (PostGIS)", icon: Layers, visible: false },
+  { id: "geo_rasters", name: "Rasters / Footprints", icon: Image, visible: false },
   { id: "vegetacao", name: "Vegetação Crítica", icon: Trees, visible: false },
   { id: "ocupacoes", name: "Ocupações de Faixa", icon: Home, visible: false },
   { id: "travessias", name: "Travessias", icon: Building2, visible: false },

@@ -28,6 +28,116 @@ import {
   updateOfflineInspecao,
 } from "@/modules/vegetacao/offline/vegOffline";
 
+const addHours = (base: Date, hours: number) => new Date(base.getTime() + hours * 60 * 60 * 1000).toISOString();
+
+const buildAgendaFallback = (limit = 50): VegScheduleEvent[] => {
+  const now = new Date();
+  const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0, 0);
+
+  const items: VegScheduleEvent[] = [
+    {
+      id: "demo-agenda-01",
+      created_at: addHours(baseDate, -12),
+      created_by: null,
+      updated_at: addHours(baseDate, -2),
+      updated_by: null,
+      title: "Inspeção terrestre no corredor Cubatão -> Alemoa",
+      start_at: addHours(baseDate, 1),
+      end_at: addHours(baseDate, 3),
+      team_id: null,
+      operator_id: null,
+      related_anomaly_id: null,
+      related_work_order_id: null,
+      related_action_id: null,
+      status: "confirmed",
+      address_text: "Acesso operacional pela Via Anchieta, trecho industrial de Cubatão",
+      location_text: "Corredor de servidão próximo ao polo industrial de Cubatão",
+      location_method: "manual_address",
+      location_captured_at: addHours(baseDate, -2),
+      metadata: { demo: true, source: "fallback" },
+      geom: null,
+    },
+    {
+      id: "demo-agenda-02",
+      created_at: addHours(baseDate, -24),
+      created_by: null,
+      updated_at: addHours(baseDate, -3),
+      updated_by: null,
+      title: "Voo simulado com drone para invasão de faixa na Baixada Santista",
+      start_at: addHours(baseDate, 5),
+      end_at: addHours(baseDate, 7),
+      team_id: null,
+      operator_id: null,
+      related_anomaly_id: null,
+      related_work_order_id: null,
+      related_action_id: null,
+      status: "planned",
+      address_text: "Faixa de servidão entre Santos e São Vicente",
+      location_text: "Trecho com edificações simuladas e validação de altura",
+      location_method: "manual_address",
+      location_captured_at: addHours(baseDate, -3),
+      metadata: { demo: true, source: "fallback" },
+      geom: null,
+    },
+    {
+      id: "demo-agenda-03",
+      created_at: addHours(baseDate, -48),
+      created_by: null,
+      updated_at: addHours(baseDate, -6),
+      updated_by: null,
+      title: "Ronda preventiva de queimadas em borda de mata",
+      start_at: addHours(baseDate, 10),
+      end_at: addHours(baseDate, 12),
+      team_id: null,
+      operator_id: null,
+      related_anomaly_id: null,
+      related_work_order_id: null,
+      related_action_id: null,
+      status: "planned",
+      address_text: "Serra do Mar, acesso pela Imigrantes",
+      location_text: "Buffer operacional junto ao corredor energético",
+      location_method: "manual_address",
+      location_captured_at: addHours(baseDate, -6),
+      metadata: { demo: true, source: "fallback" },
+      geom: null,
+    },
+    {
+      id: "demo-agenda-04",
+      created_at: addHours(baseDate, -72),
+      created_by: null,
+      updated_at: addHours(baseDate, -24),
+      updated_by: null,
+      title: "Fechamento de OS de roçada mecanizada",
+      start_at: addHours(baseDate, -6),
+      end_at: addHours(baseDate, -4),
+      team_id: null,
+      operator_id: null,
+      related_anomaly_id: null,
+      related_work_order_id: null,
+      related_action_id: null,
+      status: "done",
+      address_text: "Praia Grande, faixa paralela ao corredor litorâneo",
+      location_text: "Trecho liberado após inspeção final",
+      location_method: "manual_address",
+      location_captured_at: addHours(baseDate, -24),
+      metadata: { demo: true, source: "fallback" },
+      geom: null,
+    },
+  ];
+
+  return items.slice(0, Math.max(1, Math.min(limit, items.length)));
+};
+
+const shouldUseAgendaFallback = (error: unknown) => {
+  const message = String((error as any)?.message ?? error ?? "").toLowerCase();
+  return (
+    message.includes("/vegetacao/agenda") ||
+    message.includes("veg_schedule_event") ||
+    message.includes("db_error") ||
+    message.includes("400 bad request")
+  );
+};
+
 export const useVegDashboard = () =>
   useQuery<VegDashboardResponse>({
     queryKey: ["veg", "dashboard"],
@@ -278,9 +388,23 @@ export const useVegDeleteAuditoria = () => {
 export const useVegAgenda = (params: { limit?: number } = {}) =>
   useQuery<{ items: VegScheduleEvent[] }>({
     queryKey: ["veg", "agenda", params],
-    queryFn: () => vegApi.listAgenda(params),
+    queryFn: async () => {
+      const limit = Math.min(params.limit ?? 50, 200);
+      if (!isOnline()) return { items: buildAgendaFallback(limit) };
+
+      try {
+        return await vegApi.listAgenda({ ...params, limit });
+      } catch (error) {
+        if (shouldUseAgendaFallback(error)) {
+          console.warn("[vegetacao] Agenda indisponível no backend; usando fallback local.", error);
+          return { items: buildAgendaFallback(limit) };
+        }
+        throw error;
+      }
+    },
     keepPreviousData: true,
     staleTime: 10_000,
+    retry: false,
   });
 
 export const useVegAgendaMutation = () => {

@@ -50,6 +50,7 @@ Páginas/Componentes que consomem diretamente o `DatasetContext` hoje:
 - **Supabase Edge Functions / hooks geoespaciais:**
   - `useQueimadas`, `useFirmsData`, `useFirmsFootprints`, `useFirmsRisk`, `useFootprintAlerts`, `useWeather` alimentam `Dashboard` (mapa), `pages/modules/ambiental/Queimadas.tsx`, `FirmsViewer.tsx` e `components/map/UnifiedMapView`.
   - `useAmbienteAlerts`, `useAlarmZones`, `useChangeDetection` suportam módulos Ambientais (chamados em `modules/afins`).
+  - `useGeodataQuery` agora consulta a view `vw_dashboard_geo_features` no Supabase/PostGIS para abastecer o mapa do `Dashboard` com linhas, torres, pontos, polígonos e footprints de raster publicados no banco.
 
 - **API LiPowerline (Fase 3):**
   - `services/lipowerlineApi.ts` encapsula todas as chamadas `/api/linhas`, `/api/cenarios`, `/api/kpi-linha`, `/api/risco-*`, `/api/cruzamentos`, `/api/tratamentos` e `/api/simulacoes/riscos`.

@@ -9,7 +9,6 @@ export const DEMANDA_TEMAS = [
   "Fiscalização de Atividades",
   "Inspeção de Segurança",
   "Inspeção de Ativos",
-  "Treinamentos",
   "Situações Irregulares"
 ] as const;
 

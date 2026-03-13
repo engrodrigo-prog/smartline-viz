@@ -85,6 +85,30 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
     return { type: 'FeatureCollection', features };
   };
 
+  const upsertCorridorSource = (nextCorridor: FeatureCollection<LineString> | null | undefined) => {
+    if (!map.current || !nextCorridor || !nextCorridor.features.length) return;
+
+    const source = map.current.getSource('queimadas-corridor') as maplibregl.GeoJSONSource | undefined;
+    if (source) {
+      source.setData(nextCorridor as any);
+      return;
+    }
+
+    map.current.addSource('queimadas-corridor', { type: 'geojson', data: nextCorridor });
+    map.current.addLayer({
+      id: 'queimadas-corridor-glow',
+      type: 'line',
+      source: 'queimadas-corridor',
+      paint: { 'line-color': '#22d3ee', 'line-width': 8, 'line-opacity': 0.2 }
+    });
+    map.current.addLayer({
+      id: 'queimadas-corridor',
+      type: 'line',
+      source: 'queimadas-corridor',
+      paint: { 'line-color': '#0284c7', 'line-width': 3, 'line-opacity': 0.9 }
+    });
+  };
+
   // Calcula um vetor de vento médio a partir dos hotspots (demo), caso não exista grid
   const windVector = useMemo(() => {
     const feats = geojson.features || [];
@@ -209,21 +233,7 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
         });
 
         // Corredor (linha guia)
-        if (corridor && corridor.features.length) {
-          map.current.addSource('queimadas-corridor', { type: 'geojson', data: corridor });
-          map.current.addLayer({
-            id: 'queimadas-corridor-glow',
-            type: 'line',
-            source: 'queimadas-corridor',
-            paint: { 'line-color': '#22d3ee', 'line-width': 8, 'line-opacity': 0.2 }
-          });
-          map.current.addLayer({
-            id: 'queimadas-corridor',
-            type: 'line',
-            source: 'queimadas-corridor',
-            paint: { 'line-color': '#0284c7', 'line-width': 3, 'line-opacity': 0.9 }
-          });
-        }
+        upsertCorridorSource(corridor);
 
         map.current.on('click', 'risk-points', (e) => {
           if (e.features && e.features[0] && onFeatureClick) {
@@ -247,10 +257,6 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
         canvas.style.top = '0';
         canvas.style.left = '0';
         canvas.style.pointerEvents = 'none';
-        const dpr = window.devicePixelRatio || 1;
-        dprRef.current = dpr;
-        canvas.width = Math.floor(mapContainer.current.clientWidth * dpr);
-        canvas.height = Math.floor(mapContainer.current.clientHeight * dpr);
         canvas.style.width = "100%";
         canvas.style.height = "100%";
         canvas.style.mixBlendMode = "screen";
@@ -258,32 +264,54 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
         windCanvasRef.current = canvas;
         mapContainer.current.appendChild(canvas);
 
+        let ctx = canvas.getContext('2d')!;
+
+        const syncCanvasSize = () => {
+          if (!mapContainer.current || !windCanvasRef.current) return;
+          const dpr = window.devicePixelRatio || 1;
+          dprRef.current = dpr;
+          windCanvasRef.current.width = Math.floor(mapContainer.current.clientWidth * dpr);
+          windCanvasRef.current.height = Math.floor(mapContainer.current.clientHeight * dpr);
+          windCanvasRef.current.style.width = "100%";
+          windCanvasRef.current.style.height = "100%";
+          ctx = windCanvasRef.current.getContext('2d')!;
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+        };
+
         const setupParticles = () => {
-          const count = Math.floor((canvas.width * canvas.height) / (16000 * dpr));
-          particlesRef.current = Array.from({ length: Math.max(300, count) }, () => ({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
+          const currentCanvas = windCanvasRef.current;
+          if (!currentCanvas) return;
+          const logicalWidth = currentCanvas.width / dprRef.current;
+          const logicalHeight = currentCanvas.height / dprRef.current;
+          const count = Math.floor((logicalWidth * logicalHeight) / 18000);
+          particlesRef.current = Array.from({ length: Math.max(180, count) }, () => ({
+            x: Math.random() * currentCanvas.width,
+            y: Math.random() * currentCanvas.height,
           }));
         };
+
+        syncCanvasSize();
         setupParticles();
 
-        const ctx = canvas.getContext('2d')!;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.scale(dpr, dpr);
-
         const step = () => {
+          const currentCanvas = windCanvasRef.current;
+          if (!currentCanvas) return;
           const { vx, vy, speed } = windVectorRef.current;
           const base = Math.max(0.5, Math.min(2, Math.abs(speed) / 3));
+          const width = currentCanvas.width / dprRef.current;
+          const height = currentCanvas.height / dprRef.current;
+          const currentDpr = dprRef.current;
           // leve "memória" para rastro (motion blur)
           ctx.globalCompositeOperation = 'source-over';
           ctx.fillStyle = 'rgba(2, 6, 23, 0.04)';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillRect(0, 0, width, height);
           ctx.globalCompositeOperation = 'lighter';
           const t = performance.now() * 0.0007;
           for (const p of particlesRef.current) {
-            const x = p.x / dpr;
-            const y = p.y / dpr;
+            const x = p.x / currentDpr;
+            const y = p.y / currentDpr;
             // pseudo-noise para ondular as trajetórias
             const n = Math.sin(x * 0.015 + t) * Math.cos(y * 0.01 - t * 1.3);
             const ang = Math.atan2(vy, vx) + n * 0.6;
@@ -303,11 +331,11 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
             ctx.lineTo(nx, ny);
             ctx.stroke();
 
-            p.x = nx * dpr;
-            p.y = ny * dpr;
-            if (p.x < 0 || p.x >= canvas.width || p.y < 0 || p.y >= canvas.height) {
-              p.x = Math.random() * canvas.width;
-              p.y = Math.random() * canvas.height;
+            p.x = nx * currentDpr;
+            p.y = ny * currentDpr;
+            if (p.x < 0 || p.x >= currentCanvas.width || p.y < 0 || p.y >= currentCanvas.height) {
+              p.x = Math.random() * currentCanvas.width;
+              p.y = Math.random() * currentCanvas.height;
             }
           }
           ctx.globalCompositeOperation = 'source-over';
@@ -316,15 +344,11 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
         rafRef.current = requestAnimationFrame(step);
 
         const handleResize = () => {
-          if (!mapContainer.current || !windCanvasRef.current) return;
-          const dpr2 = window.devicePixelRatio || 1;
-          dprRef.current = dpr2;
-          windCanvasRef.current.width = Math.floor(mapContainer.current.clientWidth * dpr2);
-          windCanvasRef.current.height = Math.floor(mapContainer.current.clientHeight * dpr2);
+          syncCanvasSize();
           setupParticles();
         };
         window.addEventListener('resize', handleResize);
-        map.current.on('move', handleResize);
+        map.current.on('resize', handleResize);
 
         // Cleanup do overlay
         const cleanupOverlay = () => {
@@ -332,9 +356,9 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
           rafRef.current = null;
           window.removeEventListener('resize', handleResize);
           try {
-            map.current?.off('move', handleResize as any);
+            map.current?.off('resize', handleResize as any);
           } catch (error) {
-            console.warn('Falha ao remover listener de movimento do mapa.', error);
+            console.warn('Falha ao remover listener de resize do mapa.', error);
           }
           if (windCanvasRef.current && windCanvasRef.current.parentElement) {
             windCanvasRef.current.parentElement.removeChild(windCanvasRef.current);
@@ -380,6 +404,11 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
       }
     }
   }, [geojson, fitBounds]);
+
+  useEffect(() => {
+    if (!map.current || !map.current.isStyleLoaded()) return;
+    upsertCorridorSource(corridor);
+  }, [corridor]);
 
   return (
     <div className="relative w-full h-[600px] rounded-lg overflow-hidden">

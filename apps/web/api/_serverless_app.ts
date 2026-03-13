@@ -113,6 +113,117 @@ const asErrorLike = (err: unknown) =>
     ? (err as any)
     : ({ message: typeof err === 'string' ? err : String(err) } as any);
 
+const isMissingRelationError = (error: unknown, relation: string) => {
+  const err = asErrorLike(error);
+  const code = String(err?.code ?? '').toUpperCase();
+  const message = String(err?.message ?? '').toLowerCase();
+  const relationName = relation.toLowerCase();
+
+  return (
+    code === '42P01' ||
+    message.includes(`relation "${relationName}" does not exist`) ||
+    message.includes(`relation '${relationName}' does not exist`) ||
+    (message.includes('does not exist') && message.includes(relationName))
+  );
+};
+
+const buildVegAgendaFallback = (limit = 50) => {
+  const baseDate = new Date();
+  baseDate.setHours(8, 0, 0, 0);
+  const addHours = (hours: number) => new Date(baseDate.getTime() + hours * 60 * 60 * 1000).toISOString();
+
+  return [
+    {
+      id: 'demo-agenda-01',
+      created_at: addHours(-12),
+      created_by: null,
+      updated_at: addHours(-2),
+      updated_by: null,
+      title: 'Inspeção terrestre no corredor Cubatão -> Alemoa',
+      start_at: addHours(1),
+      end_at: addHours(3),
+      team_id: null,
+      operator_id: null,
+      related_anomaly_id: null,
+      related_work_order_id: null,
+      related_action_id: null,
+      status: 'confirmed',
+      address_text: 'Acesso operacional pela Via Anchieta, trecho industrial de Cubatão',
+      location_text: 'Corredor de servidão próximo ao polo industrial de Cubatão',
+      location_method: 'manual_address',
+      location_captured_at: addHours(-2),
+      metadata: { demo: true, source: 'fallback-api' },
+      geom: null,
+    },
+    {
+      id: 'demo-agenda-02',
+      created_at: addHours(-24),
+      created_by: null,
+      updated_at: addHours(-3),
+      updated_by: null,
+      title: 'Voo simulado com drone para invasão de faixa na Baixada Santista',
+      start_at: addHours(5),
+      end_at: addHours(7),
+      team_id: null,
+      operator_id: null,
+      related_anomaly_id: null,
+      related_work_order_id: null,
+      related_action_id: null,
+      status: 'planned',
+      address_text: 'Faixa de servidão entre Santos e São Vicente',
+      location_text: 'Trecho com edificações simuladas e validação de altura',
+      location_method: 'manual_address',
+      location_captured_at: addHours(-3),
+      metadata: { demo: true, source: 'fallback-api' },
+      geom: null,
+    },
+    {
+      id: 'demo-agenda-03',
+      created_at: addHours(-48),
+      created_by: null,
+      updated_at: addHours(-6),
+      updated_by: null,
+      title: 'Ronda preventiva de queimadas em borda de mata',
+      start_at: addHours(10),
+      end_at: addHours(12),
+      team_id: null,
+      operator_id: null,
+      related_anomaly_id: null,
+      related_work_order_id: null,
+      related_action_id: null,
+      status: 'planned',
+      address_text: 'Serra do Mar, acesso pela Imigrantes',
+      location_text: 'Buffer operacional junto ao corredor energético',
+      location_method: 'manual_address',
+      location_captured_at: addHours(-6),
+      metadata: { demo: true, source: 'fallback-api' },
+      geom: null,
+    },
+    {
+      id: 'demo-agenda-04',
+      created_at: addHours(-72),
+      created_by: null,
+      updated_at: addHours(-24),
+      updated_by: null,
+      title: 'Fechamento de OS de roçada mecanizada',
+      start_at: addHours(-6),
+      end_at: addHours(-4),
+      team_id: null,
+      operator_id: null,
+      related_anomaly_id: null,
+      related_work_order_id: null,
+      related_action_id: null,
+      status: 'done',
+      address_text: 'Praia Grande, faixa paralela ao corredor litorâneo',
+      location_text: 'Trecho liberado após inspeção final',
+      location_method: 'manual_address',
+      location_captured_at: addHours(-24),
+      metadata: { demo: true, source: 'fallback-api' },
+      geom: null,
+    },
+  ].slice(0, Math.max(1, Math.min(limit, 4)));
+};
+
 type ApiErrorPayload = {
   error: string;
   message: string;
@@ -1880,7 +1991,12 @@ app.get('/vegetacao/agenda', async (c) => {
     .select('*')
     .order('start_at', { ascending: true })
     .limit(limit);
-  if (error) return jsonError(c, 400, 'db_error', error.message);
+  if (error) {
+    if (isMissingRelationError(error, 'veg_schedule_event')) {
+      return c.json({ items: buildVegAgendaFallback(limit), degraded: true, source: 'fallback-api' });
+    }
+    return jsonError(c, 400, 'db_error', error.message);
+  }
   return c.json({ items: data ?? [] });
 });
 

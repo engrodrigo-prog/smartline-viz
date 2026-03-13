@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Map, Network, MapPin, Route, TreePine, GitBranch, CheckCircle, AlertTriangle, Activity, Database } from "lucide-react";
+import { Upload, Flame, Home, Route, TreePine, GitBranch, CheckCircle, AlertTriangle, Activity, Database, Network } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import FilterPanel from "@/components/FilterPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,31 +37,31 @@ const Dashboard = () => {
 
   const quickLinks: QuickAccessItem[] = [
     {
-      id: "mapa-eventos",
-      title: "Mapa de Eventos",
-      description: "Visualização geográfica de ativos",
-      to: "/visual/mapa",
-      Icon: Map,
-      iconWrapperClass: "bg-primary/10",
-      iconClass: "text-primary",
+      id: "ocupacao-faixa",
+      title: "Invasão de Faixa",
+      description: "Cenário demo na Baixada Santista",
+      to: "/ambiental/ocupacao",
+      Icon: Home,
+      iconWrapperClass: "bg-amber-500/10",
+      iconClass: "text-amber-500",
     },
     {
-      id: "unifilar",
-      title: "Diagrama Unifilar",
-      description: "Topologia da linha",
-      to: "/visual/unifilar",
-      Icon: Network,
-      iconWrapperClass: "bg-secondary/10",
-      iconClass: "text-secondary",
+      id: "queimadas",
+      title: "Queimadas",
+      description: "Hotspots e vento no corredor litoral",
+      to: "/ambiental/queimadas",
+      Icon: Flame,
+      iconWrapperClass: "bg-rose-500/10",
+      iconClass: "text-rose-500",
     },
     {
-      id: "rastreamento",
-      title: "Rastreamento",
-      description: "Equipes em campo",
-      to: "/equipes/rastreamento",
-      Icon: MapPin,
-      iconWrapperClass: "bg-blue-500/10",
-      iconClass: "text-blue-500",
+      id: "upload",
+      title: "Upload Unificado",
+      description: "Entrada principal do fluxo MVP",
+      to: "/upload",
+      Icon: Upload,
+      iconWrapperClass: "bg-sky-500/10",
+      iconClass: "text-sky-500",
     },
   ];
 

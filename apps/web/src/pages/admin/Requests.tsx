@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { Mail, CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ENV } from "@/config/env";
+import AppLayout from "@/components/AppLayout";
 
 type SignupRequest = {
   id: string;
@@ -93,7 +94,7 @@ const RequestsPage = () => {
             }),
           });
         } catch (err) {
-          console.warn("[studio] falha ao acionar e-mail automático", err);
+          console.warn("[admin] falha ao acionar e-mail automático", err);
         }
       }
       toast({
@@ -117,123 +118,130 @@ const RequestsPage = () => {
 
   if (!supabase) {
     return (
-      <div className="p-6 space-y-4">
-        <h1 className="text-2xl font-semibold">Studio – Solicitações de Acesso</h1>
-        <p className="text-sm text-muted-foreground">Indisponível (Supabase não configurado neste ambiente).</p>
-      </div>
+      <AppLayout title="Área Admin" subtitle="Solicitações de acesso e governança operacional">
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold">Solicitações de acesso</h2>
+          <p className="text-sm text-muted-foreground">Indisponível (Supabase não configurado neste ambiente).</p>
+        </div>
+      </AppLayout>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="p-6 space-y-3">
-        <h1 className="text-2xl font-semibold">Studio – Solicitações de Acesso</h1>
-        <p className="text-sm text-muted-foreground">Acesso restrito a administradores.</p>
-      </div>
+      <AppLayout title="Área Admin" subtitle="Solicitações de acesso e governança operacional">
+        <div className="space-y-3">
+          <h2 className="text-2xl font-semibold">Solicitações de acesso</h2>
+          <p className="text-sm text-muted-foreground">Acesso restrito a administradores.</p>
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Studio – Solicitações de Acesso</h1>
-          <p className="text-sm text-muted-foreground">
-            Pedidos enviados pela rota pública. Aprove para seguir com a criação de usuários no Supabase.
-          </p>
+    <AppLayout title="Área Admin" subtitle="Solicitações de acesso e governança operacional">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold">Solicitações de acesso</h2>
+            <p className="text-sm text-muted-foreground">
+              Pedidos enviados pela rota pública. Aprove para seguir com criação de usuário, perfil e validade de
+              acesso no Supabase.
+            </p>
+          </div>
+          <div className="text-xs text-muted-foreground text-right">
+            Contato admin:{" "}
+            <a className="text-primary underline" href={`mailto:${ENV.CONTACT_EMAIL}`}>
+              {ENV.CONTACT_EMAIL}
+            </a>
+          </div>
         </div>
-        <div className="text-xs text-muted-foreground text-right">
-          Contato admin:{" "}
-          <a className="text-primary underline" href={`mailto:${ENV.CONTACT_EMAIL}`}>
-            {ENV.CONTACT_EMAIL}
-          </a>
+
+        {isLoading && <p className="text-sm text-muted-foreground">Carregando solicitações...</p>}
+        {isError && <p className="text-sm text-destructive">Erro ao carregar solicitações.</p>}
+
+        {!isLoading && !data?.length && (
+          <p className="text-sm text-muted-foreground">Nenhuma solicitação pendente no momento.</p>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {data?.map((req) => (
+            <Card key={req.id}>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-sm">{req.full_name}</CardTitle>
+                  <p className="text-xs text-muted-foreground">{req.email}</p>
+                </div>
+                <Badge variant={req.type === "new" ? "default" : "outline"}>
+                  {req.type === "new" ? "Novo acesso" : "Extensão"}
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Telefone: <span className="font-mono">{req.phone || "—"}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Criado em:{" "}
+                  {format(new Date(req.created_at), "dd/MM/yyyy HH:mm")}
+                </p>
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>Prazo sugerido:</span>
+                  <select
+                    className="border rounded px-2 py-1 bg-background text-xs"
+                    value={daysById[req.id] ?? 7}
+                    onChange={(e) =>
+                      setDaysById((prev) => ({
+                        ...prev,
+                        [req.id]: Number(e.target.value) || 7,
+                      }))
+                    }
+                  >
+                    <option value={7}>7 dias</option>
+                    <option value={14}>14 dias</option>
+                    <option value={30}>30 dias</option>
+                  </select>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 flex items-center gap-1"
+                    asChild
+                  >
+                    <a href={mailto(req)}>
+                      <Mail className="w-4 h-4" />
+                      E-mail
+                    </a>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 flex items-center gap-1"
+                    onClick={() => updateStatus(req, "approved")}
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    Aprovar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="flex-1 flex items-center gap-1 text-destructive"
+                    onClick={() => updateStatus(req, "rejected")}
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Rejeitar
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Após aprovar, crie ou ajuste o usuário correspondente no Supabase (Auth) e, se necessário,
+                  defina o prazo de expiração em <code>profiles.expires_at</code>.
+                </p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
-
-      {isLoading && <p className="text-sm text-muted-foreground">Carregando solicitações...</p>}
-      {isError && <p className="text-sm text-destructive">Erro ao carregar solicitações.</p>}
-
-      {!isLoading && !data?.length && (
-        <p className="text-sm text-muted-foreground">Nenhuma solicitação pendente no momento.</p>
-      )}
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {data?.map((req) => (
-          <Card key={req.id}>
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <div>
-                <CardTitle className="text-sm">{req.full_name}</CardTitle>
-                <p className="text-xs text-muted-foreground">{req.email}</p>
-              </div>
-              <Badge variant={req.type === "new" ? "default" : "outline"}>
-                {req.type === "new" ? "Novo acesso" : "Extensão"}
-              </Badge>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Telefone: <span className="font-mono">{req.phone || "—"}</span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Criado em:{" "}
-                {format(new Date(req.created_at), "dd/MM/yyyy HH:mm")}
-              </p>
-              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>Prazo sugerido:</span>
-                <select
-                  className="border rounded px-2 py-1 bg-background text-xs"
-                  value={daysById[req.id] ?? 7}
-                  onChange={(e) =>
-                    setDaysById((prev) => ({
-                      ...prev,
-                      [req.id]: Number(e.target.value) || 7,
-                    }))
-                  }
-                >
-                  <option value={7}>7 dias</option>
-                  <option value={14}>14 dias</option>
-                  <option value={30}>30 dias</option>
-                </select>
-              </div>
-              <div className="flex gap-2 mt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 flex items-center gap-1"
-                  asChild
-                >
-                  <a href={mailto(req)}>
-                    <Mail className="w-4 h-4" />
-                    E-mail
-                  </a>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 flex items-center gap-1"
-                  onClick={() => updateStatus(req, "approved")}
-                >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  Aprovar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="flex-1 flex items-center gap-1 text-destructive"
-                  onClick={() => updateStatus(req, "rejected")}
-                >
-                  <XCircle className="w-4 h-4" />
-                  Rejeitar
-                </Button>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Após aprovar, crie ou ajuste o usuário correspondente no Supabase (Auth) e, se necessário,
-                defina o prazo de expiração em <code>profiles.expires_at</code>.
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+    </AppLayout>
   );
 };
 

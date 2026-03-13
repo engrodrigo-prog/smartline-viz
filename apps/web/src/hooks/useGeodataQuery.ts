@@ -1,67 +1,101 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  mapDashboardGeoRow,
+  type DashboardGeoFeature,
+  type DashboardGeoFeatureRow,
+  type GeoAssetType,
+  type GeoDashboardContext,
+} from "@/lib/geodata";
+
+type GeodataTable =
+  | "all"
+  | "estruturas"
+  | "linhas_transmissao"
+  | "concessoes_geo"
+  | "eventos_geo"
+  | "geodata_outros"
+  | "rasters";
 
 interface UseGeodataQueryOptions {
-  table: 'estruturas' | 'linhas_transmissao' | 'concessoes_geo' | 'eventos_geo' | 'geodata_outros';
-  filters?: Record<string, any>;
+  table?: GeodataTable;
+  context?: GeoDashboardContext;
+  filters?: {
+    empresa?: string;
+    regiao?: string;
+    lineCode?: string;
+    layerSource?: string;
+    assetType?: GeoAssetType;
+    geometryKinds?: string[];
+  };
   enabled?: boolean;
+  requireGeometry?: boolean;
 }
 
-// Hook simplificado para queries de geodados
-// Retorna estrutura básica que pode ser estendida conforme necessário
-export function useGeodataQuery({ table, filters = {}, enabled = true }: UseGeodataQueryOptions) {
-  return useQuery({
-    queryKey: ['geodata', table, filters],
-    queryFn: async () => {
-      // Por enquanto retorna array vazio - será implementado quando necessário
-      // com queries específicas para cada tabela
-      return [];
-    },
+export function useGeodataQuery({
+  table = "all",
+  context,
+  filters = {},
+  enabled = true,
+  requireGeometry = false,
+}: UseGeodataQueryOptions) {
+  return useQuery<DashboardGeoFeature[]>({
+    queryKey: ["dashboard-geodata", table, context, filters, requireGeometry],
     enabled,
+    queryFn: async () => {
+      if (!supabase) {
+        console.warn("[useGeodataQuery] Supabase não configurado; retornando lista vazia de geodados.");
+        return [];
+      }
+
+      let query = (supabase as any)
+        .from("vw_dashboard_geo_features")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (table !== "all") {
+        query = query.eq("source_table", table);
+      }
+
+      if (context) {
+        query = query.contains("dashboard_contexts", [context]);
+      }
+
+      if (filters.empresa) {
+        query = query.eq("company_name", filters.empresa);
+      }
+
+      if (filters.regiao) {
+        query = query.eq("region_code", filters.regiao);
+      }
+
+      if (filters.lineCode) {
+        query = query.eq("line_code", filters.lineCode);
+      }
+
+      if (filters.layerSource) {
+        query = query.eq("layer_source", filters.layerSource);
+      }
+
+      if (filters.assetType) {
+        query = query.eq("asset_type", filters.assetType);
+      }
+
+      if (filters.geometryKinds?.length) {
+        query = query.in("geometry_kind", filters.geometryKinds);
+      }
+
+      if (requireGeometry) {
+        query = query.not("geom_geojson", "is", null);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return ((data ?? []) as DashboardGeoFeatureRow[]).map(mapDashboardGeoRow);
+    },
   });
-}
-
-// Simple WKT to GeoJSON parser for basic geometries
-function parseWKT(wkt: string): any {
-  if (!wkt) return null;
-
-  // Remove SRID prefix if present
-  wkt = wkt.replace(/SRID=\d+;/, '');
-
-  if (wkt.startsWith('POINT')) {
-    const coords = wkt.match(/POINT\(([^)]+)\)/);
-    if (coords) {
-      const [lon, lat] = coords[1].split(' ').map(Number);
-      return {
-        type: 'Point',
-        coordinates: [lon, lat],
-      };
-    }
-  } else if (wkt.startsWith('LINESTRING')) {
-    const coords = wkt.match(/LINESTRING\(([^)]+)\)/);
-    if (coords) {
-      const coordinates = coords[1].split(',').map(pair => {
-        const [lon, lat] = pair.trim().split(' ').map(Number);
-        return [lon, lat];
-      });
-      return {
-        type: 'LineString',
-        coordinates,
-      };
-    }
-  } else if (wkt.startsWith('POLYGON')) {
-    const coords = wkt.match(/POLYGON\(\(([^)]+)\)\)/);
-    if (coords) {
-      const coordinates = coords[1].split(',').map(pair => {
-        const [lon, lat] = pair.trim().split(' ').map(Number);
-        return [lon, lat];
-      });
-      return {
-        type: 'Polygon',
-        coordinates: [coordinates],
-      };
-    }
-  }
-
-  return null;
 }

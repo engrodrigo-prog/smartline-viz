@@ -6,7 +6,6 @@ export type MediaTema =
   | "Fiscalização de Atividades"
   | "Inspeção de Segurança"
   | "Inspeção de Ativos"
-  | "Treinamentos"
   | "Situações Irregulares";
 
 export type MediaAssetTipo = "foto" | "video" | "srt" | "nuvem" | "outro";

@@ -30,24 +30,40 @@ export function RasterUpload({ onUploadSuccess, line_code, corridor_id }: Raster
     }
 
     setUploading(true);
+    const loadingToast = toast.loading('Enviando e processando raster...');
 
     try {
-      toast.loading('Processando raster...');
-      const file_path = `rasters/${Date.now()}_${file.name}`;
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) {
+        throw new Error('Usuário não autenticado para upload de raster');
+      }
 
-      // Chamar edge function para processar (assume que o arquivo já foi entregue ao bucket configurado)
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const file_path = `${authData.user.id}/rasters/${Date.now()}_${sanitizedName}`;
+      const tsAcquiredIso = new Date(`${tsAcquired}T12:00:00Z`).toISOString();
+
+      const { error: uploadError } = await supabase.storage
+        .from('geodata-uploads')
+        .upload(file_path, file, {
+          upsert: false,
+          contentType: file.type || 'image/tiff',
+        });
+
+      if (uploadError) throw uploadError;
+
       const { data, error } = await supabase.functions.invoke('process-raster', {
         body: {
           file_path,
           line_code,
           corridor_id,
-          ts_acquired: tsAcquired,
+          ts_acquired: tsAcquiredIso,
           bands: 4, // TODO: Detectar automaticamente
         },
       });
 
       if (error) throw error;
 
+      toast.dismiss(loadingToast);
       toast.success(data.message);
       onUploadSuccess?.(data.raster);
       
@@ -56,6 +72,7 @@ export function RasterUpload({ onUploadSuccess, line_code, corridor_id }: Raster
       setTsAcquired('');
 
     } catch (error: any) {
+      toast.dismiss(loadingToast);
       toast.error(`Erro ao processar: ${error.message}`);
     } finally {
       setUploading(false);

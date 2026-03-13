@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LegalNotice from "@/components/LegalNotice";
 import { FiltersProvider } from "./context/FiltersContext";
@@ -51,8 +51,6 @@ import MissoesPage from "./pages/missoes";
 import PerfilLinha from "./pages/modules/estrutura/PerfilLinha";
 import ComparativoExecucao from "./pages/analytics/ComparativoExecucao";
 import Legal from "./pages/Legal";
-import Quizzes from "./pages/treinamento/Quizzes";
-import QuizRunner from "./pages/treinamento/QuizRunner";
 import RequestsPage from "./pages/admin/Requests";
 import VegetacaoDashboardPage from "./modules/vegetacao/pages/VegetacaoDashboardPage";
 import AnomaliasPage from "./modules/vegetacao/pages/AnomaliasPage";
@@ -84,6 +82,7 @@ const App = () => (
           <Route path="/signup-request" element={<SignupRequest />} />
           <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
           <Route path="/legal" element={<Legal />} />
+          <Route path="/admin" element={<ProtectedRoute><RequestsPage /></ProtectedRoute>} />
           <Route path="/admin/requests" element={<ProtectedRoute><RequestsPage /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/relatorios" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
@@ -157,9 +156,9 @@ const App = () => (
           <Route path="/fiscalizacao/obras" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           <Route path="/auditorias/qualidade" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
           
-          {/* Treinamento */}
-          <Route path="/treinamento/quizzes" element={<ProtectedRoute><Quizzes /></ProtectedRoute>} />
-          <Route path="/treinamento/quiz/:id" element={<ProtectedRoute><QuizRunner /></ProtectedRoute>} />
+          {/* Treinamento descontinuado no MVP atual */}
+          <Route path="/treinamento/quizzes" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/treinamento/quiz/:id" element={<Navigate to="/dashboard" replace />} />
           
           {/* Configurações */}
           <Route path="/config/geral" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />

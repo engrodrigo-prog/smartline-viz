@@ -41,7 +41,10 @@ interface MapLibreUnifiedProps {
   onMapLoad?: (map: maplibregl.Map) => void;
   customPoints?: FeatureCollection<Geometry, { color?: string; isFocus?: boolean; size?: number }>;
   fitBounds?: maplibregl.LngLatBoundsLike | null;
-  customPolygons?: FeatureCollection<Polygon, { color?: string; ndvi?: number }>;
+  customPolygons?: FeatureCollection<
+    Polygon,
+    { color?: string; ndvi?: number; fillOpacity?: number; strokeColor?: string; strokeWidth?: number }
+  >;
   customLines?: FeatureCollection<LineString, { color?: string; width?: number; opacity?: number }>;
   height?: string;
   initialBasemapId?: BasemapId;
@@ -435,7 +438,7 @@ export const MapLibreUnified = ({
               0.8, "#15803d"
             ],
           ],
-          "fill-opacity": 0.45,
+          "fill-opacity": ["coalesce", ["get", "fillOpacity"], 0.45],
         },
       });
 
@@ -444,8 +447,8 @@ export const MapLibreUnified = ({
         type: "line",
         source: sourceId,
         paint: {
-          "line-color": "#0f172a",
-          "line-width": 1.25,
+          "line-color": ["coalesce", ["get", "strokeColor"], "#0f172a"],
+          "line-width": ["coalesce", ["get", "strokeWidth"], 1.25],
           "line-dasharray": [2, 1.5],
         },
       });

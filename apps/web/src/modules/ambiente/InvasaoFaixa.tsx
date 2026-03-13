@@ -1,5 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building } from 'lucide-react';
+import { Link } from "react-router-dom";
+import { Building, ArrowRight } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 export default function InvasaoFaixa() {
   return (
@@ -11,14 +13,20 @@ export default function InvasaoFaixa() {
             Detecção de Ocupações Irregulares
           </CardTitle>
           <CardDescription>
-            Monitoramento de invasões em faixa de servidão através de análise temporal
+            Monitoramento de invasões em faixa de servidão com cenário demo na Baixada Santista
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            Funcionalidade em desenvolvimento. Utilizará detecção de mudanças com contexto
-            "corridor_invasion" para identificar novas ocupações.
+            O MVP agora usa um traçado simulado entre Cubatão, São Vicente e Santos, com edificações em conflito,
+            classificação de risco e leitura pronta para apresentação comercial.
           </p>
+          <Button asChild>
+            <Link to="/ambiental/ocupacao" className="inline-flex items-center gap-2">
+              Abrir cenário detalhado
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     </div>

@@ -17,8 +17,6 @@ import {
   FileWarning,
   ClipboardCheck,
   Users,
-  GraduationCap,
-  Layers,
   CloudUpload,
   MapPin,
   Brain,
@@ -178,6 +176,54 @@ const Landing = () => {
       title: t("landing.features.items.drones.title"),
       description: t("landing.features.items.drones.description"),
       image: bannerMissoes,
+    },
+  ];
+
+  const mvpCases = [
+    {
+      icon: Home,
+      title: "Invasões de faixa com traçado simulado",
+      description:
+        "Demonstração centrada na Baixada Santista, com corredor, edificações simuladas e priorização por risco jurídico e operacional.",
+      href: "/ambiental/ocupacao",
+      cta: "Abrir cenário de faixa",
+    },
+    {
+      icon: AlertTriangle,
+      title: "Queimadas com hotspots e vento",
+      description:
+        "Leitura combinada de focos, ETA do fogo e exposição do corredor entre Cubatão, São Vicente e Santos.",
+      href: "/ambiental/queimadas",
+      cta: "Abrir cenário de queimadas",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Área Admin para governança",
+      description:
+        "Fluxo administrativo simplificado para aprovar acessos, controlar validade e sustentar a operação demo sem dispersão.",
+      href: "/admin/requests",
+      cta: "Abrir área admin",
+    },
+  ];
+
+  const mvpJourney = [
+    {
+      icon: CloudUpload,
+      title: "1. Publicar base e traçado",
+      description:
+        "O upload unificado concentra a entrada do MVP: base da linha, mídia e publicação do caso de uso que será demonstrado.",
+    },
+    {
+      icon: FileCheck,
+      title: "2. Abrir o caso ambiental",
+      description:
+        "Escolha a narrativa principal entre ocupação de faixa e queimadas. Ambas já carregam exemplos mais plausíveis para venda e validação.",
+    },
+    {
+      icon: BarChart3,
+      title: "3. Operar e decidir",
+      description:
+        "KPIs, mapa e área admin fecham a jornada com monitoramento, priorização e governança do acesso à demo.",
     },
   ];
 
@@ -397,37 +443,44 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* Training Preview Section (mesmo estilo, 1 foto + texto) */}
+        {/* MVP cases section */}
         <section className="py-20 px-10">
           <div className="container mx-auto max-w-7xl">
-            <div className="grid lg:grid-cols-2 gap-10 items-center">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
-                className="flex items-center justify-center order-2 lg:order-1"
-              >
-                <img
-                  src="/training.png"
-                  alt={t("landing.sections.trainingPreview.imageAlt")}
-                  className="rounded-2xl shadow-lg shadow-black/30 max-h-[400px] w-auto object-contain"
-                />
-              </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="text-center mb-12"
+            >
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white">Casos MVP prontos para demonstração</h2>
+              <p className="mx-auto max-w-3xl text-lg text-white/75">
+                A plataforma foi reposicionada para uma jornada mais curta: dois casos ambientais fortes e uma área
+                administrativa simples para sustentar operação e acesso.
+              </p>
+            </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
-                className="tech-card p-8 order-1 lg:order-2"
-              >
-                <h2 className="text-3xl font-bold mb-4 text-white">{t("landing.sections.trainingPreview.title")}</h2>
-                <p className="text-white/90 text-lg mb-4">{t("landing.sections.trainingPreview.description")}</p>
-                <a href="#treinamento" className="btn-primary inline-block">
-                  {t("landing.sections.trainingPreview.cta")}
-                </a>
-              </motion.div>
+            <div className="grid gap-6 lg:grid-cols-3">
+              {mvpCases.map((item, index) => (
+                <motion.div
+                  key={item.title}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: index * 0.08 }}
+                  className="tech-card flex h-full flex-col p-8"
+                >
+                  <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5">
+                    <item.icon className="h-7 w-7 text-primary" />
+                  </div>
+                  <h3 className="text-2xl font-semibold text-white">{item.title}</h3>
+                  <p className="mt-4 flex-1 text-sm leading-6 text-white/75">{item.description}</p>
+                  <Link to={item.href} className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary">
+                    {item.cta}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </motion.div>
+              ))}
             </div>
           </div>
         </section>
@@ -795,8 +848,8 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* Treinamento & Capacitação (antes das automações) */}
-        <section id="treinamento" className="py-20 px-6 bg-gradient-to-b from-slate-900/60 to-slate-900/30 border-t border-white/10">
+        {/* Jornada MVP */}
+        <section className="py-20 px-6 bg-gradient-to-b from-slate-900/60 to-slate-900/30 border-t border-white/10">
           <div className="container mx-auto max-w-7xl">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -805,104 +858,30 @@ const Landing = () => {
               transition={{ duration: 0.6 }}
               className="text-center mb-12"
             >
-	              <h2 className="text-4xl md:text-5xl font-bold mb-4 flex items-center gap-3 justify-center">
-	                <GraduationCap className="w-8 h-8 text-primary" />
-	                {t("landing.training.program.title")}
-	              </h2>
-	              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-	                {t("landing.training.program.subtitle")}
-	              </p>
-	            </motion.div>
+              <h2 className="text-4xl md:text-5xl font-bold mb-4">Jornada enxuta do MVP</h2>
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                O foco agora é demonstrar valor rápido. Treinamentos ficam fora do menu por enquanto, e a experiência
+                conduz o usuário por upload, caso ambiental e gestão administrativa.
+              </p>
+            </motion.div>
 
-            <div className="grid lg:grid-cols-2 gap-8 items-stretch">
-              {/* Conteúdo */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-	                transition={{ duration: 0.6, delay: 0.1 }}
-	                className="tech-card p-8 h-full"
-	              >
-	                <h3 className="text-2xl font-semibold mb-4">{t("landing.training.tracks.title")}</h3>
-	                <ul className="space-y-3 text-sm text-muted-foreground">
-	                  <li className="flex items-start gap-3">
-	                    <Layers className="w-5 h-5 text-primary mt-0.5" />
-	                    <span>
-	                      {t("landing.training.tracks.items.pointClouds.before")}{" "}
-	                      <strong className="text-foreground">{t("landing.training.tracks.items.pointClouds.highlight")}</strong>
-	                      {t("landing.training.tracks.items.pointClouds.after")}
-	                    </span>
-	                  </li>
-	                  <li className="flex items-start gap-3">
-	                    <FileCheck className="w-5 h-5 text-primary mt-0.5" />
-	                    <span>
-	                      <strong className="text-foreground">{t("landing.training.tracks.items.dataGeneration.highlight")}</strong>
-	                      {t("landing.training.tracks.items.dataGeneration.after")}
-	                    </span>
-	                  </li>
-	                  <li className="flex items-start gap-3">
-	                    <BarChart3 className="w-5 h-5 text-primary mt-0.5" />
-	                    <span>
-	                      <strong className="text-foreground">{t("landing.training.tracks.items.journey.highlight")}</strong>
-	                      {t("landing.training.tracks.items.journey.after")}
-	                    </span>
-	                  </li>
-	                </ul>
-	                <div className="mt-6 flex flex-wrap gap-3">
-	                  <Badge variant="secondary">{t("landing.training.tracks.badges.workshops")}</Badge>
-	                  <Badge variant="secondary">{t("landing.training.tracks.badges.onboarding")}</Badge>
-	                  <Badge variant="secondary">{t("landing.training.tracks.badges.mentoring")}</Badge>
-	                </div>
-	              </motion.div>
-
-              {/* Modalidades de adoção */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-	                transition={{ duration: 0.6, delay: 0.15 }}
-	                className="tech-card p-8 h-full"
-	              >
-	                <h3 className="text-2xl font-semibold mb-4">{t("landing.training.adoption.title")}</h3>
-	                <div className="space-y-4">
-	                  <div className="flex gap-3">
-	                    <CloudUpload className="w-6 h-6 text-primary shrink-0" />
-	                    <div>
-	                      <div className="font-semibold">{t("landing.training.adoption.items.fullOutsourcing.title")}</div>
-	                      <p className="text-sm text-muted-foreground">
-	                        {t("landing.training.adoption.items.fullOutsourcing.description")}
-	                      </p>
-	                    </div>
-	                  </div>
-	                  <div className="flex gap-3">
-	                    <Users className="w-6 h-6 text-primary shrink-0" />
-	                    <div>
-	                      <div className="font-semibold">{t("landing.training.adoption.items.hybrid.title")}</div>
-	                      <p className="text-sm text-muted-foreground">
-	                        {t("landing.training.adoption.items.hybrid.description")}
-	                      </p>
-	                    </div>
-	                  </div>
-	                  <div className="flex gap-3">
-	                    <GraduationCap className="w-6 h-6 text-primary shrink-0" />
-	                    <div>
-	                      <div className="font-semibold">{t("landing.training.adoption.items.guided.title")}</div>
-	                      <p className="text-sm text-muted-foreground">
-	                        {t("landing.training.adoption.items.guided.description")}
-	                      </p>
-	                    </div>
-	                  </div>
-	                </div>
-
-	                <div className="mt-6 flex flex-wrap gap-4">
-	                  <Button className="btn-primary" onClick={() => setContactOpen(true)}>
-	                    {t("landing.training.adoption.ctas.trainTeam")}
-	                  </Button>
-	                  <Link to="/upload" className="btn-secondary">
-	                    {t("landing.training.adoption.ctas.viewDataFlow")}
-	                  </Link>
-	                </div>
-	              </motion.div>
+            <div className="grid gap-6 lg:grid-cols-3">
+              {mvpJourney.map((step, index) => (
+                <motion.div
+                  key={step.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  className="tech-card p-8 h-full"
+                >
+                  <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5">
+                    <step.icon className="h-7 w-7 text-primary" />
+                  </div>
+                  <h3 className="text-2xl font-semibold mb-3">{step.title}</h3>
+                  <p className="text-sm leading-6 text-muted-foreground">{step.description}</p>
+                </motion.div>
+              ))}
             </div>
           </div>
         </section>

@@ -11,6 +11,8 @@ import { VehicleLegend } from '@/components/vehicles/VehicleLegend';
 import CardKPI from '@/components/CardKPI';
 import { useDatasetData } from "@/context/DatasetContext";
 
+const SENSOR_DB_ENABLED = import.meta.env.VITE_ENABLE_SENSOR_DB === 'true';
+
 const SKILL_COLORS = {
   electrician: 'hsl(217, 91%, 60%)',
   technician: 'hsl(48, 96%, 53%)',
@@ -28,6 +30,38 @@ export default function VeiculosOnline() {
     status: 'active'
   });
   const demoVehicles = useDatasetData((data) => data.veiculos);
+
+  const getFilteredDemoVehicles = useCallback(() => {
+    return demoVehicles
+      .map((vehicle) => {
+        const status = mapStatus(vehicle.status);
+        return {
+          ...vehicle,
+          status: status.code,
+          statusLabel: status.label,
+          skill_type: mapSkill(vehicle.tipo),
+          region: vehicle.equipePrincipal ?? "N/D",
+          line_code: vehicle.equipePrincipal ?? "Linha demo",
+          latitude: vehicle.localizacaoAtual ? vehicle.localizacaoAtual[0] : undefined,
+          longitude: vehicle.localizacaoAtual ? vehicle.localizacaoAtual[1] : undefined,
+          plate: vehicle.placa,
+          brand: vehicle.tipo,
+          model: vehicle.modelo,
+          speed_kmh: vehicle.kmRodados ? Math.round((vehicle.kmRodados % 80) + 10) : 0,
+          fuel_level: 65,
+          assigned_team: vehicle.equipePrincipal ? { name: vehicle.equipePrincipal } : undefined,
+        };
+      })
+      .filter((vehicle) => {
+        if (filters.status !== "all" && vehicle.status !== filters.status) {
+          return false;
+        }
+        if (filters.skill !== "all" && vehicle.skill_type !== filters.skill) {
+          return false;
+        }
+        return true;
+      });
+  }, [demoVehicles, filters]);
 
   const mapSkill = (tipo: string): string => {
     switch (tipo) {
@@ -59,38 +93,8 @@ export default function VeiculosOnline() {
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
 
-    if (!supabase) {
-      const filtered = demoVehicles
-        .map((vehicle) => {
-          const status = mapStatus(vehicle.status);
-          return {
-            ...vehicle,
-            status: status.code,
-            statusLabel: status.label,
-            skill_type: mapSkill(vehicle.tipo),
-            region: vehicle.equipePrincipal ?? "N/D",
-            line_code: vehicle.equipePrincipal ?? "Linha demo",
-            latitude: vehicle.localizacaoAtual ? vehicle.localizacaoAtual[0] : undefined,
-            longitude: vehicle.localizacaoAtual ? vehicle.localizacaoAtual[1] : undefined,
-            plate: vehicle.placa,
-            brand: vehicle.tipo,
-            model: vehicle.modelo,
-            speed_kmh: vehicle.kmRodados ? Math.round((vehicle.kmRodados % 80) + 10) : 0,
-            fuel_level: 65,
-            assigned_team: vehicle.equipePrincipal ? { name: vehicle.equipePrincipal } : undefined,
-          };
-        })
-        .filter((vehicle) => {
-          if (filters.status !== "all" && vehicle.status !== filters.status) {
-            return false;
-          }
-          if (filters.skill !== "all" && vehicle.skill_type !== filters.skill) {
-            return false;
-          }
-          return true;
-        });
-
-      setVehicles(filtered);
+    if (!supabase || !SENSOR_DB_ENABLED) {
+      setVehicles(getFilteredDemoVehicles());
       setLoading(false);
       return;
     }
@@ -111,15 +115,18 @@ export default function VeiculosOnline() {
     
     if (!error && data) {
       setVehicles(data);
+    } else {
+      console.warn("[VeiculosOnline] Falha ao carregar tabela vehicles; usando fallback local.", error);
+      setVehicles(getFilteredDemoVehicles());
     }
     
     setLoading(false);
-  }, [demoVehicles, filters]);
+  }, [filters, getFilteredDemoVehicles]);
 
   useEffect(() => {
     fetchVehicles();
 
-    if (!supabase) return;
+    if (!supabase || !SENSOR_DB_ENABLED) return;
     const channel = supabase
       .channel('vehicles-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {

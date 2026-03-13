@@ -16,6 +16,7 @@ const UnifiedMapView = () => {
     footprintsData,
     customLines,
     customPoints,
+    customPolygons,
     mapInstance,
     setMapInstance,
     centerCoords,
@@ -40,6 +41,7 @@ const UnifiedMapView = () => {
         footprintsData={footprintsData}
         customLines={customLines}
         customPoints={customPoints}
+        customPolygons={customPolygons}
         shouldShowBrazilMode={shouldShowBrazilMode}
         initialCenter={centerCoords}
         initialZoom={initialZoom}

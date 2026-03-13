@@ -40,7 +40,6 @@ import {
   ClipboardList,
   BarChart3,
   Database,
-  GraduationCap,
   Trees,
   CalendarDays,
   ClipboardCheck,
@@ -167,14 +166,6 @@ const menuGroups: MenuGroup[] = [
       { id: "digitalTwin", titleKey: "sidebar.items.digitalTwinAI", path: "/analises/gemeo-digital", icon: BrainCircuit },
       { id: "oversightWorks", titleKey: "sidebar.items.oversightWorks", path: "/fiscalizacao/obras", icon: HardHat },
       { id: "qualityAudits", titleKey: "sidebar.items.qualityAudits", path: "/auditorias/qualidade", icon: Award },
-    ],
-  },
-  {
-    id: "training",
-    legacyTitle: "Treinamento",
-    titleKey: "sidebar.categories.training",
-    items: [
-      { id: "quizzes", titleKey: "sidebar.items.quizzes", path: "/treinamento/quizzes", icon: GraduationCap },
     ],
   },
   {
