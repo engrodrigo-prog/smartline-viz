@@ -36,4 +36,14 @@ test.describe('SmartLine AssetHealth – smoke', () => {
   test('upload hub is reachable', async ({ page }) => {
     await expectProtectedPageOrLogin(page, '/upload', /Upload Unificado/i);
   });
+
+  test('environmental placeholder replacements are reachable', async ({ page }) => {
+    await expectProtectedPageOrLogin(page, '/ambiental/distancia', /Distâncias de Segurança/i);
+    await expectProtectedPageOrLogin(page, '/ambiental/compliance', /Compliance Ambiental/i);
+  });
+
+  test('structure placeholder replacements are reachable', async ({ page }) => {
+    await expectProtectedPageOrLogin(page, '/estrutura/compliance', /Compliance de Travessias/i);
+    await expectProtectedPageOrLogin(page, '/estrutura/corrosao', /Corrosão e Furto de Peças/i);
+  });
 });

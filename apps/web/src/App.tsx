@@ -36,6 +36,8 @@ import Estruturas from "./pages/modules/Estruturas";
 import AreasAlagadas from "./pages/modules/ambiental/AreasAlagadas";
 import Erosao from "./pages/modules/ambiental/Erosao";
 import OcupacaoFaixa from "./pages/modules/ambiental/OcupacaoFaixa";
+import DistanciaSeguranca from "./pages/modules/ambiental/DistanciaSeguranca";
+import ComplianceAmbiental from "./pages/modules/ambiental/ComplianceAmbiental";
 import Emendas from "./pages/modules/estrutura/Emendas";
 import VeiculosOnline from "./pages/operacao/VeiculosOnline";
 import RastreamentoCampo from "./pages/equipes/RastreamentoCampo";
@@ -49,6 +51,8 @@ import InspecaoTermografica from "./pages/modules/estrutura/InspecaoTermografica
 import Demandas from "./pages/operacao/Demandas";
 import MissoesPage from "./pages/missoes";
 import PerfilLinha from "./pages/modules/estrutura/PerfilLinha";
+import ComplianceTravessias from "./pages/modules/estrutura/ComplianceTravessias";
+import CorrosaoFurto from "./pages/modules/estrutura/CorrosaoFurto";
 import ComparativoExecucao from "./pages/analytics/ComparativoExecucao";
 import Legal from "./pages/Legal";
 import RequestsPage from "./pages/admin/Requests";
@@ -120,8 +124,8 @@ const App = () => (
           <Route path="/ambiental/meteorologia" element={<ProtectedRoute><WeatherPanel /></ProtectedRoute>} />
           <Route path="/ambiental/vegetacao" element={<ProtectedRoute><Vegetacao /></ProtectedRoute>} />
           <Route path="/ambiental/ocupacao" element={<ProtectedRoute><OcupacaoFaixa /></ProtectedRoute>} />
-          <Route path="/ambiental/distancia" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
-          <Route path="/ambiental/compliance" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/ambiental/distancia" element={<ProtectedRoute><DistanciaSeguranca /></ProtectedRoute>} />
+          <Route path="/ambiental/compliance" element={<ProtectedRoute><ComplianceAmbiental /></ProtectedRoute>} />
           <Route path="/ambiente" element={<ProtectedRoute><AmbienteModule /></ProtectedRoute>} />
           
           {/* Estrutura */}
@@ -129,8 +133,8 @@ const App = () => (
           <Route path="/estrutura/emendas" element={<ProtectedRoute><Emendas /></ProtectedRoute>} />
           <Route path="/estrutura/travessias" element={<ProtectedRoute><Travessias /></ProtectedRoute>} />
           <Route path="/estrutura/perfil-linha" element={<ProtectedRoute><PerfilLinha /></ProtectedRoute>} />
-          <Route path="/estrutura/compliance" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
-          <Route path="/estrutura/corrosao" element={<ProtectedRoute><ModulePlaceholder /></ProtectedRoute>} />
+          <Route path="/estrutura/compliance" element={<ProtectedRoute><ComplianceTravessias /></ProtectedRoute>} />
+          <Route path="/estrutura/corrosao" element={<ProtectedRoute><CorrosaoFurto /></ProtectedRoute>} />
           <Route path="/modules/estrutura/inspecao-termografica" element={<ProtectedRoute><InspecaoTermografica /></ProtectedRoute>} />
           
           {/* Sensores */}
