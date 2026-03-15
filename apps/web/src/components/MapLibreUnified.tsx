@@ -13,6 +13,7 @@ import {
 } from "@/lib/mapConfig";
 import { BasemapSelector } from "./BasemapSelector";
 import type { FeatureCollection, Geometry, Polygon, LineString } from "geojson";
+import type { Local3DLayer } from "@/features/map/UnifiedMapView/local3d";
 
 interface MapLibreUnifiedProps {
   filterRegiao?: string;
@@ -46,10 +47,19 @@ interface MapLibreUnifiedProps {
     { color?: string; ndvi?: number; fillOpacity?: number; strokeColor?: string; strokeWidth?: number }
   >;
   customLines?: FeatureCollection<LineString, { color?: string; width?: number; opacity?: number }>;
+  local3DLayers?: Local3DLayer[];
   height?: string;
   initialBasemapId?: BasemapId;
   fallbackBasemapId?: BasemapId;
 }
+
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return target.isContentEditable || ["input", "textarea", "select", "button"].includes(tagName);
+};
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 export const MapLibreUnified = ({
   filterRegiao,
@@ -80,6 +90,7 @@ export const MapLibreUnified = ({
   fitBounds,
   customPolygons,
   customLines,
+  local3DLayers = [],
   height,
   initialBasemapId,
   fallbackBasemapId,
@@ -100,6 +111,8 @@ export const MapLibreUnified = ({
   const [isLoading, setIsLoading] = useState(true);
   const [currentBasemap, setCurrentBasemap] = useState<BasemapId>(resolvedInitialBasemap);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [activeMap, setActiveMap] = useState<maplibregl.Map | null>(null);
+  const [isEarthNavigationActive, setIsEarthNavigationActive] = useState(false);
 
   useEffect(() => {
     setCurrentBasemap(resolvedInitialBasemap);
@@ -194,6 +207,7 @@ export const MapLibreUnified = ({
       });
 
       mapRef.current = instance;
+      setActiveMap(instance);
     } catch (error) {
       console.error("Error initializing map:", error);
       setIsLoading(false);
@@ -205,6 +219,7 @@ export const MapLibreUnified = ({
       }
       mapRef.current?.remove();
       mapRef.current = null;
+      setActiveMap(null);
     };
   }, [resolvedInitialBasemap, fallbackBasemapIdResolved, initialCenter, initialZoom, onMapLoad]);
 
@@ -799,6 +814,213 @@ export const MapLibreUnified = ({
     } catch {/* ignore */}
   }, [queimadasData, showQueimadas]);
 
+  useEffect(() => {
+    const mapInstance = activeMap;
+    if (!mapInstance) return;
+
+    const syncLocal3DLayers = () => {
+      if (!isStyleReady(mapInstance)) return;
+
+      const activeSourceIds = new Set<string>();
+      const activeLayerIds = new Set<string>();
+
+      local3DLayers.forEach((layer) => {
+        const sourceId = `local-3d-source-${layer.id}`;
+        const extrusionLayerId = `local-3d-extrusion-${layer.id}`;
+        const outlineLayerId = `local-3d-outline-${layer.id}`;
+        activeSourceIds.add(sourceId);
+        activeLayerIds.add(extrusionLayerId);
+        activeLayerIds.add(outlineLayerId);
+
+        if (!layer.visible) {
+          safeRemoveLayer(mapInstance, outlineLayerId);
+          removeLayerAndSource(mapInstance, extrusionLayerId, sourceId);
+          return;
+        }
+
+        if (hasSource(mapInstance, sourceId)) {
+          (mapInstance.getSource(sourceId) as maplibregl.GeoJSONSource).setData(layer.data as any);
+        } else {
+          mapInstance.addSource(sourceId, {
+            type: "geojson",
+            data: layer.data as any,
+          });
+        }
+
+        if (!hasLayer(mapInstance, extrusionLayerId)) {
+          mapInstance.addLayer({
+            id: extrusionLayerId,
+            type: "fill-extrusion",
+            source: sourceId,
+            paint: {
+              "fill-extrusion-color": ["coalesce", ["get", "extrusionColor"], layer.color],
+              "fill-extrusion-height": ["coalesce", ["to-number", ["get", "extrusionHeight"]], 18],
+              "fill-extrusion-base": ["coalesce", ["to-number", ["get", "baseHeight"]], 0],
+              "fill-extrusion-opacity": 0.82,
+              "fill-extrusion-vertical-gradient": true,
+            },
+          });
+        }
+
+        if (!hasLayer(mapInstance, outlineLayerId)) {
+          mapInstance.addLayer({
+            id: outlineLayerId,
+            type: "line",
+            source: sourceId,
+            paint: {
+              "line-color": "#e2e8f0",
+              "line-width": 0.9,
+              "line-opacity": 0.35,
+            },
+          });
+        }
+      });
+
+      const style = mapInstance.getStyle();
+      style.layers
+        .filter((layer) => layer.id.startsWith("local-3d-") && !activeLayerIds.has(layer.id))
+        .forEach((layer) => safeRemoveLayer(mapInstance, layer.id));
+
+      Object.keys(style.sources)
+        .filter((sourceId) => sourceId.startsWith("local-3d-source-") && !activeSourceIds.has(sourceId))
+        .forEach((sourceId) => safeRemoveSource(mapInstance, sourceId));
+    };
+
+    if (mapInstance.isStyleLoaded()) {
+      syncLocal3DLayers();
+    }
+
+    mapInstance.on("style.load", syncLocal3DLayers);
+    return () => {
+      mapInstance.off("style.load", syncLocal3DLayers);
+    };
+  }, [
+    activeMap,
+    hasLayer,
+    hasSource,
+    isStyleReady,
+    local3DLayers,
+    removeLayerAndSource,
+    safeRemoveLayer,
+    safeRemoveSource,
+  ]);
+
+  useEffect(() => {
+    const mapInstance = activeMap;
+    if (!mapInstance) return;
+
+    const canvas = mapInstance.getCanvas();
+    const pressedKeys = { control: false, shift: false };
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startBearing = 0;
+    let startPitch = 0;
+
+    const updateNavigationState = () => {
+      const nextActive = pressedKeys.control && pressedKeys.shift;
+      setIsEarthNavigationActive(nextActive);
+
+      if (nextActive) {
+        mapInstance.dragPan.disable();
+        canvas.style.cursor = isDragging ? "grabbing" : "grab";
+        return;
+      }
+
+      isDragging = false;
+      mapInstance.dragPan.enable();
+      canvas.style.cursor = "";
+    };
+
+    const stopDragging = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      canvas.style.cursor = pressedKeys.control && pressedKeys.shift ? "grab" : "";
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+
+      if (event.key === "Control") pressedKeys.control = true;
+      if (event.key === "Shift") pressedKeys.shift = true;
+
+      if (event.key.toLowerCase() === "r") {
+        event.preventDefault();
+        mapInstance.easeTo({
+          bearing: 0,
+          pitch: 0,
+          duration: 700,
+          essential: true,
+        });
+        return;
+      }
+
+      updateNavigationState();
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Control") pressedKeys.control = false;
+      if (event.key === "Shift") pressedKeys.shift = false;
+      stopDragging();
+      updateNavigationState();
+    };
+
+    const handleMouseDown = (event: MouseEvent) => {
+      if (event.button !== 0) return;
+      if (!(pressedKeys.control && pressedKeys.shift)) return;
+
+      event.preventDefault();
+      isDragging = true;
+      startX = event.clientX;
+      startY = event.clientY;
+      startBearing = mapInstance.getBearing();
+      startPitch = mapInstance.getPitch();
+      if (startPitch < 35) {
+        startPitch = 35;
+        mapInstance.jumpTo({ pitch: 35 });
+      }
+      canvas.style.cursor = "grabbing";
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!isDragging) return;
+
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+      mapInstance.jumpTo({
+        bearing: startBearing + deltaX * 0.32,
+        pitch: clamp(startPitch - deltaY * 0.28, 0, 85),
+      });
+    };
+
+    const handleWindowBlur = () => {
+      pressedKeys.control = false;
+      pressedKeys.shift = false;
+      stopDragging();
+      updateNavigationState();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", stopDragging);
+    window.addEventListener("blur", handleWindowBlur);
+    canvas.addEventListener("mousedown", handleMouseDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", stopDragging);
+      window.removeEventListener("blur", handleWindowBlur);
+      canvas.removeEventListener("mousedown", handleMouseDown);
+      stopDragging();
+      mapInstance.dragPan.enable();
+      canvas.style.cursor = "";
+      setIsEarthNavigationActive(false);
+    };
+  }, [activeMap]);
+
   // Apply layer ordering (array from bottom to top)
   useEffect(() => {
     const mapInstance = mapRef.current;
@@ -850,6 +1072,21 @@ export const MapLibreUnified = ({
       {hasInteracted && (
         <BasemapSelector value={currentBasemap} onChange={handleBasemapChange} mapboxAvailable={false} />
       )}
+
+      <div className="pointer-events-none absolute bottom-3 left-3 z-[5] rounded-xl border border-border/70 bg-background/85 px-3 py-2 shadow-sm backdrop-blur">
+        <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Navegação Earth
+        </div>
+        <div className="mt-1 text-xs text-foreground">
+          <span className="font-medium">R</span> retorna para nadir e norte
+        </div>
+        <div className="text-xs text-foreground">
+          <span className="font-medium">Ctrl + Shift + arrastar</span> orbita em 3D
+        </div>
+        {isEarthNavigationActive && (
+          <div className="mt-1 text-[11px] font-medium text-primary">Modo 3D ativo</div>
+        )}
+      </div>
 
       <div ref={mapContainer} className="w-full h-full" />
     </div>

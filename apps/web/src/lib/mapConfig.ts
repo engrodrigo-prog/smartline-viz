@@ -129,7 +129,7 @@ const DEFAULT_ZOOM = 12;
 // Default to ESRI imagery when no token is configured to avoid flicker
 export const DEFAULT_BASEMAP: BasemapId = "imagery";
 
-const CUSTOM_LAYER_PREFIXES = ["infrastructure", "queimadas", "smartline", "alarm"];
+const CUSTOM_LAYER_PREFIXES = ["infrastructure", "queimadas", "smartline", "alarm", "custom", "erosao", "soil-samples", "local-3d"];
 const MAPBOX_TERRAIN_SOURCE = "mapbox-dem";
 const MAPBOX_TERRAIN_URL =
   "https://api.mapbox.com/v4/mapbox.mapbox-terrain-dem-v1/tiles/256/{z}/{x}/{y}?access_token=";
@@ -303,7 +303,7 @@ export const initializeSmartlineMap = (
     bearing,
     maxZoom: 19,
     minZoom: 4,
-    antialias: false,
+    antialias: true,
     attributionControl: { compact: false },
     validate: false,
   });

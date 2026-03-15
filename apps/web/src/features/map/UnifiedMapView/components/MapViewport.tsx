@@ -4,6 +4,7 @@ import { MapLibreUnified } from "@/components/MapLibreUnified";
 import { FirmsFootprintsLayer } from "@/components/ambiente/FirmsFootprintsLayer";
 import type { Layer } from "@/components/map/LayerSelector";
 import type { FiltersState } from "@/context/FiltersContext";
+import type { Local3DLayer } from "@/features/map/UnifiedMapView/local3d";
 
 type MapViewportProps = {
   filters: FiltersState;
@@ -13,6 +14,7 @@ type MapViewportProps = {
   customLines?: FeatureCollection<LineString> | null | undefined;
   customPoints?: FeatureCollection<Point> | null | undefined;
   customPolygons?: FeatureCollection<Polygon> | null | undefined;
+  local3DLayers: Local3DLayer[];
   shouldShowBrazilMode: boolean;
   initialCenter: { lat: number; lng: number };
   initialZoom: number;
@@ -29,6 +31,7 @@ const MapViewport = ({
   customLines,
   customPoints,
   customPolygons,
+  local3DLayers,
   shouldShowBrazilMode,
   initialCenter,
   initialZoom,
@@ -53,6 +56,7 @@ const MapViewport = ({
         customLines={customLines || undefined}
         customPoints={customPoints || undefined}
         customPolygons={customPolygons || undefined}
+        local3DLayers={local3DLayers}
         initialCenter={[initialCenter.lng, initialCenter.lat]}
         initialZoom={initialZoom}
         onMapLoad={onMapLoad}
