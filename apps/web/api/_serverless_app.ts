@@ -127,6 +127,28 @@ const isMissingRelationError = (error: unknown, relation: string) => {
   );
 };
 
+const isMissingSchemaEntityError = (error: unknown, entities: string[]) => {
+  const err = asErrorLike(error);
+  const code = String(err?.code ?? '').toUpperCase();
+  const message = String(err?.message ?? '').toLowerCase();
+  const lowerEntities = entities.map((entity) => entity.toLowerCase());
+  const mentionsKnownEntity = lowerEntities.some((entity) => message.includes(entity));
+
+  if (lowerEntities.some((entity) => isMissingRelationError(error, entity))) {
+    return true;
+  }
+
+  return (
+    mentionsKnownEntity &&
+    (code === 'PGRST200' ||
+      code === 'PGRST205' ||
+      message.includes('schema cache') ||
+      message.includes('could not find a relationship') ||
+      message.includes('could not find the table') ||
+      message.includes('not found in the schema cache'))
+  );
+};
+
 const buildVegAgendaFallback = (limit = 50) => {
   const baseDate = new Date();
   baseDate.setHours(8, 0, 0, 0);
@@ -1473,6 +1495,7 @@ app.get('/vegetacao/dashboard', async (c) => {
   const auth = requireRlsSupabase(c);
   if (!auth.ok) return auth.res;
   const supabase = auth.supabase;
+  const vegSchemaEntities = ['veg_anomaly', 'veg_action', 'veg_inspection', 'veg_work_order', 'veg_audit'];
 
   const now = new Date();
   const startOfDay = new Date(now);
@@ -1558,13 +1581,8 @@ app.get('/vegetacao/dashboard', async (c) => {
   if (firstError) {
     const authStatus = statusForSupabaseAuthError(firstError);
     if (authStatus) return jsonError(c, authStatus, 'unauthorized', firstError.message);
-    if (
-      isMissingRelationError(firstError, 'veg_anomaly') ||
-      isMissingRelationError(firstError, 'veg_action') ||
-      isMissingRelationError(firstError, 'veg_inspection') ||
-      isMissingRelationError(firstError, 'veg_work_order') ||
-      isMissingRelationError(firstError, 'veg_audit')
-    ) {
+    if (isMissingSchemaEntityError(firstError, vegSchemaEntities)) {
+      console.warn('[api] /vegetacao/dashboard fallback due to schema error:', firstError);
       return c.json(buildVegDashboardFallback());
     }
     return jsonError(c, 500, 'db_error', firstError.message);
