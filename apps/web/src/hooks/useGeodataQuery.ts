@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { getJSON } from "@/services/api";
 import {
   mapDashboardGeoRow,
   type DashboardGeoFeature,
@@ -32,18 +32,10 @@ interface UseGeodataQueryOptions {
   requireGeometry?: boolean;
 }
 
-const isMissingRelationError = (error: unknown, relation: string) => {
-  const err = typeof error === "object" && error !== null ? (error as any) : { message: String(error ?? "") };
-  const code = String(err?.code ?? "").toUpperCase();
-  const message = String(err?.message ?? "").toLowerCase();
-  const relationName = relation.toLowerCase();
-
-  return (
-    code === "42P01" ||
-    message.includes(`relation "${relationName}" does not exist`) ||
-    message.includes(`relation '${relationName}' does not exist`) ||
-    (message.includes("does not exist") && message.includes(relationName))
-  );
+type GeodataDashboardApiResponse = {
+  items: DashboardGeoFeatureRow[];
+  degraded?: boolean;
+  source?: string;
 };
 
 export function useGeodataQuery({
@@ -57,63 +49,24 @@ export function useGeodataQuery({
     queryKey: ["dashboard-geodata", table, context, filters, requireGeometry],
     enabled,
     queryFn: async () => {
-      if (!supabase) {
-        console.warn("[useGeodataQuery] Supabase não configurado; retornando lista vazia de geodados.");
-        return [];
-      }
+      const params = new URLSearchParams();
 
-      let query = (supabase as any)
-        .from("vw_dashboard_geo_features")
-        .select("*")
-        .order("created_at", { ascending: false });
+      if (table !== "all") params.set("table", table);
+      if (context) params.set("context", context);
+      if (filters.empresa) params.set("empresa", filters.empresa);
+      if (filters.regiao) params.set("regiao", filters.regiao);
+      if (filters.lineCode) params.set("lineCode", filters.lineCode);
+      if (filters.layerSource) params.set("layerSource", filters.layerSource);
+      if (filters.assetType) params.set("assetType", filters.assetType);
+      if (filters.geometryKinds?.length) params.set("geometryKinds", filters.geometryKinds.join(","));
+      if (requireGeometry) params.set("requireGeometry", "true");
 
-      if (table !== "all") {
-        query = query.eq("source_table", table);
-      }
+      const suffix = params.toString();
+      const response = await getJSON<GeodataDashboardApiResponse>(
+        `/geodata/dashboard${suffix ? `?${suffix}` : ""}`,
+      );
 
-      if (context) {
-        query = query.contains("dashboard_contexts", [context]);
-      }
-
-      if (filters.empresa) {
-        query = query.eq("company_name", filters.empresa);
-      }
-
-      if (filters.regiao) {
-        query = query.eq("region_code", filters.regiao);
-      }
-
-      if (filters.lineCode) {
-        query = query.eq("line_code", filters.lineCode);
-      }
-
-      if (filters.layerSource) {
-        query = query.eq("layer_source", filters.layerSource);
-      }
-
-      if (filters.assetType) {
-        query = query.eq("asset_type", filters.assetType);
-      }
-
-      if (filters.geometryKinds?.length) {
-        query = query.in("geometry_kind", filters.geometryKinds);
-      }
-
-      if (requireGeometry) {
-        query = query.not("geom_geojson", "is", null);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        if (isMissingRelationError(error, "vw_dashboard_geo_features")) {
-          console.warn("[useGeodataQuery] view vw_dashboard_geo_features indisponivel; retornando lista vazia.");
-          return [];
-        }
-        throw error;
-      }
-
-      return ((data ?? []) as DashboardGeoFeatureRow[]).map(mapDashboardGeoRow);
+      return (response.items ?? []).map(mapDashboardGeoRow);
     },
     retry: false,
   });

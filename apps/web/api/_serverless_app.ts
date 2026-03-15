@@ -537,6 +537,81 @@ app.use('*', logger());
 
 app.get('/health', (c) => c.json({ status: 'ok', runtime: 'vercel-serverless' }));
 app.get('/firms', (c) => c.json(emptyFeatureCollection({ lastFetchedAt: nowIso(), source: 'stub' })));
+app.get('/geodata/dashboard', async (c) => {
+  const auth = requireRlsSupabase(c);
+  if (!auth.ok) return auth.res;
+
+  const queryParsed = parseQuery(
+    c,
+    z.object({
+      table: z
+        .enum(['all', 'estruturas', 'linhas_transmissao', 'concessoes_geo', 'eventos_geo', 'geodata_outros', 'rasters'])
+        .optional(),
+      context: z.enum(['dashboard', 'ambiental', 'vegetacao', 'operacao', 'estrutura', 'mapa']).optional(),
+      empresa: z.string().optional(),
+      regiao: z.string().optional(),
+      lineCode: z.string().optional(),
+      layerSource: z.string().optional(),
+      assetType: z.enum(['vector', 'raster']).optional(),
+      geometryKinds: z.string().optional(),
+      requireGeometry: z.enum(['true', 'false']).optional(),
+    }),
+  );
+  if (!queryParsed.ok) return queryParsed.res;
+
+  const { table, context, empresa, regiao, lineCode, layerSource, assetType, geometryKinds, requireGeometry } =
+    queryParsed.data;
+
+  let query = auth.supabase.from('vw_dashboard_geo_features').select('*').order('created_at', { ascending: false });
+
+  if (table && table !== 'all') {
+    query = query.eq('source_table', table);
+  }
+  if (context) {
+    query = query.contains('dashboard_contexts', [context]);
+  }
+  if (empresa) {
+    query = query.eq('company_name', empresa);
+  }
+  if (regiao) {
+    query = query.eq('region_code', regiao);
+  }
+  if (lineCode) {
+    query = query.eq('line_code', lineCode);
+  }
+  if (layerSource) {
+    query = query.eq('layer_source', layerSource);
+  }
+  if (assetType) {
+    query = query.eq('asset_type', assetType);
+  }
+  if (geometryKinds) {
+    const kinds = geometryKinds
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (kinds.length > 0) {
+      query = query.in('geometry_kind', kinds);
+    }
+  }
+  if (requireGeometry === 'true') {
+    query = query.not('geom_geojson', 'is', null);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    const authStatus = statusForSupabaseAuthError(error);
+    if (authStatus) return jsonError(c, authStatus, 'unauthorized', error.message);
+    if (isMissingSchemaEntityError(error, ['vw_dashboard_geo_features'])) {
+      console.warn('[api] /geodata/dashboard fallback due to schema error:', error);
+      return c.json({ items: [], degraded: true, source: 'fallback-api' });
+    }
+    return jsonError(c, 500, 'db_error', error.message);
+  }
+
+  return c.json({ items: data ?? [], degraded: false, source: 'supabase' });
+});
 app.get('/firms/wfs', (c) =>
   c.json(
     emptyFeatureCollection({
