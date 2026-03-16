@@ -61,14 +61,6 @@ const isEditableTarget = (target: EventTarget | null) => {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-const isMapStyleReady = (map?: maplibregl.Map | null) => {
-  try {
-    return !!map && typeof map.isStyleLoaded === "function" && map.isStyleLoaded();
-  } catch {
-    return false;
-  }
-};
-
 export const MapLibreUnified = ({
   filterRegiao,
   filterEmpresa,
@@ -106,6 +98,7 @@ export const MapLibreUnified = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const fallbackAppliedRef = useRef(false);
+  const styleReadyRef = useRef(false);
 
   const mapboxToken: string | undefined = undefined;
   const mapboxAvailable = false;
@@ -154,6 +147,7 @@ export const MapLibreUnified = ({
         }
         try {
           console.warn("[map] Aplicando fallback de mapa base para", fallbackBasemapIdResolved);
+          styleReadyRef.current = false;
           changeBasemap(instance, fallbackBasemapIdResolved);
           setCurrentBasemap(fallbackBasemapIdResolved);
           onMapLoad?.(instance);
@@ -166,13 +160,14 @@ export const MapLibreUnified = ({
 
       // Safety timeout: if style doesn't load (e.g., token/domínio), fallback to ESRI imagery
       safetyTimeout = window.setTimeout(() => {
-        if (!isMapStyleReady(instance)) {
+        if (!styleReadyRef.current) {
           console.warn("[map] Timeout no carregamento do estilo inicial. Forçando fallback ESRI.");
           applyFallback();
         }
       }, 6000);
 
       instance.on("load", () => {
+        styleReadyRef.current = true;
         setIsLoading(false);
         const resolved = getCurrentBasemap(instance);
         if (resolved) {
@@ -225,6 +220,7 @@ export const MapLibreUnified = ({
       if (safetyTimeout !== undefined) {
         window.clearTimeout(safetyTimeout);
       }
+      styleReadyRef.current = false;
       mapRef.current?.remove();
       mapRef.current = null;
       setActiveMap(null);
@@ -281,7 +277,7 @@ export const MapLibreUnified = ({
   const hasLayer = useCallback(
     (map: maplibregl.Map | null | undefined, layerId: string) => {
       try {
-        if (!map || !isMapStyleReady(map)) return false;
+        if (!map || !styleReadyRef.current) return false;
         return !!map.getLayer(layerId);
       } catch {
         return false;
@@ -293,7 +289,7 @@ export const MapLibreUnified = ({
   const hasSource = useCallback(
     (map: maplibregl.Map | null | undefined, sourceId: string) => {
       try {
-        if (!map || !isMapStyleReady(map)) return false;
+        if (!map || !styleReadyRef.current) return false;
         return !!map.getSource(sourceId);
       } catch {
         return false;
@@ -301,6 +297,26 @@ export const MapLibreUnified = ({
     },
     [],
   );
+
+  useEffect(() => {
+    const mapInstance = activeMap;
+    if (!mapInstance) return;
+
+    const markStylePending = () => {
+      styleReadyRef.current = false;
+    };
+    const markStyleReady = () => {
+      styleReadyRef.current = true;
+    };
+
+    mapInstance.on("style.load", markStyleReady);
+    mapInstance.on("basemap-changing" as any, markStylePending);
+
+    return () => {
+      mapInstance.off("style.load", markStyleReady);
+      mapInstance.off("basemap-changing" as any, markStylePending);
+    };
+  }, [activeMap]);
 
   const safeRemoveLayer = useCallback(
     (map: maplibregl.Map | null | undefined, layerId: string) => {
@@ -392,7 +408,7 @@ export const MapLibreUnified = ({
       });
     };
 
-    if (isMapStyleReady(mapInstance)) {
+    if (styleReadyRef.current) {
       addOrUpdateLayer();
     } else {
       mapInstance.once("style.load", addOrUpdateLayer);
@@ -469,7 +485,7 @@ export const MapLibreUnified = ({
       });
     };
 
-    if (isMapStyleReady(mapInstance)) {
+    if (styleReadyRef.current) {
       addLayers();
     } else {
       mapInstance.once("style.load", addLayers);
@@ -544,7 +560,7 @@ export const MapLibreUnified = ({
       }
     };
 
-    if (isMapStyleReady(mapInstance)) addOrUpdate();
+    if (styleReadyRef.current) addOrUpdate();
     else mapInstance.once("style.load", addOrUpdate);
 
     return () => {
@@ -604,7 +620,7 @@ export const MapLibreUnified = ({
       }
     };
 
-    if (isMapStyleReady(mapInstance)) {
+    if (styleReadyRef.current) {
       load();
     } else {
       mapInstance.once("style.load", load);
@@ -649,7 +665,7 @@ export const MapLibreUnified = ({
       }
     };
 
-    if (isMapStyleReady(mapInstance)) {
+    if (styleReadyRef.current) {
       load();
     } else {
       mapInstance.once("style.load", load);
@@ -690,7 +706,7 @@ export const MapLibreUnified = ({
       });
     };
 
-    if (isMapStyleReady(mapInstance)) {
+    if (styleReadyRef.current) {
       loadInfrastructure();
     } else {
       mapInstance.once("style.load", loadInfrastructure);
@@ -789,7 +805,7 @@ export const MapLibreUnified = ({
       mapInstance.on("mouseleave", "queimadas-points", handleMouseLeave);
     };
 
-    if (isMapStyleReady(mapInstance)) {
+    if (styleReadyRef.current) {
       loadQueimadas();
     } else {
       mapInstance.once("style.load", loadQueimadas);
@@ -817,9 +833,10 @@ export const MapLibreUnified = ({
   useEffect(() => {
     const mapInstance = activeMap;
     if (!mapInstance) return;
+    if (local3DLayers.length === 0) return;
 
     const syncLocal3DLayers = () => {
-      if (!isMapStyleReady(mapInstance)) return;
+      if (!styleReadyRef.current) return;
 
       const activeSourceIds = new Set<string>();
       const activeLayerIds = new Set<string>();
@@ -886,7 +903,7 @@ export const MapLibreUnified = ({
         .forEach((sourceId) => safeRemoveSource(mapInstance, sourceId));
     };
 
-    if (isMapStyleReady(mapInstance)) {
+    if (styleReadyRef.current) {
       syncLocal3DLayers();
     }
 

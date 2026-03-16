@@ -7,6 +7,7 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import GeodataClassificationTable from "@/components/GeodataClassificationTable";
+import QgisProjectIntake from "@/components/upload/QgisProjectIntake";
 
 const getExtension = (fileName: string) => {
   const lower = fileName.toLowerCase();
@@ -197,6 +198,8 @@ const UploadTracados = () => {
   return (
     <AppLayout title="Upload de Geodados" subtitle="Porta oficial para KML/KMZ, GeoPackage e conjuntos SHP ZIP">
       <div className="max-w-4xl mx-auto">
+        <QgisProjectIntake />
+
         <div className="mb-8">
           <div className="flex items-center justify-between max-w-3xl mx-auto">
             <div className={`flex items-center ${currentStep >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
