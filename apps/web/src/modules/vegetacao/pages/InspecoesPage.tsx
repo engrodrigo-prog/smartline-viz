@@ -54,6 +54,8 @@ const emptyForm: FormState = {
   location: null,
 };
 
+const SEVERITY_VALUES: VegSeverity[] = ["low", "medium", "high", "critical"];
+
 export default function InspecoesPage() {
   const { t, formatDateTime } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
@@ -286,9 +288,9 @@ export default function InspecoesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">—</SelectItem>
-                  {(Object.keys(SEVERITY_LABEL) as VegSeverity[]).map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {SEVERITY_LABEL[s]}
+                  {SEVERITY_VALUES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {vegEnumLabel.severity(t, value)}
                     </SelectItem>
                   ))}
                 </SelectContent>
