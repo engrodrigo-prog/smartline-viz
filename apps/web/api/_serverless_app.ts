@@ -17,6 +17,8 @@ import {
 } from './_firms.js';
 
 const app = new Hono();
+const FIRMS_OPERATIONAL_FALLBACK_BBOX: [number, number, number, number] = [-52, -24.8, -45, -20];
+const FIRMS_OPERATIONAL_FALLBACK_KEY = '5d8552316e6eadd87a974f0e7a7bb534';
 
 type FeatureCollection = {
   type: 'FeatureCollection';
@@ -873,64 +875,23 @@ app.post('/firms/risk', async (c) => {
     tensaoKv: body.tensaoKv ?? null,
   });
 
-  if (!assets.length) {
-    return c.json({
-      type: 'FeatureCollection',
-      features: [],
-      meta: {
-        generated_at: nowIso(),
-        source: 'asset-scope-empty',
-        horizons: Array.isArray(parsedBody.data.horizons) ? parsedBody.data.horizons : [0, 3, 6, 24],
-        stats: {
-          hotspots_total: 0,
-          risk_max: 0,
-          risk_avg: 0,
-          corridor_count: 0,
-          frp_sum: 0,
-        },
-        notes: [
-          ...notes,
-          'Nenhum ativo cadastrado corresponde aos filtros atuais. Ajuste empresa/regiao/linha ou ingira o tracado primeiro.',
-        ],
-        asset_scope: {
-          count: 0,
-          line_count: 0,
-          structure_count: 0,
-          other_count: 0,
-          companies: [],
-          regions: [],
-          line_codes: [],
-          se_codes: [],
-          bbox: null,
-        },
-      },
-    });
-  }
-
   const dateRange = buildDateRange(body);
-  const bbox = computeAssetBboxForFirms(assets, body.maxDistanceKm ?? 5);
+  const assetBbox = computeAssetBboxForFirms(assets, body.maxDistanceKm ?? 5);
+  const useRegionalFallback = !assets.length || !assetBbox;
+  const bbox = assetBbox ?? FIRMS_OPERATIONAL_FALLBACK_BBOX;
 
-  if (!bbox) {
-    return c.json({
-      type: 'FeatureCollection',
-      features: [],
-      meta: {
-        generated_at: nowIso(),
-        source: 'asset-geometry-empty',
-        horizons: Array.isArray(parsedBody.data.horizons) ? parsedBody.data.horizons : [0, 3, 6, 24],
-        stats: {
-          hotspots_total: 0,
-          risk_max: 0,
-          risk_avg: 0,
-          corridor_count: 0,
-          frp_sum: 0,
-        },
-        notes: [...notes, 'Os ativos filtrados nao possuem geometria utilizavel para consulta FIRMS.'],
-      },
-    });
+  if (!assets.length) {
+    notes.push(
+      'Nenhum ativo cadastrado corresponde aos filtros atuais. Exibindo hotspots FIRMS no recorte regional CPFL ate que os ativos sejam correlacionados.',
+    );
+    if (body.empresa || body.regiao || body.lineId || body.lineName || body.seCode || body.tensaoKv) {
+      notes.push('Filtros dependentes de ativos foram ignorados temporariamente no fallback regional.');
+    }
+  } else if (!assetBbox) {
+    notes.push('Os ativos filtrados nao possuem geometria utilizavel; exibindo o recorte regional CPFL como fallback.');
   }
 
-  const apiKey = (process.env.FIRMS_API_KEY ?? '').trim();
+  const apiKey = (process.env.FIRMS_API_KEY ?? FIRMS_OPERATIONAL_FALLBACK_KEY).trim();
   let liveNotes: string[] = [];
   let liveRecords: ReturnType<typeof cachedQueimadasToRecords> = [];
 
@@ -947,26 +908,30 @@ app.post('/firms/risk', async (c) => {
     } catch (error) {
       liveNotes.push(error instanceof Error ? error.message : String(error));
     }
-  } else {
-    liveNotes.push('FIRMS_API_KEY nao configurada; usando cache local quando disponivel.');
   }
+
+  if (!process.env.FIRMS_API_KEY?.trim()) {
+    liveNotes.push('FIRMS_API_KEY ausente no ambiente; usando chave operacional de contingencia para a consulta FIRMS.');
+  }
+
+  const riskOptions = {
+    lineId: useRegionalFallback && !assets.length ? null : body.lineId ?? null,
+    lineName: useRegionalFallback && !assets.length ? null : body.lineName ?? null,
+    empresa: useRegionalFallback && !assets.length ? null : body.empresa ?? null,
+    regiao: useRegionalFallback && !assets.length ? null : body.regiao ?? null,
+    seCode: useRegionalFallback && !assets.length ? null : body.seCode ?? null,
+    tensaoKv: useRegionalFallback && !assets.length ? null : body.tensaoKv ?? null,
+    dateFrom: body.dateFrom ?? dateRange.start.toISOString(),
+    dateTo: body.dateTo ?? dateRange.end.toISOString(),
+    count: body.count ?? 2000,
+    maxDistanceKm: body.maxDistanceKm ?? 5,
+  } as const;
 
   const baseCollection = buildFirmsRiskCollection({
     records: liveRecords,
     assets,
-    options: {
-      lineId: body.lineId ?? null,
-      lineName: body.lineName ?? null,
-      empresa: body.empresa ?? null,
-      regiao: body.regiao ?? null,
-      seCode: body.seCode ?? null,
-      tensaoKv: body.tensaoKv ?? null,
-      dateFrom: body.dateFrom ?? dateRange.start.toISOString(),
-      dateTo: body.dateTo ?? dateRange.end.toISOString(),
-      count: body.count ?? 2000,
-      maxDistanceKm: body.maxDistanceKm ?? 5,
-    },
-    source: apiKey ? 'nasa-firms-live' : 'firms-live-unavailable',
+    options: riskOptions,
+    source: useRegionalFallback ? 'nasa-firms-live-regional-fallback' : 'nasa-firms-live',
   });
 
   if (baseCollection.features.length > 0) {
@@ -1028,18 +993,7 @@ app.post('/firms/risk', async (c) => {
   const cachedCollection = buildFirmsRiskCollection({
     records: cachedQueimadasToRecords((cachedRows ?? []) as any[]),
     assets,
-    options: {
-      lineId: body.lineId ?? null,
-      lineName: body.lineName ?? null,
-      empresa: body.empresa ?? null,
-      regiao: body.regiao ?? null,
-      seCode: body.seCode ?? null,
-      tensaoKv: body.tensaoKv ?? null,
-      dateFrom: body.dateFrom ?? dateRange.start.toISOString(),
-      dateTo: body.dateTo ?? dateRange.end.toISOString(),
-      count: body.count ?? 2000,
-      maxDistanceKm: body.maxDistanceKm ?? 5,
-    },
+    options: riskOptions,
     source: 'supabase-queimadas-cache',
   });
 

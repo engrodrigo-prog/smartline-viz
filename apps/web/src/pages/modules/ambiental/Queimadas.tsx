@@ -565,6 +565,8 @@ const Queimadas = () => {
     ? "Simulado"
     : meta?.source === "nasa-firms-live"
       ? "NASA FIRMS"
+      : meta?.source === "nasa-firms-live-regional-fallback"
+        ? "NASA FIRMS · fallback regional"
       : meta?.source === "supabase-queimadas-cache"
         ? "Cache operacional"
         : "Escopo operacional";
@@ -997,8 +999,9 @@ const Queimadas = () => {
 
         {liveEmpty ? (
           <div className="tech-card p-4 text-sm text-muted-foreground">
-            Nenhum hotspot FIRMS foi encontrado dentro do raio operacional dos ativos filtrados neste periodo.
-            Ajuste a janela temporal, o raio de proximidade ou os filtros de empresa/regiao/linha.
+            {meta?.source === "nasa-firms-live-regional-fallback"
+              ? "Nenhum hotspot FIRMS foi encontrado no recorte regional de contingencia. Amplie a janela temporal ou atualize a correlacao dos ativos."
+              : "Nenhum hotspot FIRMS foi encontrado dentro do raio operacional dos ativos filtrados neste periodo. Ajuste a janela temporal, o raio de proximidade ou os filtros de empresa/regiao/linha."}
           </div>
         ) : null}
 
@@ -1012,7 +1015,11 @@ const Queimadas = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-xs text-muted-foreground">
-                {usingSimulated ? "Modo simulado ativo" : `${sourceLabel} · ${assetScope?.count ?? 0} ativos no escopo`}
+                {usingSimulated
+                  ? "Modo simulado ativo"
+                  : assetScope?.count
+                    ? `${sourceLabel} · ${assetScope.count} ativos no escopo`
+                    : `${sourceLabel} · sem ativos correlacionados`}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant={usingSimulated ? "default" : "outline"} size="sm" onClick={() => setModoSimulado((prev) => !prev)}>

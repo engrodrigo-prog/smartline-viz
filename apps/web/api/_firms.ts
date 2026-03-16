@@ -420,12 +420,12 @@ export const buildDateRange = (body: FirmsRiskBody) => {
   const now = new Date();
   const end = normalizeDateValue(body.dateTo ?? null, now);
   const daysBack = clamp(Math.round(asNumber(body.daysBack) ?? 1), 1, MAX_FIRMS_DAYS);
-  const startFallback = new Date(end.getTime() - (daysBack - 1) * 24 * 60 * 60 * 1000);
+  const startFallback = new Date(end.getTime() - daysBack * 24 * 60 * 60 * 1000);
   const start = normalizeDateValue(body.dateFrom ?? null, startFallback);
 
-  const normalizedStart = start <= end ? start : new Date(end.getTime() - 24 * 60 * 60 * 1000);
+  const normalizedStart = start <= end ? start : new Date(end.getTime() - daysBack * 24 * 60 * 60 * 1000);
   const spanDays = clamp(
-    Math.ceil((end.getTime() - normalizedStart.getTime()) / (24 * 60 * 60 * 1000)) + 1,
+    Math.ceil((end.getTime() - normalizedStart.getTime()) / (24 * 60 * 60 * 1000)),
     1,
     MAX_FIRMS_DAYS,
   );
