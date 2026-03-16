@@ -579,7 +579,7 @@ app.post('/geodata/import-tracado', async (c) => {
   const auth = requireRlsSupabase(c);
   if (!auth.ok) return auth.res;
 
-  const parsed = await parseJson(
+  const parsed = await parseJsonBody(
     c,
     z.object({
       storagePath: z.string().min(1),
@@ -751,7 +751,8 @@ app.get('/geodata/dashboard', async (c) => {
 
   const parsedItems = (data ?? []).filter((row: any) => {
     const props = parseJsonRecord(row?.properties);
-    const nestedMeta = props?.metadata && typeof props.metadata === 'object' ? props.metadata : {};
+    const nestedMeta =
+      props?.metadata && typeof props.metadata === 'object' ? (props.metadata as Record<string, unknown>) : {};
     const rowLineName = String(props?.nome ?? props?.name ?? row?.title ?? '').trim().toLowerCase();
     const rowTensao = String(props?.tensao_kv ?? nestedMeta?.tensao_kv ?? '').trim();
     const rowReferenceDate = String(props?.data_ocorrencia ?? props?.ts_acquired ?? nestedMeta?.reference_date ?? row?.created_at ?? '').trim();
