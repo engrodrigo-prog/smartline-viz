@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Cloud, Wind, Droplets, Gauge } from "lucide-react";
+import { Cloud, Wind, Droplets, Gauge, ExternalLink, ShieldAlert } from "lucide-react";
 import TimelineSlider from "./TimelineSlider";
 import WeatherMap from "./WeatherMap";
 import { useWeather } from "@/hooks/useWeather";
@@ -10,13 +10,15 @@ import FloatingFiltersBar from "@/components/FloatingFiltersBar";
 import { Loader2 } from "lucide-react";
 import { WeatherLayerSelector, DEFAULT_WEATHER_LAYERS, WeatherLayer } from "./WeatherLayerSelector";
 import { WeatherLegend } from "./WeatherLegend";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type WeatherMode = 'openweather' | 'ventusky';
 
 const WeatherPanel = () => {
   const [mode, setMode] = useState<WeatherMode>(() => {
     const saved = localStorage.getItem('smartline_weather_mode');
-    return (saved as WeatherMode) || 'openweather';
+    if (saved === 'openweather') return saved;
+    return 'openweather';
   });
 
   const [intervalValue, setIntervalValue] = useState<'1h' | '3h' | '6h' | '24h'>('1h');
@@ -36,6 +38,7 @@ const WeatherPanel = () => {
 
   // Santos, SP como padrão
   const center: [number, number] = [-46.33, -23.96];
+  const ventuskyUrl = `https://www.ventusky.com/?p=${center[1]};${center[0]};8`;
   
   const { data: weatherData, isLoading } = useWeather({
     lat: -23.96,
@@ -79,7 +82,7 @@ const WeatherPanel = () => {
           <Tabs value={mode} onValueChange={handleModeChange}>
             <TabsList>
               <TabsTrigger value="openweather">OpenWeather API</TabsTrigger>
-              <TabsTrigger value="ventusky">Ventusky Embed</TabsTrigger>
+              <TabsTrigger value="ventusky">Ventusky Externo</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -159,11 +162,44 @@ const WeatherPanel = () => {
               </>
             )
           ) : (
-            <iframe
-              src="https://www.ventusky.com/?p=-23.96;-46.33;8"
-              className="w-full h-full rounded-lg border border-border"
-              title="Ventusky Weather"
-            />
+            <div className="h-full rounded-lg border border-border bg-background/70 p-6">
+              <div className="mx-auto flex h-full max-w-3xl flex-col justify-center gap-6">
+                <Alert className="border-amber-500/30 bg-amber-500/5">
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertTitle>Visualização externa</AlertTitle>
+                  <AlertDescription>
+                    O embed inline do Ventusky foi removido desta tela porque o script deles injeta
+                    listeners não-passivos e dispara erros de CORS no console do navegador. Para
+                    manter a página estável, o acesso agora é feito em nova aba.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="tech-card p-6">
+                  <div className="space-y-3">
+                    <div className="text-sm uppercase tracking-wide text-muted-foreground">
+                      Ferramenta complementar
+                    </div>
+                    <h3 className="text-2xl font-semibold">Abrir Ventusky fora do Smartline</h3>
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      Use o mapa meteorológico interno para operação no Smartline e abra o Ventusky
+                      externamente quando quiser comparar animações globais de vento e chuva.
+                    </p>
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap items-center gap-3">
+                    <Button asChild>
+                      <a href={ventuskyUrl} target="_blank" rel="noreferrer">
+                        Abrir Ventusky
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                    <div className="text-xs text-muted-foreground">
+                      Centro inicial: Santos/SP, com navegação livre após abertura.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
