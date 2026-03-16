@@ -110,6 +110,7 @@ export const MapLibreUnified = ({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const fallbackAppliedRef = useRef(false);
   const styleReadyRef = useRef(false);
+  const fitBoundsRef = useRef<maplibregl.LngLatBoundsLike | null>(fitBounds ?? null);
 
   const mapboxToken: string | undefined = undefined;
   const mapboxAvailable = false;
@@ -129,6 +130,10 @@ export const MapLibreUnified = ({
   useEffect(() => {
     setCurrentBasemap(resolvedInitialBasemap);
   }, [resolvedInitialBasemap]);
+
+  useEffect(() => {
+    fitBoundsRef.current = fitBounds ?? null;
+  }, [fitBounds]);
 
   // Initialize map
   useEffect(() => {
@@ -326,6 +331,45 @@ export const MapLibreUnified = ({
     return () => {
       mapInstance.off("style.load", markStyleReady);
       mapInstance.off("basemap-changing" as any, markStylePending);
+    };
+  }, [activeMap]);
+
+  useEffect(() => {
+    const mapInstance = activeMap;
+    const container = mapContainer.current;
+    if (!mapInstance || !container || typeof ResizeObserver === "undefined") return;
+
+    let frame = 0;
+    const resizeMap = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        try {
+          mapInstance.resize();
+          if (fitBoundsRef.current) {
+            mapInstance.fitBounds(fitBoundsRef.current, {
+              padding: { top: 64, bottom: 64, left: 80, right: 80 },
+              duration: 0,
+              maxZoom: 14,
+            });
+          }
+        } catch (error) {
+          console.warn("Falha ao redimensionar o mapa.", error);
+        }
+      });
+    };
+
+    const observer = new ResizeObserver(() => {
+      resizeMap();
+    });
+
+    observer.observe(container);
+    resizeMap();
+    const settleTimeout = window.setTimeout(resizeMap, 180);
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.clearTimeout(settleTimeout);
+      observer.disconnect();
     };
   }, [activeMap]);
 

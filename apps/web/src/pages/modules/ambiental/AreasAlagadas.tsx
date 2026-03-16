@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Droplets, Waves, MapPinned, Route } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Droplets, Waves, MapPinned, Route, Info } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import FiltersBar from "@/components/FiltersBar";
@@ -10,6 +10,8 @@ import DetailDrawer from "@/components/DetailDrawer";
 import CardKPI from "@/components/CardKPI";
 import StatusBadge from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useDatasetData } from "@/context/DatasetContext";
 import { useFilters } from "@/context/FiltersContext";
 import {
@@ -34,7 +36,7 @@ const HYDRO_CONTEXT_OPTIONS: Array<{ value: WaterBodyKind; label: string }> = [
 ];
 
 const AreasAlagadas = () => {
-  const { filters } = useFilters();
+  const { filters, resetFilters } = useFilters();
   const [selectedArea, setSelectedArea] = useState<FloodAreaRecord | null>(null);
   const [nivelRiscoFilter, setNivelRiscoFilter] = useState<string>("");
   const [hydroContextFilter, setHydroContextFilter] = useState<string>("");
@@ -83,10 +85,31 @@ const AreasAlagadas = () => {
     return data;
   }, [filters, hydroContextFilter, nivelRiscoFilter, normalizedAreasDataset]);
 
-  const mapData = useMemo(
-    () => buildAreasAlagadasMapData(filteredData, filters),
-    [filteredData, filters],
-  );
+  useEffect(() => {
+    if (selectedArea && !filteredData.some((area) => area.id === selectedArea.id)) {
+      setSelectedArea(null);
+    }
+  }, [filteredData, selectedArea]);
+
+  const hasContextFilters =
+    Boolean(filters.empresa) ||
+    Boolean(filters.regiao) ||
+    Boolean(filters.linha) ||
+    Boolean(filters.linhaNome) ||
+    Boolean(filters.ramal) ||
+    Boolean(filters.tensaoKv) ||
+    Boolean(filters.search) ||
+    Boolean(nivelRiscoFilter) ||
+    Boolean(hydroContextFilter);
+
+  const shouldShowReferenceHydrology = filteredData.length === 0 && normalizedAreasDataset.length > 0;
+
+  const mapData = useMemo(() => {
+    if (shouldShowReferenceHydrology) {
+      return buildAreasAlagadasMapData(normalizedAreasDataset, {});
+    }
+    return buildAreasAlagadasMapData(filteredData, filters);
+  }, [filteredData, filters, normalizedAreasDataset, shouldShowReferenceHydrology]);
 
   const kpis = useMemo(() => {
     const microbacias = new Set(filteredData.map((area) => area.microbaciaId)).size;
@@ -224,6 +247,33 @@ const AreasAlagadas = () => {
           </TabsContent>
 
           <TabsContent value="mapa" className="mt-4 space-y-4">
+            {shouldShowReferenceHydrology && (
+              <Alert className="border-amber-500/40 bg-amber-500/5 text-amber-950 dark:text-amber-100">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Sem feições para os filtros atuais</AlertTitle>
+                <AlertDescription className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <span>
+                    A base hídrica completa foi exibida como referência para não deixar o mapa vazio.
+                    Limpe os filtros para voltar a ver apenas os alertas compatíveis.
+                  </span>
+                  {hasContextFilters && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        resetFilters();
+                        setNivelRiscoFilter("");
+                        setHydroContextFilter("");
+                      }}
+                    >
+                      Limpar filtros
+                    </Button>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="flex flex-wrap gap-2 text-xs">
               <Badge variant="outline" className="border-teal-500/40 text-teal-700 dark:text-teal-300">
                 Microbacias
