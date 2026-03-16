@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { clearPersistedSupabaseSession, supabase } from "@/integrations/supabase/client";
 import { ENV } from "@/config/env";
 
 const SESSION_START_KEY = "smartline-session-start";
@@ -61,9 +61,9 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
             setExpiredAccess(true);
             setHasSession(false);
             try {
-              await client.auth.signOut();
+              await client.auth.signOut({ scope: "local" });
             } catch {/* ignore */}
-            window.localStorage.removeItem(SESSION_START_KEY);
+            clearPersistedSupabaseSession();
             return;
           }
         }
@@ -78,11 +78,11 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         if (Number.isFinite(startMs) && now - startMs >= MAX_SESSION_AGE_MS) {
           // Sessão expirada: força logout
           try {
-            await client.auth.signOut();
+            await client.auth.signOut({ scope: "local" });
           } catch {
             // ignora erro de signOut, apenas limpa localmente
           }
-          window.localStorage.removeItem(SESSION_START_KEY);
+          clearPersistedSupabaseSession();
           setHasSession(false);
           return;
         }

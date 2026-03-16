@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
+import { clearPersistedSupabaseSession, supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useDatasetContext } from "@/context/DatasetContext";
@@ -60,11 +60,12 @@ const Header = ({ title, subtitle }: HeaderProps) => {
     try {
       // Logout Supabase, se estiver configurado
       if (supabase) {
-        const { error } = await supabase.auth.signOut();
+        const { error } = await supabase.auth.signOut({ scope: "local" });
         if (error) {
           throw error;
         }
       }
+      clearPersistedSupabaseSession();
       // Limpa sessão demo local
       if (typeof window !== "undefined") {
         window.localStorage.removeItem("smartline-demo-user");

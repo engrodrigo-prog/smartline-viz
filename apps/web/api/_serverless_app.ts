@@ -80,6 +80,13 @@ const createServiceClient = () => {
   });
 };
 
+const createAnonAuthClient = () => {
+  if (!supabaseEnv.enabled) return null;
+  return createClient(supabaseEnv.url, supabaseEnv.key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+};
+
 const bearerTokenFromAuthHeader = (authHeader: string | null | undefined): string | null => {
   if (!authHeader) return null;
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
@@ -258,6 +265,11 @@ const buildVegAgendaFallback = (limit = 50) => {
     },
   ].slice(0, Math.max(1, Math.min(limit, 4)));
 };
+
+const authLoginSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(1),
+});
 
 const buildVegDashboardFallback = () => {
   const now = nowIso();
@@ -1022,6 +1034,78 @@ app.get('/weather', (c) =>
 
 // ---- Demo auth (landing/demo topbar) ----
 app.get('/auth/demo/me', (c) => c.json({ user: null }));
+app.post('/auth/login', async (c) => {
+  if (!supabaseEnv.enabled) {
+    return c.json(
+      {
+        error: 'auth_unavailable',
+        message: 'Autenticação indisponível neste ambiente.',
+      },
+      503,
+    );
+  }
+
+  const parsedBody = authLoginSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsedBody.success) {
+    return c.json(
+      {
+        error: 'invalid_payload',
+        message: 'Informe e-mail e senha válidos.',
+        issues: parsedBody.error.flatten(),
+      },
+      400,
+    );
+  }
+
+  const authClient = createAnonAuthClient();
+  if (!authClient) {
+    return c.json(
+      {
+        error: 'auth_unavailable',
+        message: 'Cliente de autenticação indisponível.',
+      },
+      503,
+    );
+  }
+
+  const { email, password } = parsedBody.data;
+  const { data, error } = await authClient.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    const rawStatus = Number(error.status ?? 0);
+    const message = String(error.message ?? 'Falha ao autenticar.');
+    const invalidCredentials = message.toLowerCase().includes('invalid login credentials');
+    const status = invalidCredentials
+      ? 401
+      : Number.isFinite(rawStatus) && rawStatus >= 400 && rawStatus < 600
+        ? rawStatus
+        : 502;
+
+    return c.json(
+      {
+        error: invalidCredentials ? 'invalid_credentials' : 'auth_failed',
+        message,
+      },
+      status,
+    );
+  }
+
+  if (!data.session || !data.user) {
+    return c.json(
+      {
+        error: 'session_missing',
+        message: 'A autenticação foi aceita, mas a sessão não foi retornada.',
+      },
+      502,
+    );
+  }
+
+  return c.json({
+    ok: true,
+    session: data.session,
+    user: data.user,
+  });
+});
 app.post('/auth/demo/login', async (c) => {
   const body = await c.req.json().catch(() => ({} as any));
   const displayName = typeof body?.display_name === 'string' ? body.display_name : 'Guest';

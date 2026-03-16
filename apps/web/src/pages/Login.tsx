@@ -5,16 +5,17 @@ import logoSmartline from "@/assets/logo-smartline.png";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, Mail, UserPlus } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Lock, Mail } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
+import { persistSupabaseSession, supabase } from "@/integrations/supabase/client";
 import { ENV } from "@/config/env";
 import LanguageMenu from "@/components/LanguageMenu";
 import { useI18n } from "@/context/I18nContext";
+import { postJSON } from "@/services/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -45,6 +46,24 @@ const Login = () => {
     });
   }, [navigate]);
 
+  const readApiErrorMessage = (error: unknown) => {
+    const message = typeof error === "object" && error !== null && "message" in error
+      ? String((error as { message?: unknown }).message ?? "")
+      : String(error ?? "");
+    const payload = message.includes("→") ? message.split("→").slice(1).join("→").trim() : "";
+    if (payload.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(payload) as { message?: unknown };
+        if (typeof parsed.message === "string" && parsed.message.trim()) {
+          return parsed.message.trim();
+        }
+      } catch {
+        // fallback to raw message
+      }
+    }
+    return message;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -59,16 +78,21 @@ const Login = () => {
         throw new Error(t("login.errors.authUnavailable"));
       }
 
-      // Apenas login (cadastro é administrado fora do app público)
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      const response = await postJSON<{ ok: true; session: Session }>("/auth/login", { email, password });
+      const session = response.session;
+      if (!session?.access_token || !session.refresh_token || !session.user) {
+        throw new Error("Sessão não encontrada após login.");
+      }
+
+      const persisted = persistSupabaseSession(session);
+      if (!persisted) {
+        throw new Error(t("login.errors.authUnavailable"));
+      }
 
       markSessionStart();
 
       // Decide para onde ir
-      const { data: sessionData } = await supabase.auth.getSession();
-      const user = sessionData.session?.user;
-      if (!user) throw new Error("Sessão não encontrada após login.");
+      const user = session.user;
       const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
 
       if (meta.must_change_password === true) {
@@ -88,7 +112,7 @@ const Login = () => {
         navigate("/dashboard");
       }
     } catch (error: any) {
-      const message = (error?.message as string | undefined) ?? "";
+      const message = readApiErrorMessage(error);
       const friendly =
         message.toLowerCase().includes("failed to fetch") ||
         message.toLowerCase().includes("name_not_resolved")
@@ -96,7 +120,7 @@ const Login = () => {
           : null;
       toast({
         title: t("login.toasts.error.title"),
-        description: (friendly ?? error.message) || t("login.toasts.error.description"),
+        description: (friendly ?? message) || t("login.toasts.error.description"),
         variant: "destructive",
       });
     } finally {
