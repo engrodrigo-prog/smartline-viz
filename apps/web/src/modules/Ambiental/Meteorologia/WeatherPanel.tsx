@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Cloud, Wind, Droplets, Gauge, ExternalLink, ShieldAlert } from "lucide-react";
+import { Cloud, Wind, Droplets, Gauge, ExternalLink, Info } from "lucide-react";
 import TimelineSlider from "./TimelineSlider";
 import WeatherMap from "./WeatherMap";
 import { useWeather } from "@/hooks/useWeather";
@@ -17,7 +17,7 @@ type WeatherMode = 'openweather' | 'ventusky';
 const WeatherPanel = () => {
   const [mode, setMode] = useState<WeatherMode>(() => {
     const saved = localStorage.getItem('smartline_weather_mode');
-    if (saved === 'openweather') return saved;
+    if (saved === 'ventusky') return saved;
     return 'openweather';
   });
 
@@ -39,6 +39,8 @@ const WeatherPanel = () => {
   // Santos, SP como padrão
   const center: [number, number] = [-46.33, -23.96];
   const ventuskyUrl = `https://www.ventusky.com/?p=${center[1]};${center[0]};8`;
+  const ventuskyEmbedUrl =
+    `https://embed.ventusky.com/?p=${center[1]};${center[0]};8&l=temperature-2m&w=soft&pin=${center[1]};${center[0]};dot;Santos`;
   
   const { data: weatherData, isLoading } = useWeather({
     lat: -23.96,
@@ -82,7 +84,7 @@ const WeatherPanel = () => {
           <Tabs value={mode} onValueChange={handleModeChange}>
             <TabsList>
               <TabsTrigger value="openweather">OpenWeather API</TabsTrigger>
-              <TabsTrigger value="ventusky">Ventusky Externo</TabsTrigger>
+              <TabsTrigger value="ventusky">Ventusky Embed</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -162,43 +164,32 @@ const WeatherPanel = () => {
               </>
             )
           ) : (
-            <div className="h-full rounded-lg border border-border bg-background/70 p-6">
-              <div className="mx-auto flex h-full max-w-3xl flex-col justify-center gap-6">
-                <Alert className="border-amber-500/30 bg-amber-500/5">
-                  <ShieldAlert className="h-4 w-4" />
-                  <AlertTitle>Visualização externa</AlertTitle>
-                  <AlertDescription>
-                    O embed inline do Ventusky foi removido desta tela porque o script deles injeta
-                    listeners não-passivos e dispara erros de CORS no console do navegador. Para
-                    manter a página estável, o acesso agora é feito em nova aba.
-                  </AlertDescription>
-                </Alert>
+            <div className="h-full space-y-4">
+              <Alert className="border-border/60 bg-background/80">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Embed oficial do Ventusky</AlertTitle>
+                <AlertDescription className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <span>
+                    Esta visualização usa o endpoint oficial de embed do Ventusky. Se a sua rede
+                    corporativa bloquear o conteúdo externo, abra a ferramenta em nova aba.
+                  </span>
+                  <Button asChild variant="outline" size="sm">
+                    <a href={ventuskyUrl} target="_blank" rel="noreferrer">
+                      Abrir externo
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </AlertDescription>
+              </Alert>
 
-                <div className="tech-card p-6">
-                  <div className="space-y-3">
-                    <div className="text-sm uppercase tracking-wide text-muted-foreground">
-                      Ferramenta complementar
-                    </div>
-                    <h3 className="text-2xl font-semibold">Abrir Ventusky fora do Smartline</h3>
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      Use o mapa meteorológico interno para operação no Smartline e abra o Ventusky
-                      externamente quando quiser comparar animações globais de vento e chuva.
-                    </p>
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap items-center gap-3">
-                    <Button asChild>
-                      <a href={ventuskyUrl} target="_blank" rel="noreferrer">
-                        Abrir Ventusky
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </Button>
-                    <div className="text-xs text-muted-foreground">
-                      Centro inicial: Santos/SP, com navegação livre após abertura.
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <iframe
+                src={ventuskyEmbedUrl}
+                className="h-[calc(100%-72px)] min-h-[600px] w-full rounded-lg border border-border bg-background"
+                title="Ventusky Weather Embed"
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
             </div>
           )}
         </div>
