@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Loader2 } from "lucide-react";
 
 import {
   changeBasemap,
@@ -13,6 +12,7 @@ import {
 } from "@/lib/mapConfig";
 import { isMapStyleReady, runWhenMapStyleReady } from "@/lib/mapStyle";
 import { BasemapSelector } from "./BasemapSelector";
+import { MapLoadingIndicator } from "@/components/map/MapLoadingIndicator";
 import type { FeatureCollection, Geometry, Polygon, LineString } from "geojson";
 import type { Local3DLayer } from "@/features/map/UnifiedMapView/local3d";
 
@@ -1054,14 +1054,7 @@ export const MapLibreUnified = ({
       aria-busy={isLoading}
       aria-live="polite"
     >
-      {isLoading && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-background/70 backdrop-blur-sm">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <p className="text-xs text-muted-foreground">
-            Carregando mapa geoespacial...
-          </p>
-        </div>
-      )}
+      {isLoading && <MapLoadingIndicator label="Carregando mapa geoespacial..." />}
 
       {hasInteracted && (
         <BasemapSelector value={currentBasemap} onChange={handleBasemapChange} mapboxAvailable={false} />

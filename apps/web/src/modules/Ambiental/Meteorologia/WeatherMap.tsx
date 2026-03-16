@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { initializeESRIMap } from "@/lib/mapConfig";
-import { Loader2 } from "lucide-react";
+import { MapLoadingIndicator } from "@/components/map/MapLoadingIndicator";
 import { WeatherLayer } from "./WeatherLayerSelector";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -184,9 +184,9 @@ const WeatherMap = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 flex items-center justify-center bg-background/30 z-10"
+            className="absolute inset-0 z-10"
           >
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <MapLoadingIndicator label="Carregando camadas meteorológicas..." />
           </motion.div>
         )}
       </AnimatePresence>

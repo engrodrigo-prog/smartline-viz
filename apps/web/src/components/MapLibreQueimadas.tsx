@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Loader2 } from 'lucide-react';
 import { initializeESRIMap } from '@/lib/mapConfig';
+import { MapLoadingIndicator } from '@/components/map/MapLoadingIndicator';
 import type { Feature } from 'geojson';
 import type { FeatureCollection, LineString } from 'geojson';
 
@@ -432,14 +432,7 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
 
   return (
     <div className="relative w-full h-[600px] rounded-lg overflow-hidden">
-      {isLoading && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-6 h-6 animate-spin" />
-            <span>Carregando mapa...</span>
-          </div>
-        </div>
-      )}
+      {isLoading && <MapLoadingIndicator label="Carregando mapa de queimadas..." />}
       <div ref={mapContainer} className="w-full h-full" />
     </div>
   );
