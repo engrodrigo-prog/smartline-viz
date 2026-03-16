@@ -121,7 +121,7 @@ const FilterPanel = ({ onApplyFilters, children }: FilterPanelProps) => {
           >
             <div className="tech-card p-6">
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
                   {/* Empresa */}
                   {SHOULD_USE_DEMO_API && (
                     <div>
@@ -182,6 +182,16 @@ const FilterPanel = ({ onApplyFilters, children }: FilterPanelProps) => {
                         Nenhuma linha ingerida ainda.
                       </p>
                     )}
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Nome da linha</label>
+                    <Input
+                      value={filters.linhaNome || ''}
+                      onChange={(e) => setFilters({ ...filters, linhaNome: e.target.value })}
+                      placeholder="Ex.: LT Campinas"
+                      className="bg-input border-border"
+                    />
                   </div>
 
                   {/* Material */}

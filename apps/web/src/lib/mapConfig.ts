@@ -1,4 +1,5 @@
 import maplibregl from "maplibre-gl";
+import { isMapStyleReady, runWhenMapStyleReady } from "@/lib/mapStyle";
 
 export type BasemapProvider = "esri" | "mapbox";
 
@@ -211,18 +212,19 @@ const disableTerrain = (map: maplibregl.Map) => {
     }
   };
 
-  if (map.isStyleLoaded()) {
+  if (isMapStyleReady(map)) {
     cleanup();
-  } else {
-    map.once("styledata", cleanup);
+    return;
   }
+
+  runWhenMapStyleReady(map, cleanup);
 };
 
 const applyTerrainAndBuildings = (_map: maplibregl.Map, _token?: string) => {}
 
 
 const preserveCustomSources = (map: maplibregl.Map) => {
-  if (!map.isStyleLoaded()) {
+  if (!isMapStyleReady(map)) {
     return { layers: [] as maplibregl.AnyLayer[], sources: {} as Record<string, any> };
   }
 

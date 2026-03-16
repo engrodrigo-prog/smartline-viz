@@ -188,6 +188,10 @@ export const buildImportPayload = (feature: ParsedGeoPackageFeature, metadata: I
     original_properties: feature.properties,
     line_code: metadata.line_code,
     line_name: metadata.line_name,
+    tensao_kv: metadata.tensao_kv ?? null,
+    empresa: metadata.empresa,
+    regiao: metadata.regiao,
+    concessao: metadata.concessao ?? null,
     reference_date: metadata.reference_date ?? null,
   };
 

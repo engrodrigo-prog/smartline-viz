@@ -11,6 +11,7 @@ import {
   resolveBasemapId,
   type BasemapId,
 } from "@/lib/mapConfig";
+import { isMapStyleReady, runWhenMapStyleReady } from "@/lib/mapStyle";
 import { BasemapSelector } from "./BasemapSelector";
 import type { FeatureCollection, Geometry, Polygon, LineString } from "geojson";
 import type { Local3DLayer } from "@/features/map/UnifiedMapView/local3d";
@@ -277,7 +278,7 @@ export const MapLibreUnified = ({
   const hasLayer = useCallback(
     (map: maplibregl.Map | null | undefined, layerId: string) => {
       try {
-        if (!map || !styleReadyRef.current) return false;
+        if (!map || !isMapStyleReady(map)) return false;
         return !!map.getLayer(layerId);
       } catch {
         return false;
@@ -289,7 +290,7 @@ export const MapLibreUnified = ({
   const hasSource = useCallback(
     (map: maplibregl.Map | null | undefined, sourceId: string) => {
       try {
-        if (!map || !styleReadyRef.current) return false;
+        if (!map || !isMapStyleReady(map)) return false;
         return !!map.getSource(sourceId);
       } catch {
         return false;
@@ -408,11 +409,7 @@ export const MapLibreUnified = ({
       });
     };
 
-    if (styleReadyRef.current) {
-      addOrUpdateLayer();
-    } else {
-      mapInstance.once("style.load", addOrUpdateLayer);
-    }
+    return runWhenMapStyleReady(mapInstance, addOrUpdateLayer);
   }, [customPoints, removeLayerAndSource]);
 
   // Custom polygons layer (e.g., NDVI surfaces)
@@ -485,13 +482,10 @@ export const MapLibreUnified = ({
       });
     };
 
-    if (styleReadyRef.current) {
-      addLayers();
-    } else {
-      mapInstance.once("style.load", addLayers);
-    }
+    const cancelPending = runWhenMapStyleReady(mapInstance, addLayers);
 
     return () => {
+      cancelPending();
       safeRemoveLayer(mapInstance, outlineLayerId);
       removeLayerAndSource(mapInstance, fillLayerId, sourceId);
     };
@@ -560,10 +554,10 @@ export const MapLibreUnified = ({
       }
     };
 
-    if (styleReadyRef.current) addOrUpdate();
-    else mapInstance.once("style.load", addOrUpdate);
+    const cancelPending = runWhenMapStyleReady(mapInstance, addOrUpdate);
 
     return () => {
+      cancelPending();
       safeRemoveLayer(mapInstance, corridorId);
       removeLayerAndSource(mapInstance, mainId, sourceId);
     };
@@ -620,11 +614,7 @@ export const MapLibreUnified = ({
       }
     };
 
-    if (styleReadyRef.current) {
-      load();
-    } else {
-      mapInstance.once("style.load", load);
-    }
+    return runWhenMapStyleReady(mapInstance, load);
   }, [erosionData, removeLayerAndSource, showErosao]);
 
   // Soil samples layer
@@ -665,11 +655,7 @@ export const MapLibreUnified = ({
       }
     };
 
-    if (styleReadyRef.current) {
-      load();
-    } else {
-      mapInstance.once("style.load", load);
-    }
+    return runWhenMapStyleReady(mapInstance, load);
   }, [removeLayerAndSource, soilData]);
 
   // Load infrastructure layer
@@ -706,11 +692,7 @@ export const MapLibreUnified = ({
       });
     };
 
-    if (styleReadyRef.current) {
-      loadInfrastructure();
-    } else {
-      mapInstance.once("style.load", loadInfrastructure);
-    }
+    return runWhenMapStyleReady(mapInstance, loadInfrastructure);
   }, [filterEmpresa, filterLinha, filterRegiao, removeLayerAndSource, showInfrastructure]);
 
   // Load queimadas layer
@@ -805,13 +787,10 @@ export const MapLibreUnified = ({
       mapInstance.on("mouseleave", "queimadas-points", handleMouseLeave);
     };
 
-    if (styleReadyRef.current) {
-      loadQueimadas();
-    } else {
-      mapInstance.once("style.load", loadQueimadas);
-    }
+    const cancelPending = runWhenMapStyleReady(mapInstance, loadQueimadas);
 
     return () => {
+      cancelPending();
       mapInstance.off("click", "queimadas-points", handlePointClick);
       mapInstance.off("mouseenter", "queimadas-points", handleMouseEnter);
       mapInstance.off("mouseleave", "queimadas-points", handleMouseLeave);
@@ -903,12 +882,11 @@ export const MapLibreUnified = ({
         .forEach((sourceId) => safeRemoveSource(mapInstance, sourceId));
     };
 
-    if (styleReadyRef.current) {
-      syncLocal3DLayers();
-    }
+    const cancelPending = runWhenMapStyleReady(mapInstance, syncLocal3DLayers);
 
     mapInstance.on("style.load", syncLocal3DLayers);
     return () => {
+      cancelPending();
       mapInstance.off("style.load", syncLocal3DLayers);
     };
   }, [

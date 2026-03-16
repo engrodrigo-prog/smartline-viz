@@ -17,6 +17,7 @@ import { useLipowerlineTratamentos } from "@/hooks/useLipowerlineTratamentos";
 import { useMediaItems } from "@/hooks/useMedia";
 import { useQueimadas } from "@/hooks/useQueimadas";
 import { explodeLineFeatures, explodePointFeatures, explodePolygonFeatures } from "@/lib/geodata";
+import { isMapStyleReady, runWhenMapStyleReady } from "@/lib/mapStyle";
 import { LayersStorage } from "@/lib/storage/layers";
 
 const RS_BOUNDS: [[number, number], [number, number]] = [
@@ -33,15 +34,6 @@ const MEDIA_COLORS: Record<string, string> = {
 const isPointGeometry = (type?: string) => type === "Point" || type === "MultiPoint";
 const isLineGeometry = (type?: string) => type === "LineString" || type === "MultiLineString";
 const isPolygonGeometry = (type?: string) => type === "Polygon" || type === "MultiPolygon";
-const isMapStyleReady = (mapInstance: MapLibreMap | null) => {
-  if (!mapInstance?.getStyle) return false;
-  try {
-    return Boolean(mapInstance.getStyle()) && mapInstance.isStyleLoaded();
-  } catch {
-    return false;
-  }
-};
-
 export const useUnifiedMapState = (filters: FiltersState) => {
   const [layers, setLayers] = useState<Layer[]>(DEFAULT_LAYERS);
   const [baseLayers, setBaseLayers] = useState<Layer[]>(BASE_LAYERS);
@@ -97,6 +89,7 @@ export const useUnifiedMapState = (filters: FiltersState) => {
       empresa: filters.empresa,
       regiao: filters.regiao,
       lineCode: filters.linha,
+      lineName: filters.linhaNome,
       tensaoKv: filters.tensaoKv,
       dateFrom: filters.dataInicio,
       dateTo: filters.dataFim,
@@ -107,7 +100,7 @@ export const useUnifiedMapState = (filters: FiltersState) => {
     { enabled: Boolean(linhaSelecionadaId) },
   );
 
-  const dashboardGeoItems = dashboardGeodata.data ?? [];
+  const dashboardGeoItems = useMemo(() => dashboardGeodata.data ?? [], [dashboardGeodata.data]);
 
   const handleToggleLayer = useCallback((layerId: string) => {
     setLayers((prev) =>
@@ -138,13 +131,14 @@ export const useUnifiedMapState = (filters: FiltersState) => {
 
   useEffect(() => {
     if (!mapInstance || isBasemapChanging) return;
-    if (!mapInstance.getStyle || !mapInstance.getStyle()) return;
 
     if (!isMapStyleReady(mapInstance)) {
-      mapInstance.once("style.load", () => {
+      const cancelPending = runWhenMapStyleReady(mapInstance, () => {
         setLoadingLayers(new Set());
       });
-      return;
+      return () => {
+        cancelPending();
+      };
     }
 
     const updateLayers = async () => {

@@ -134,6 +134,12 @@ const UploadTracados = () => {
 
         setProcessingResult({
           ...data,
+          stats: {
+            linhas: data.stats.linhas,
+            estruturas: data.stats.estruturas,
+            eventos: 0,
+            outros: data.stats.outros,
+          },
           storagePath: fileName,
           fileType: "GeoPackage (.gpkg)",
         });
@@ -605,8 +611,8 @@ const UploadTracados = () => {
               }}>
                 Novo Upload
               </Button>
-              <Button onClick={() => navigate('/visual/mapa')}>
-                Ir para o mapa
+              <Button onClick={() => navigate('/dashboard')}>
+                Abrir mapa operacional
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </CardFooter>

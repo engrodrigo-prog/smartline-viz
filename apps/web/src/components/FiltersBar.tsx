@@ -91,7 +91,7 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
 
   const content = (
     <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
           {/* Empresa */}
           {SHOULD_USE_DEMO_API && (
             <div>
@@ -167,6 +167,21 @@ const FiltersBar = ({ onApplyFilters, children, floating = true }: FiltersBarPro
                 Nenhuma linha ingerida ainda.
               </p>
             )}
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Nome da linha</label>
+              {filters.linhaNome && (
+                <button className="text-[11px] underline-offset-2 hover:underline" onClick={() => clearField('linhaNome')}>limpar</button>
+              )}
+            </div>
+            <Input
+              value={filters.linhaNome || ''}
+              onChange={(e) => setFilters({ ...filters, linhaNome: e.target.value })}
+              placeholder="Ex.: LT Campinas"
+              className="bg-input border-border"
+            />
           </div>
 
           {/* Material */}

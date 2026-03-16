@@ -106,6 +106,13 @@ serve(async (req) => {
           return null;
         })();
         const referenceDate = typeof metadata.reference_date === 'string' ? metadata.reference_date : null;
+        const normalizedMetadata = {
+          ...metadata,
+          line_code: lineCode,
+          line_name: lineName,
+          tensao_kv: tensaoKv,
+          reference_date: referenceDate,
+        };
         
         // Processar baseado na classificação
         if (classification === 'linha' || classification === 'linha_estrutura') {
@@ -177,7 +184,7 @@ serve(async (req) => {
             concessao,
             regiao,
             data_ocorrencia: referenceDate,
-            metadata,
+            metadata: normalizedMetadata,
           });
           
           if (error) {
@@ -196,9 +203,7 @@ serve(async (req) => {
             regiao,
             tensao_kv: tensaoKv !== null ? String(tensaoKv) : null,
             metadata: {
-              ...metadata,
-              line_code: lineCode,
-              line_name: lineName,
+              ...normalizedMetadata,
             },
           });
           

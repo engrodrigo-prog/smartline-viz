@@ -10,6 +10,7 @@ export type FiltersState = {
   empresa?: Empresa;
   regiao?: string;
   linha?: string;
+  linhaNome?: string;
   ramal?: string;
   tensaoKv?: string;
   tipoMaterial?: string;
