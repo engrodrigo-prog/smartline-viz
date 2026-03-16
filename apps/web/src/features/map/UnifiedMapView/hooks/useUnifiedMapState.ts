@@ -31,7 +31,16 @@ const MEDIA_COLORS: Record<string, string> = {
 };
 
 const isPointGeometry = (type?: string) => type === "Point" || type === "MultiPoint";
+const isLineGeometry = (type?: string) => type === "LineString" || type === "MultiLineString";
 const isPolygonGeometry = (type?: string) => type === "Polygon" || type === "MultiPolygon";
+const isMapStyleReady = (mapInstance: MapLibreMap | null) => {
+  if (!mapInstance?.getStyle) return false;
+  try {
+    return Boolean(mapInstance.getStyle()) && mapInstance.isStyleLoaded();
+  } catch {
+    return false;
+  }
+};
 
 export const useUnifiedMapState = (filters: FiltersState) => {
   const [layers, setLayers] = useState<Layer[]>(DEFAULT_LAYERS);
@@ -87,6 +96,10 @@ export const useUnifiedMapState = (filters: FiltersState) => {
     filters: {
       empresa: filters.empresa,
       regiao: filters.regiao,
+      lineCode: filters.linha,
+      tensaoKv: filters.tensaoKv,
+      dateFrom: filters.dataInicio,
+      dateTo: filters.dataFim,
     },
   });
   const mediaItems = useMediaItems(
@@ -127,7 +140,7 @@ export const useUnifiedMapState = (filters: FiltersState) => {
     if (!mapInstance || isBasemapChanging) return;
     if (!mapInstance.getStyle || !mapInstance.getStyle()) return;
 
-    if (!mapInstance.isStyleLoaded()) {
+    if (!isMapStyleReady(mapInstance)) {
       mapInstance.once("style.load", () => {
         setLoadingLayers(new Set());
       });
@@ -254,7 +267,15 @@ export const useUnifiedMapState = (filters: FiltersState) => {
   }, [mediaItems.data?.items]);
 
   const publishedLineFeatures = useMemo(
-    () => explodeLineFeatures(dashboardGeoItems.filter((item) => item.sourceTable === "linhas_transmissao")),
+    () =>
+      explodeLineFeatures(
+        dashboardGeoItems.filter(
+          (item) =>
+            item.assetType === "vector" &&
+            isLineGeometry(item.geometry?.type) &&
+            (item.sourceTable === "linhas_transmissao" || item.sourceTable === "geodata_outros" || item.sourceTable === "eventos_geo"),
+        ),
+      ),
     [dashboardGeoItems],
   );
 

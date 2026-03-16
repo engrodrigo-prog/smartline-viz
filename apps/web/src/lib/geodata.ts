@@ -47,6 +47,9 @@ export type DashboardGeoFeature = {
   companyName: string | null;
   regionCode: string | null;
   lineCode: string | null;
+  lineName: string | null;
+  voltageKv: string | null;
+  referenceDate: string | null;
   style: Record<string, unknown>;
   properties: Record<string, unknown>;
   geometry: Geometry | null;
@@ -91,22 +94,42 @@ const baseProps = (feature: DashboardGeoFeature) => ({
   lineCode: feature.lineCode ?? undefined,
 });
 
-export const mapDashboardGeoRow = (row: DashboardGeoFeatureRow): DashboardGeoFeature => ({
-  layerSource: row.layer_source,
-  sourceTable: row.source_table,
-  sourceId: row.source_id,
-  title: row.title,
-  assetType: row.asset_type,
-  geometryKind: row.geometry_kind,
-  dashboardContexts: row.dashboard_contexts ?? [],
-  companyName: row.company_name,
-  regionCode: row.region_code,
-  lineCode: row.line_code,
-  style: asRecord(row.style_json),
-  properties: asRecord(row.properties),
-  geometry: asGeometry(row.geom_geojson),
-  createdAt: row.created_at,
-});
+export const mapDashboardGeoRow = (row: DashboardGeoFeatureRow): DashboardGeoFeature => {
+  const properties = asRecord(row.properties);
+  const nestedMeta =
+    properties.metadata && typeof properties.metadata === "object" ? (properties.metadata as Record<string, unknown>) : {};
+
+  return {
+    layerSource: row.layer_source,
+    sourceTable: row.source_table,
+    sourceId: row.source_id,
+    title: row.title,
+    assetType: row.asset_type,
+    geometryKind: row.geometry_kind,
+    dashboardContexts: row.dashboard_contexts ?? [],
+    companyName: row.company_name,
+    regionCode: row.region_code,
+    lineCode: row.line_code,
+    lineName:
+      readString(properties.nome) ??
+      readString(properties.name) ??
+      readString(nestedMeta.line_name) ??
+      row.title ??
+      null,
+    voltageKv:
+      readString(properties.tensao_kv) ??
+      (readNumber(properties.tensao_kv) !== undefined ? String(readNumber(properties.tensao_kv)) : null),
+    referenceDate:
+      readString(properties.data_ocorrencia) ??
+      readString(properties.ts_acquired) ??
+      readString(nestedMeta.reference_date) ??
+      row.created_at,
+    style: asRecord(row.style_json),
+    properties,
+    geometry: asGeometry(row.geom_geojson),
+    createdAt: row.created_at,
+  };
+};
 
 export const explodePointFeatures = (features: DashboardGeoFeature[]): Feature<Point>[] =>
   features.flatMap((feature) => {

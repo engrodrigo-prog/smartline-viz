@@ -47,7 +47,7 @@ serve(async (req) => {
       );
     }
 
-    const { filePath } = await req.json();
+    const { filePath, importMetadata } = await req.json();
     
     if (!filePath) {
       throw new Error('File path is required');
@@ -200,6 +200,7 @@ serve(async (req) => {
           metadata: { 
             coordsCount: feature.coordsCount,
             coords: feature.coords,
+            importMetadata: importMetadata ?? null,
           },
         });
 

@@ -16,7 +16,7 @@ import {
 import type { Layer } from "./LayerSelector";
 
 export const DEFAULT_LAYERS: Layer[] = [
-  { id: "linhas", name: "Linhas de Transmissão", icon: Zap, visible: false },
+  { id: "linhas", name: "Linhas de Transmissão", icon: Zap, visible: true },
   { id: "lp_vegetacao", name: "Risco Vegetação (LiPowerline)", icon: Trees, visible: true },
   { id: "lp_queda", name: "Danger Trees", icon: AlertTriangle, visible: false },
   { id: "lp_cruzamentos", name: "Cruzamentos Críticos", icon: MapPin, visible: false },

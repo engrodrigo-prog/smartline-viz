@@ -24,6 +24,10 @@ interface UseGeodataQueryOptions {
     empresa?: string;
     regiao?: string;
     lineCode?: string;
+    lineName?: string;
+    tensaoKv?: string;
+    dateFrom?: string;
+    dateTo?: string;
     layerSource?: string;
     assetType?: GeoAssetType;
     geometryKinds?: string[];
@@ -56,6 +60,10 @@ export function useGeodataQuery({
       if (filters.empresa) params.set("empresa", filters.empresa);
       if (filters.regiao) params.set("regiao", filters.regiao);
       if (filters.lineCode) params.set("lineCode", filters.lineCode);
+      if (filters.lineName) params.set("lineName", filters.lineName);
+      if (filters.tensaoKv) params.set("tensaoKv", filters.tensaoKv);
+      if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+      if (filters.dateTo) params.set("dateTo", filters.dateTo);
       if (filters.layerSource) params.set("layerSource", filters.layerSource);
       if (filters.assetType) params.set("assetType", filters.assetType);
       if (filters.geometryKinds?.length) params.set("geometryKinds", filters.geometryKinds.join(","));
@@ -66,7 +74,31 @@ export function useGeodataQuery({
         `/geodata/dashboard${suffix ? `?${suffix}` : ""}`,
       );
 
-      return (response.items ?? []).map(mapDashboardGeoRow);
+      return (response.items ?? [])
+        .map(mapDashboardGeoRow)
+        .filter((item) => {
+          if (filters.lineName && !(item.lineName ?? item.title).toLowerCase().includes(filters.lineName.toLowerCase())) {
+            return false;
+          }
+          if (filters.tensaoKv && (item.voltageKv ?? "") !== filters.tensaoKv) {
+            return false;
+          }
+          if (filters.dateFrom && item.referenceDate) {
+            const value = new Date(item.referenceDate);
+            const min = new Date(filters.dateFrom);
+            if (!Number.isNaN(value.getTime()) && !Number.isNaN(min.getTime()) && value < min) {
+              return false;
+            }
+          }
+          if (filters.dateTo && item.referenceDate) {
+            const value = new Date(item.referenceDate);
+            const max = new Date(filters.dateTo);
+            if (!Number.isNaN(value.getTime()) && !Number.isNaN(max.getTime()) && value > max) {
+              return false;
+            }
+          }
+          return true;
+        });
     },
     retry: false,
   });

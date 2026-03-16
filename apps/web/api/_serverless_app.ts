@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { buildImportPayload, parseGeoPackage } from './_geopackage';
 
 const app = new Hono();
 
@@ -372,6 +373,19 @@ const parseQuery = <T,>(c: any, schema: z.ZodType<T>) => {
   return { ok: true as const, data: parsed.data };
 };
 
+const parseJsonRecord = (value: unknown) => {
+  if (!value) return {} as Record<string, unknown>;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return typeof parsed === 'object' && parsed ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof value === 'object' ? (value as Record<string, unknown>) : {};
+};
+
 const logJson = (level: 'debug' | 'info' | 'warn' | 'error', event: string, data: Record<string, unknown>) => {
   const record = { level, event, ts: new Date().toISOString(), ...data };
   if (level === 'error') console.error(JSON.stringify(record));
@@ -475,6 +489,30 @@ const mapLineAssetToLinha = (row: any) => ({
   regiao: null,
 });
 
+const mapLinhaGeoToLinha = (row: any) => ({
+  linha_id: row.codigo,
+  codigo_linha: row.codigo,
+  nome_linha: row.nome ?? row.codigo,
+  tensao_kv: row.tensao_kv ?? null,
+  concessionaria: row.concessao ?? null,
+  regiao: row.regiao ?? null,
+  created_at: row.created_at ?? null,
+});
+
+const mergeLinhaCatalogs = (...groups: any[][]) => {
+  const merged = new Map<string, any>();
+  for (const group of groups) {
+    for (const row of group) {
+      const key = String(row?.linha_id ?? row?.codigo_linha ?? '').trim();
+      if (!key) continue;
+      if (!merged.has(key)) {
+        merged.set(key, row);
+      }
+    }
+  }
+  return Array.from(merged.values()).sort((a, b) => String(b?.created_at ?? '').localeCompare(String(a?.created_at ?? '')));
+};
+
 const resolveTenantForToken = async (token: string) => {
   const supabase = createServiceClient();
   if (!supabase) {
@@ -537,6 +575,103 @@ app.use('*', logger());
 
 app.get('/health', (c) => c.json({ status: 'ok', runtime: 'vercel-serverless' }));
 app.get('/firms', (c) => c.json(emptyFeatureCollection({ lastFetchedAt: nowIso(), source: 'stub' })));
+app.post('/geodata/import-tracado', async (c) => {
+  const auth = requireRlsSupabase(c);
+  if (!auth.ok) return auth.res;
+
+  const parsed = await parseJson(
+    c,
+    z.object({
+      storagePath: z.string().min(1),
+      fileType: z.enum(['.gpkg', '.zip', '.kml', '.kmz']),
+      metadata: z.object({
+        empresa: z.string().min(1),
+        regiao: z.string().min(1),
+        line_code: z.string().min(1),
+        line_name: z.string().min(1),
+        tensao_kv: z.union([z.number(), z.string()]).optional(),
+        concessao: z.string().optional(),
+        reference_date: z.string().optional(),
+      }),
+    }),
+  );
+  if (!parsed.ok) return parsed.res;
+
+  const service = createServiceClient();
+  if (!service) {
+    return jsonError(c, 500, 'service_role_not_configured', 'SUPABASE_SERVICE_ROLE_KEY não configurado.');
+  }
+
+  const userId = jwtSubject(auth.token);
+  if (!userId) {
+    return jsonError(c, 401, 'invalid_token', 'Não foi possível identificar o usuário autenticado.');
+  }
+
+  const { storagePath, fileType, metadata } = parsed.data;
+  if (!storagePath.startsWith(`${userId}/`)) {
+    return jsonError(c, 403, 'forbidden_storage_path', 'O arquivo informado não pertence ao usuário autenticado.');
+  }
+
+  if (fileType === '.zip') {
+    return jsonError(c, 400, 'zip_not_supported_yet', 'ZIP SHP ainda não tem parser automático no app. Use GPKG ou KML/KMZ.');
+  }
+  if (fileType === '.kml' || fileType === '.kmz') {
+    return jsonError(c, 400, 'interactive_flow_required', 'KML/KMZ devem seguir pelo fluxo interativo desta tela.');
+  }
+
+  const { data: fileBlob, error: downloadError } = await service.storage.from('geodata-uploads').download(storagePath);
+  if (downloadError || !fileBlob) {
+    return jsonError(c, 500, 'storage_download_failed', downloadError?.message ?? 'Falha ao baixar o arquivo do bucket.');
+  }
+
+  let parsedFeatures: Awaited<ReturnType<typeof parseGeoPackage>> = [];
+  try {
+    parsedFeatures = await parseGeoPackage(await fileBlob.arrayBuffer());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return jsonError(c, 400, 'gpkg_parse_failed', message);
+  }
+
+  if (!parsedFeatures.length) {
+    return jsonError(c, 400, 'empty_geopackage', 'Nenhuma camada vetorial utilizável foi encontrada no GeoPackage.');
+  }
+
+  const stats = {
+    linhas: 0,
+    estruturas: 0,
+    outros: 0,
+  };
+  const errors: string[] = [];
+
+  for (let index = 0; index < parsedFeatures.length; index += 1) {
+    const feature = parsedFeatures[index];
+    const insertion = buildImportPayload(feature, {
+      ...metadata,
+      tensao_kv:
+        typeof metadata.tensao_kv === 'number' ? metadata.tensao_kv : Number(metadata.tensao_kv ?? NaN),
+      concessao: metadata.concessao ?? null,
+      reference_date: metadata.reference_date ?? null,
+    }, index);
+
+    const { error } = await service.from(insertion.table).insert(insertion.payload as any);
+    if (error) {
+      errors.push(`${feature.title}: ${error.message}`);
+      continue;
+    }
+
+    if (insertion.table === 'linhas_transmissao') stats.linhas += 1;
+    else if (insertion.table === 'estruturas') stats.estruturas += 1;
+    else stats.outros += 1;
+  }
+
+  return c.json({
+    success: errors.length === 0,
+    stats,
+    errors,
+    importedFeatures: parsedFeatures.length,
+    mode: 'gpkg_import',
+  });
+});
 app.get('/geodata/dashboard', async (c) => {
   const auth = requireRlsSupabase(c);
   if (!auth.ok) return auth.res;
@@ -551,6 +686,10 @@ app.get('/geodata/dashboard', async (c) => {
       empresa: z.string().optional(),
       regiao: z.string().optional(),
       lineCode: z.string().optional(),
+      lineName: z.string().optional(),
+      tensaoKv: z.string().optional(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
       layerSource: z.string().optional(),
       assetType: z.enum(['vector', 'raster']).optional(),
       geometryKinds: z.string().optional(),
@@ -559,7 +698,7 @@ app.get('/geodata/dashboard', async (c) => {
   );
   if (!queryParsed.ok) return queryParsed.res;
 
-  const { table, context, empresa, regiao, lineCode, layerSource, assetType, geometryKinds, requireGeometry } =
+  const { table, context, empresa, regiao, lineCode, lineName, tensaoKv, dateFrom, dateTo, layerSource, assetType, geometryKinds, requireGeometry } =
     queryParsed.data;
 
   let query = auth.supabase.from('vw_dashboard_geo_features').select('*').order('created_at', { ascending: false });
@@ -610,7 +749,29 @@ app.get('/geodata/dashboard', async (c) => {
     return jsonError(c, 500, 'db_error', error.message);
   }
 
-  return c.json({ items: data ?? [], degraded: false, source: 'supabase' });
+  const parsedItems = (data ?? []).filter((row: any) => {
+    const props = parseJsonRecord(row?.properties);
+    const nestedMeta = props?.metadata && typeof props.metadata === 'object' ? props.metadata : {};
+    const rowLineName = String(props?.nome ?? props?.name ?? row?.title ?? '').trim().toLowerCase();
+    const rowTensao = String(props?.tensao_kv ?? nestedMeta?.tensao_kv ?? '').trim();
+    const rowReferenceDate = String(props?.data_ocorrencia ?? props?.ts_acquired ?? nestedMeta?.reference_date ?? row?.created_at ?? '').trim();
+
+    if (lineName && !rowLineName.includes(lineName.trim().toLowerCase())) return false;
+    if (tensaoKv && rowTensao !== tensaoKv.trim()) return false;
+    if (dateFrom && rowReferenceDate) {
+      const ref = new Date(rowReferenceDate);
+      const min = new Date(dateFrom);
+      if (!Number.isNaN(ref.getTime()) && !Number.isNaN(min.getTime()) && ref < min) return false;
+    }
+    if (dateTo && rowReferenceDate) {
+      const ref = new Date(rowReferenceDate);
+      const max = new Date(dateTo);
+      if (!Number.isNaN(ref.getTime()) && !Number.isNaN(max.getTime()) && ref > max) return false;
+    }
+    return true;
+  });
+
+  return c.json({ items: parsedItems, degraded: false, source: 'supabase' });
 });
 app.get('/firms/wfs', (c) =>
   c.json(
@@ -712,11 +873,22 @@ app.get('/linhas', async (c) => {
         .eq('tenant_id', resolved.tenantId)
         .order('created_at', { ascending: false });
 
-      if (!linesError) {
-        return c.json((lines ?? []).map(mapLineAssetToLinha));
+      const { data: importedLines, error: importedLinesError } = await resolved.supabase
+        .from('linhas_transmissao')
+        .select('codigo,nome,tensao_kv,concessao,regiao,created_at')
+        .not('geometry', 'is', null)
+        .order('created_at', { ascending: false });
+
+      if (!linesError || !importedLinesError) {
+        return c.json(
+          mergeLinhaCatalogs(
+            (lines ?? []).map(mapLineAssetToLinha),
+            (importedLines ?? []).map(mapLinhaGeoToLinha),
+          ),
+        );
       }
 
-      console.error('[api] /linhas fallback error:', linesError);
+      console.error('[api] /linhas fallback error:', linesError ?? importedLinesError);
       return c.json([]);
     }
 
@@ -730,8 +902,21 @@ app.get('/linhas', async (c) => {
     return c.json([]);
   }
 
+  const { data: importedLines, error: importedLinesError } = await supabase
+    .from('linhas_transmissao')
+    .select('codigo,nome,tensao_kv,concessao,regiao,created_at')
+    .not('geometry', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (importedLinesError) {
+    console.error('[api] /linhas imported error:', importedLinesError);
+  }
+
   return c.json(
-    (data ?? []).map(mapLineAssetToLinha),
+    mergeLinhaCatalogs(
+      (data ?? []).map(mapLineAssetToLinha),
+      (importedLines ?? []).map(mapLinhaGeoToLinha),
+    ),
   );
 });
 

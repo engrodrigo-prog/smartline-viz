@@ -5,9 +5,12 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import GeodataClassificationTable from "@/components/GeodataClassificationTable";
 import QgisProjectIntake from "@/components/upload/QgisProjectIntake";
+import { postJSON } from "@/services/api";
 
 const getExtension = (fileName: string) => {
   const lower = fileName.toLowerCase();
@@ -20,6 +23,26 @@ const getExtension = (fileName: string) => {
 
 const isInteractiveFormat = (extension: string) => extension === ".kml" || extension === ".kmz";
 
+type ImportMetadataState = {
+  empresa: string;
+  regiao: string;
+  line_code: string;
+  line_name: string;
+  tensao_kv: string;
+  concessao: string;
+  reference_date: string;
+};
+
+const emptyImportMetadata: ImportMetadataState = {
+  empresa: "",
+  regiao: "",
+  line_code: "",
+  line_name: "",
+  tensao_kv: "",
+  concessao: "",
+  reference_date: new Date().toISOString().slice(0, 10),
+};
+
 const UploadTracados = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -29,7 +52,18 @@ const UploadTracados = () => {
   const [processingResult, setProcessingResult] = useState<any>(null);
   const [features, setFeatures] = useState<any[]>([]);
   const [classifications, setClassifications] = useState<Record<string, { classification: string; customClassification?: string }>>({});
+  const [importMetadata, setImportMetadata] = useState<ImportMetadataState>(emptyImportMetadata);
   const navigate = useNavigate();
+
+  const validateMetadata = () => {
+    if (!importMetadata.empresa.trim()) return "Informe a empresa.";
+    if (!importMetadata.regiao.trim()) return "Informe a região.";
+    if (!importMetadata.line_code.trim()) return "Informe o código da linha.";
+    if (!importMetadata.line_name.trim()) return "Informe o nome da linha.";
+    if (!importMetadata.tensao_kv.trim()) return "Informe o nível de tensão.";
+    if (!importMetadata.reference_date.trim()) return "Informe a data de referência.";
+    return null;
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -50,6 +84,11 @@ const UploadTracados = () => {
 
   const handleUpload = async () => {
     if (!selectedFile) return;
+    const metadataError = validateMetadata();
+    if (metadataError) {
+      toast.error(metadataError);
+      return;
+    }
 
     if (!supabase) {
       toast.error("Supabase não configurado", {
@@ -76,18 +115,55 @@ const UploadTracados = () => {
       if (uploadError) throw uploadError;
       setUploadedFilePath(fileName);
 
-      if (!isInteractiveFormat(extension)) {
+      if (extension === ".gpkg") {
+        const data = await postJSON<{
+          success: boolean;
+          mode: string;
+          stats: { linhas: number; estruturas: number; outros: number };
+          errors: string[];
+          importedFeatures: number;
+        }>("/geodata/import-tracado", {
+          storagePath: fileName,
+          fileType: extension,
+          metadata: {
+            ...importMetadata,
+            tensao_kv: Number(importMetadata.tensao_kv),
+            concessao: importMetadata.concessao.trim() || undefined,
+          },
+        });
+
+        setProcessingResult({
+          ...data,
+          storagePath: fileName,
+          fileType: "GeoPackage (.gpkg)",
+        });
+        setCurrentStep(4);
+
+        if (data.success) {
+          toast.success("GeoPackage importado no catálogo geoespacial", {
+            description: `${data.stats.linhas} linhas, ${data.stats.estruturas} estruturas e ${data.stats.outros} geometrias auxiliares.`,
+          });
+        } else {
+          toast.error("Importação do GeoPackage concluída com erros", {
+            description: data.errors[0] ?? "Revise os detalhes da importação.",
+          });
+        }
+        return;
+      }
+
+      if (extension === ".zip") {
         setProcessingResult({
           success: true,
           mode: "postgis_queue",
-          fileType: extension === ".gpkg" ? "GeoPackage (.gpkg)" : "Shapefile ZIP (.zip)",
+          fileType: "Shapefile ZIP (.zip)",
           storagePath: fileName,
           stats: { linhas: 0, estruturas: 0, eventos: 0, outros: 0 },
           errors: [],
+          metadata: importMetadata,
         });
         setCurrentStep(4);
-        toast.success("Arquivo enviado para ingestão QGIS/PostGIS", {
-          description: "Use esta tela para subir GPKG ou SHP ZIP ao bucket geodata-uploads.",
+        toast.success("ZIP enviado para ingestão assistida", {
+          description: "O parser automático do app ainda não cobre SHP ZIP; use GPKG ou KML/KMZ para publicação imediata.",
         });
         return;
       }
@@ -98,7 +174,7 @@ const UploadTracados = () => {
 
       // Step 2: Process file with edge function
       const { data, error: processError } = await supabase.functions.invoke('process-geodata', {
-        body: { filePath: fileName },
+        body: { filePath: fileName, importMetadata },
       });
 
       if (processError) throw processError;
@@ -133,6 +209,11 @@ const UploadTracados = () => {
   };
 
   const handleFinalize = async () => {
+    const metadataError = validateMetadata();
+    if (metadataError) {
+      toast.error(metadataError);
+      return;
+    }
     if (!supabase) {
       toast.error("Supabase não configurado", {
         description: "Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para finalizar a importação.",
@@ -167,6 +248,7 @@ const UploadTracados = () => {
         body: { 
           classifications: classificationsArray,
           fileName: uploadedFilePath,
+          importMetadata,
         },
       });
 
@@ -293,6 +375,45 @@ const UploadTracados = () => {
                   onChange={handleFileChange}
                 />
               </div>
+
+              <div className="rounded-lg border border-border bg-muted/20 p-4">
+                <div className="mb-4">
+                  <p className="text-sm font-semibold">Metadados operacionais do traçado</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Esses campos alimentam o catálogo geoespacial e os filtros de empresa, região, linha, tensão e data.
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="empresa">Empresa</Label>
+                    <Input id="empresa" value={importMetadata.empresa} onChange={(e) => setImportMetadata((prev) => ({ ...prev, empresa: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regiao">Região</Label>
+                    <Input id="regiao" value={importMetadata.regiao} onChange={(e) => setImportMetadata((prev) => ({ ...prev, regiao: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="line_code">Código da linha</Label>
+                    <Input id="line_code" value={importMetadata.line_code} onChange={(e) => setImportMetadata((prev) => ({ ...prev, line_code: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="line_name">Nome da linha</Label>
+                    <Input id="line_name" value={importMetadata.line_name} onChange={(e) => setImportMetadata((prev) => ({ ...prev, line_name: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tensao_kv">Nível de tensão (kV)</Label>
+                    <Input id="tensao_kv" inputMode="numeric" value={importMetadata.tensao_kv} onChange={(e) => setImportMetadata((prev) => ({ ...prev, tensao_kv: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reference_date">Data de referência</Label>
+                    <Input id="reference_date" type="date" value={importMetadata.reference_date} onChange={(e) => setImportMetadata((prev) => ({ ...prev, reference_date: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="concessao">Concessão / observação</Label>
+                    <Input id="concessao" value={importMetadata.concessao} onChange={(e) => setImportMetadata((prev) => ({ ...prev, concessao: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
             </CardContent>
             <CardFooter className="flex justify-end">
               <Button
@@ -404,10 +525,36 @@ const UploadTracados = () => {
                   <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
                     <p className="text-sm font-semibold">Próximo passo</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Use o conector QGIS/PostGIS ou um importador `ogr2ogr` para carregar este dataset no PostGIS do Supabase.
+                      O arquivo ficou salvo no bucket oficial, mas o parser automático do app ainda não cobre SHP ZIP. Use GPKG para publicação imediata ou finalize pelo conector QGIS/PostGIS.
                     </p>
                     <p className="text-xs text-muted-foreground mt-2">
                       Esta tela é o ponto oficial para upload de GeoPackage e conjuntos SHP ZIP.
+                    </p>
+                  </div>
+                </div>
+              ) : processingResult.mode === "gpkg_import" ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-muted rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-primary">{processingResult.stats.linhas}</p>
+                      <p className="text-sm text-muted-foreground">Linhas</p>
+                    </div>
+                    <div className="bg-muted rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-primary">{processingResult.stats.estruturas}</p>
+                      <p className="text-sm text-muted-foreground">Estruturas</p>
+                    </div>
+                    <div className="bg-muted rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-primary">{processingResult.stats.outros}</p>
+                      <p className="text-sm text-muted-foreground">Outros</p>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    <p className="text-sm font-semibold">Arquivo importado</p>
+                    <p className="text-sm text-muted-foreground mt-1 break-all font-mono">
+                      {processingResult.storagePath}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Features lidas do GeoPackage: {processingResult.importedFeatures}
                     </p>
                   </div>
                 </div>
@@ -454,11 +601,12 @@ const UploadTracados = () => {
                 setProcessingResult(null);
                 setFeatures([]);
                 setClassifications({});
+                setImportMetadata(emptyImportMetadata);
               }}>
                 Novo Upload
               </Button>
-              <Button onClick={() => navigate('/dashboard')}>
-                Ir para Dashboard
+              <Button onClick={() => navigate('/visual/mapa')}>
+                Ir para o mapa
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </CardFooter>

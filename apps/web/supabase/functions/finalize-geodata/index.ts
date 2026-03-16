@@ -42,7 +42,7 @@ serve(async (req) => {
       );
     }
 
-    const { classifications, fileName } = await req.json();
+    const { classifications, fileName, importMetadata } = await req.json();
     
     if (!classifications || !Array.isArray(classifications)) {
       throw new Error('Classifications array is required');
@@ -79,16 +79,47 @@ serve(async (req) => {
         }
 
         const classification = item.classification;
+        const featureMeta =
+          stagingFeature.metadata && typeof stagingFeature.metadata === 'object'
+            ? (stagingFeature.metadata as Record<string, unknown>)
+            : {};
+        const inheritedMetadata =
+          featureMeta.importMetadata && typeof featureMeta.importMetadata === 'object'
+            ? (featureMeta.importMetadata as Record<string, unknown>)
+            : {};
+        const metadata = {
+          ...inheritedMetadata,
+          ...(importMetadata && typeof importMetadata === 'object' ? importMetadata : {}),
+        };
+        const empresa = typeof metadata.empresa === 'string' ? metadata.empresa : null;
+        const regiao = typeof metadata.regiao === 'string' ? metadata.regiao : null;
+        const concessao = typeof metadata.concessao === 'string' ? metadata.concessao : null;
+        const lineCode = typeof metadata.line_code === 'string' ? metadata.line_code : stagingFeature.feature_name;
+        const lineName = typeof metadata.line_name === 'string' ? metadata.line_name : stagingFeature.feature_name;
+        const tensaoKv = (() => {
+          const raw = metadata.tensao_kv;
+          if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+          if (typeof raw === 'string' && raw.trim()) {
+            const next = Number(raw);
+            return Number.isFinite(next) ? next : null;
+          }
+          return null;
+        })();
+        const referenceDate = typeof metadata.reference_date === 'string' ? metadata.reference_date : null;
         
         // Processar baseado na classificação
         if (classification === 'linha' || classification === 'linha_estrutura') {
           // Inserir linha
           if (stagingFeature.geometry_type === 'LineString') {
             const { error } = await supabase.from('linhas_transmissao').insert({
-              codigo: stagingFeature.feature_name,
-              nome: stagingFeature.feature_name,
+              codigo: lineCode,
+              nome: lineName,
               geometry: stagingFeature.geometry,
               status: 'Ativa',
+              empresa,
+              concessao,
+              regiao,
+              tensao_kv: tensaoKv,
             });
             
             if (error) {
@@ -105,6 +136,10 @@ serve(async (req) => {
               geometry: stagingFeature.geometry,
               tipo: 'Torre',
               estado_conservacao: 'Bom',
+              empresa,
+              concessao,
+              regiao,
+              tensao_kv: tensaoKv !== null ? String(tensaoKv) : null,
             });
             
             if (error) {
@@ -120,6 +155,10 @@ serve(async (req) => {
             geometry: stagingFeature.geometry,
             tipo: 'Torre',
             estado_conservacao: 'Bom',
+            empresa,
+            concessao,
+            regiao,
+            tensao_kv: tensaoKv !== null ? String(tensaoKv) : null,
           });
           
           if (error) {
@@ -134,6 +173,11 @@ serve(async (req) => {
             tipo_evento: item.customClassification || 'Geral',
             geometry: stagingFeature.geometry,
             status: 'Ativo',
+            empresa,
+            concessao,
+            regiao,
+            data_ocorrencia: referenceDate,
+            metadata,
           });
           
           if (error) {
@@ -147,6 +191,15 @@ serve(async (req) => {
             nome: stagingFeature.feature_name,
             categoria: item.customClassification || 'Outros',
             geometry: stagingFeature.geometry,
+            empresa,
+            concessao,
+            regiao,
+            tensao_kv: tensaoKv !== null ? String(tensaoKv) : null,
+            metadata: {
+              ...metadata,
+              line_code: lineCode,
+              line_name: lineName,
+            },
           });
           
           if (error) {
