@@ -592,6 +592,12 @@ app.post('/geodata/import-tracado', async (c) => {
         tensao_kv: z.union([z.number(), z.string()]).optional(),
         concessao: z.string().optional(),
         reference_date: z.string().optional(),
+        project_name: z.string().optional(),
+        bundle_manifest_path: z.string().optional(),
+        terminal_a: z.string().optional(),
+        terminal_b: z.string().optional(),
+        segment_code: z.string().optional(),
+        substation_codes: z.array(z.string()).optional(),
       }),
     }),
   );

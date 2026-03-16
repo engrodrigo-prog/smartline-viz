@@ -15,6 +15,12 @@ type ImportMetadata = {
   tensao_kv?: number | null;
   concessao?: string | null;
   reference_date?: string | null;
+  bundle_manifest_path?: string | null;
+  project_name?: string | null;
+  terminal_a?: string | null;
+  terminal_b?: string | null;
+  segment_code?: string | null;
+  substation_codes?: string[] | null;
 };
 
 export type ParsedGeoPackageFeature = {
@@ -193,6 +199,12 @@ export const buildImportPayload = (feature: ParsedGeoPackageFeature, metadata: I
     regiao: metadata.regiao,
     concessao: metadata.concessao ?? null,
     reference_date: metadata.reference_date ?? null,
+    bundle_manifest_path: metadata.bundle_manifest_path ?? null,
+    project_name: metadata.project_name ?? null,
+    terminal_a: metadata.terminal_a ?? null,
+    terminal_b: metadata.terminal_b ?? null,
+    segment_code: metadata.segment_code ?? null,
+    substation_codes: metadata.substation_codes ?? [],
   };
 
   if (kind.includes('line')) {

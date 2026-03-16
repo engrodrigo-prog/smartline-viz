@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Upload, FileCheck, CheckCircle, ArrowRight, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import GeodataClassificationTable from "@/components/GeodataClassificationTable";
-import QgisProjectIntake from "@/components/upload/QgisProjectIntake";
+import QgisProjectIntake, { type QgisProjectBundle } from "@/components/upload/QgisProjectIntake";
 import { postJSON } from "@/services/api";
+import { parseSubstationBinding } from "@/lib/transmissionNaming";
 
 const getExtension = (fileName: string) => {
   const lower = fileName.toLowerCase();
@@ -31,6 +32,9 @@ type ImportMetadataState = {
   tensao_kv: string;
   concessao: string;
   reference_date: string;
+  terminal_a: string;
+  terminal_b: string;
+  segment_code: string;
 };
 
 const emptyImportMetadata: ImportMetadataState = {
@@ -41,19 +45,72 @@ const emptyImportMetadata: ImportMetadataState = {
   tensao_kv: "",
   concessao: "",
   reference_date: new Date().toISOString().slice(0, 10),
+  terminal_a: "",
+  terminal_b: "",
+  segment_code: "",
 };
+
+const emptyQgisBundle: QgisProjectBundle = {
+  projectFile: null,
+  projectSummary: null,
+  supportFiles: [],
+};
+
+const sanitizeFileName = (value: string) => value.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+const dedupeFiles = (files: Array<File | null | undefined>) => {
+  const next = new Map<string, File>();
+  files.forEach((file) => {
+    if (!file) return;
+    next.set(`${file.name}:${file.size}`, file);
+  });
+  return Array.from(next.values());
+};
+
+const uniqueStrings = (items: Array<string | null | undefined>) =>
+  Array.from(
+    new Set(
+      items
+        .map((item) => item?.trim())
+        .filter((item): item is string => Boolean(item)),
+    ),
+  );
 
 const UploadTracados = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null);
+  const [bundleManifestPath, setBundleManifestPath] = useState<string | null>(null);
+  const [uploadedBundleFiles, setUploadedBundleFiles] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingResult, setProcessingResult] = useState<any>(null);
   const [features, setFeatures] = useState<any[]>([]);
   const [classifications, setClassifications] = useState<Record<string, { classification: string; customClassification?: string }>>({});
   const [importMetadata, setImportMetadata] = useState<ImportMetadataState>(emptyImportMetadata);
+  const [qgisBundle, setQgisBundle] = useState<QgisProjectBundle>(emptyQgisBundle);
+  const [qgisIntakeResetKey, setQgisIntakeResetKey] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const binding = parseSubstationBinding(importMetadata.line_name);
+    setImportMetadata((prev) => {
+      const next = {
+        ...prev,
+        terminal_a: binding.terminalA ?? "",
+        terminal_b: binding.terminalB ?? "",
+        segment_code: binding.segmentCode ?? "",
+      };
+      if (
+        prev.terminal_a === next.terminal_a &&
+        prev.terminal_b === next.terminal_b &&
+        prev.segment_code === next.segment_code
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [importMetadata.line_name]);
 
   const validateMetadata = () => {
     if (!importMetadata.empresa.trim()) return "Informe a empresa.";
@@ -80,6 +137,95 @@ const UploadTracados = () => {
     setSelectedFile(file);
     setProcessingResult(null);
     setUploadedFilePath(null);
+    setBundleManifestPath(null);
+    setUploadedBundleFiles([]);
+  };
+
+  const buildExtendedImportMetadata = (bundleManifestPath?: string | null) => {
+    const binding = parseSubstationBinding(importMetadata.line_name);
+    return {
+      ...importMetadata,
+      tensao_kv: Number(importMetadata.tensao_kv),
+      concessao: importMetadata.concessao.trim() || undefined,
+      project_name: qgisBundle.projectSummary?.projectName || undefined,
+      bundle_manifest_path: bundleManifestPath || undefined,
+      terminal_a: importMetadata.terminal_a.trim() || binding.terminalA || undefined,
+      terminal_b: importMetadata.terminal_b.trim() || binding.terminalB || undefined,
+      segment_code: importMetadata.segment_code.trim() || binding.segmentCode || undefined,
+      substation_codes: uniqueStrings([
+        importMetadata.terminal_a,
+        importMetadata.terminal_b,
+        ...binding.allCodes,
+      ]),
+    };
+  };
+
+  const uploadBundleArtifacts = async (bundlePrefix: string, mainFile: File) => {
+    if (!supabase) return { manifestPath: null, uploadedFiles: [] as string[] };
+
+    const companionFiles = dedupeFiles([
+      qgisBundle.projectFile,
+      ...qgisBundle.supportFiles,
+    ]).filter((file) => !(file.name === mainFile.name && file.size === mainFile.size));
+
+    const uploadedFiles: string[] = [];
+
+    for (const file of companionFiles) {
+      const role =
+        qgisBundle.projectFile && file.name === qgisBundle.projectFile.name && file.size === qgisBundle.projectFile.size
+          ? "project"
+          : "support";
+      const storagePath = `${bundlePrefix}/${role}/${sanitizeFileName(file.name)}`;
+      const { error } = await supabase.storage.from("geodata-uploads").upload(storagePath, file);
+      if (error) throw error;
+      uploadedFiles.push(storagePath);
+    }
+
+    const manifest = {
+      created_at: new Date().toISOString(),
+      primary_file: {
+        name: mainFile.name,
+        size: mainFile.size,
+        type: getExtension(mainFile.name),
+        storage_path: `${bundlePrefix}/${sanitizeFileName(mainFile.name)}`,
+      },
+      qgis_project: qgisBundle.projectSummary
+        ? {
+            name: qgisBundle.projectSummary.projectName,
+            file_name: qgisBundle.projectSummary.projectFileName,
+            layer_count: qgisBundle.projectSummary.layerCount,
+            layers: qgisBundle.projectSummary.layers.map((layer) => ({
+              order: layer.order,
+              name: layer.name,
+              group_path: layer.groupPath,
+              provider: layer.provider,
+              source: layer.source,
+              source_file_name: layer.sourceFileName,
+              geometry_type: layer.geometryType,
+              renderer_type: layer.rendererType,
+              ingestion_target: layer.ingestionTarget,
+              visible: layer.visible,
+            })),
+          }
+        : null,
+      support_files: companionFiles.map((file) => ({
+        name: file.name,
+        size: file.size,
+        storage_path: uploadedFiles.find((item) => item.endsWith(`/${sanitizeFileName(file.name)}`)) ?? null,
+      })),
+      operational_metadata: buildExtendedImportMetadata(null),
+    };
+
+    if (!qgisBundle.projectSummary && companionFiles.length === 0) {
+      return { manifestPath: null, uploadedFiles };
+    }
+
+    const manifestPath = `${bundlePrefix}/bundle-manifest.json`;
+    const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
+    const { error: manifestError } = await supabase.storage.from("geodata-uploads").upload(manifestPath, manifestBlob);
+    if (manifestError) throw manifestError;
+
+    return { manifestPath, uploadedFiles };
   };
 
   const handleUpload = async () => {
@@ -105,8 +251,9 @@ const UploadTracados = () => {
       if (!user) throw new Error('User not authenticated');
 
       const extension = getExtension(selectedFile.name);
-      const sanitizedName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const fileName = `${user.id}/${Date.now()}_${sanitizedName}`;
+      const sanitizedName = sanitizeFileName(selectedFile.name);
+      const bundlePrefix = `${user.id}/${Date.now()}_${sanitizeFileName(importMetadata.line_code || selectedFile.name.replace(/\.[^.]+$/, ""))}`;
+      const fileName = `${bundlePrefix}/${sanitizedName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('geodata-uploads')
@@ -114,6 +261,10 @@ const UploadTracados = () => {
 
       if (uploadError) throw uploadError;
       setUploadedFilePath(fileName);
+      const { manifestPath, uploadedFiles } = await uploadBundleArtifacts(bundlePrefix, selectedFile);
+      setBundleManifestPath(manifestPath);
+      setUploadedBundleFiles(uploadedFiles);
+      const extendedMetadata = buildExtendedImportMetadata(manifestPath);
 
       if (extension === ".gpkg") {
         const data = await postJSON<{
@@ -125,11 +276,7 @@ const UploadTracados = () => {
         }>("/geodata/import-tracado", {
           storagePath: fileName,
           fileType: extension,
-          metadata: {
-            ...importMetadata,
-            tensao_kv: Number(importMetadata.tensao_kv),
-            concessao: importMetadata.concessao.trim() || undefined,
-          },
+          metadata: extendedMetadata,
         });
 
         setProcessingResult({
@@ -142,6 +289,9 @@ const UploadTracados = () => {
           },
           storagePath: fileName,
           fileType: "GeoPackage (.gpkg)",
+          bundleManifestPath: manifestPath,
+          uploadedBundleFiles: uploadedFiles,
+          projectName: qgisBundle.projectSummary?.projectName ?? null,
         });
         setCurrentStep(4);
 
@@ -165,11 +315,14 @@ const UploadTracados = () => {
           storagePath: fileName,
           stats: { linhas: 0, estruturas: 0, eventos: 0, outros: 0 },
           errors: [],
-          metadata: importMetadata,
+          metadata: extendedMetadata,
+          bundleManifestPath: manifestPath,
+          uploadedBundleFiles: uploadedFiles,
+          projectName: qgisBundle.projectSummary?.projectName ?? null,
         });
         setCurrentStep(4);
         toast.success("ZIP enviado para ingestão assistida", {
-          description: "O parser automático do app ainda não cobre SHP ZIP; use GPKG ou KML/KMZ para publicação imediata.",
+          description: "O bundle foi salvo com o manifesto do projeto QGIS. O parser automático do app ainda não cobre SHP ZIP para publicação imediata.",
         });
         return;
       }
@@ -180,7 +333,7 @@ const UploadTracados = () => {
 
       // Step 2: Process file with edge function
       const { data, error: processError } = await supabase.functions.invoke('process-geodata', {
-        body: { filePath: fileName, importMetadata },
+        body: { filePath: fileName, importMetadata: extendedMetadata },
       });
 
       if (processError) throw processError;
@@ -234,6 +387,7 @@ const UploadTracados = () => {
       if (!uploadedFilePath) {
         throw new Error("Arquivo enviado não encontrado. Refaça o upload antes de finalizar.");
       }
+      const extendedMetadata = buildExtendedImportMetadata(bundleManifestPath);
 
       // Get staging features and prepare classifications
       const { data: stagingData, error: stagingError } = await supabase
@@ -254,13 +408,18 @@ const UploadTracados = () => {
         body: { 
           classifications: classificationsArray,
           fileName: uploadedFilePath,
-          importMetadata,
+          importMetadata: extendedMetadata,
         },
       });
 
       if (finalizeError) throw finalizeError;
 
-      setProcessingResult(data);
+      setProcessingResult({
+        ...data,
+        bundleManifestPath,
+        uploadedBundleFiles,
+        projectName: qgisBundle.projectSummary?.projectName ?? null,
+      });
       setCurrentStep(4);
 
       if (data.success) {
@@ -286,7 +445,7 @@ const UploadTracados = () => {
   return (
     <AppLayout title="Upload de Geodados" subtitle="Porta oficial para KML/KMZ, GeoPackage e conjuntos SHP ZIP">
       <div className="max-w-4xl mx-auto">
-        <QgisProjectIntake />
+        <QgisProjectIntake key={qgisIntakeResetKey} onChange={setQgisBundle} />
 
         <div className="mb-8">
           <div className="flex items-center justify-between max-w-3xl mx-auto">
@@ -387,6 +546,7 @@ const UploadTracados = () => {
                   <p className="text-sm font-semibold">Metadados operacionais do traçado</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     Esses campos alimentam o catálogo geoespacial e os filtros de empresa, região, linha, tensão e data.
+                    Quando houver projeto QGIS e arquivos de apoio, o upload gera um manifesto do bundle para preservar hierarquia e simbologia.
                   </p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -418,7 +578,35 @@ const UploadTracados = () => {
                     <Label htmlFor="concessao">Concessão / observação</Label>
                     <Input id="concessao" value={importMetadata.concessao} onChange={(e) => setImportMetadata((prev) => ({ ...prev, concessao: e.target.value }))} />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="terminal_a">SE terminal A</Label>
+                    <Input id="terminal_a" value={importMetadata.terminal_a} onChange={(e) => setImportMetadata((prev) => ({ ...prev, terminal_a: e.target.value.toUpperCase() }))} placeholder="NAP" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="terminal_b">SE terminal B</Label>
+                    <Input id="terminal_b" value={importMetadata.terminal_b} onChange={(e) => setImportMetadata((prev) => ({ ...prev, terminal_b: e.target.value.toUpperCase() }))} placeholder="MBI" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="segment_code">Trecho / vínculo de unifilar</Label>
+                    <Input id="segment_code" value={importMetadata.segment_code} onChange={(e) => setImportMetadata((prev) => ({ ...prev, segment_code: e.target.value.toUpperCase() }))} placeholder="NAP-TAN" />
+                    <p className="text-xs text-muted-foreground">
+                      Use o padrão de 3 letras das SEs. Ex.: <span className="font-mono">NAP</span>, <span className="font-mono">MBI</span>, <span className="font-mono">NAP-TAN</span>.
+                    </p>
+                  </div>
                 </div>
+                {(qgisBundle.projectSummary || qgisBundle.supportFiles.length > 0) && (
+                  <div className="mt-4 rounded-lg border border-border/70 bg-background/60 p-3 text-sm">
+                    <div className="font-medium">Bundle QGIS associado</div>
+                    <div className="mt-1 text-muted-foreground">
+                      {qgisBundle.projectSummary
+                        ? `${qgisBundle.projectSummary.projectName} • ${qgisBundle.projectSummary.layerCount} camadas`
+                        : "Sem projeto QGIS analisado"}
+                    </div>
+                    <div className="mt-1 text-muted-foreground">
+                      {qgisBundle.supportFiles.length} arquivo(s) de apoio serão enviados junto do dataset.
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex justify-end">
@@ -598,16 +786,37 @@ const UploadTracados = () => {
                   </ul>
                 </div>
               )}
+
+              {(processingResult.bundleManifestPath || processingResult.uploadedBundleFiles?.length) && (
+                <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm">
+                  <p className="font-medium">Bundle operacional anexado</p>
+                  {processingResult.projectName ? (
+                    <p className="mt-1 text-muted-foreground">Projeto QGIS: {processingResult.projectName}</p>
+                  ) : null}
+                  {processingResult.bundleManifestPath ? (
+                    <p className="mt-1 text-muted-foreground break-all">
+                      Manifesto: <span className="font-mono">{processingResult.bundleManifestPath}</span>
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-muted-foreground">
+                    Arquivos auxiliares vinculados: {processingResult.uploadedBundleFiles?.length ?? 0}
+                  </p>
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button variant="outline" onClick={() => {
                 setCurrentStep(1);
                 setSelectedFile(null);
                 setUploadedFilePath(null);
+                setBundleManifestPath(null);
+                setUploadedBundleFiles([]);
                 setProcessingResult(null);
                 setFeatures([]);
                 setClassifications({});
                 setImportMetadata(emptyImportMetadata);
+                setQgisBundle(emptyQgisBundle);
+                setQgisIntakeResetKey((prev) => prev + 1);
               }}>
                 Novo Upload
               </Button>

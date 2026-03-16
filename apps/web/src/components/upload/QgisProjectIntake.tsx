@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,11 +32,30 @@ const normalizeStem = (fileName: string) =>
     .pop()
     ?.replace(/\.(gpkg|geojson|json|zip|shp|dbf|shx|prj|kml|kmz|tif|tiff|vrt)$/i, "") ?? fileName.toLowerCase();
 
-export default function QgisProjectIntake() {
+export type QgisProjectBundle = {
+  projectFile: File | null;
+  projectSummary: QgisProjectSummary | null;
+  supportFiles: File[];
+};
+
+type QgisProjectIntakeProps = {
+  onChange?: (bundle: QgisProjectBundle) => void;
+};
+
+export default function QgisProjectIntake({ onChange }: QgisProjectIntakeProps) {
   const [projectSummary, setProjectSummary] = useState<QgisProjectSummary | null>(null);
+  const [projectFile, setProjectFile] = useState<File | null>(null);
   const [projectFileName, setProjectFileName] = useState<string | null>(null);
   const [supportFiles, setSupportFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    onChange?.({
+      projectFile,
+      projectSummary,
+      supportFiles,
+    });
+  }, [onChange, projectFile, projectSummary, supportFiles]);
 
   const referencedFilesWithStatus = useMemo(() => {
     if (!projectSummary) return [];
@@ -52,6 +71,7 @@ export default function QgisProjectIntake() {
   }, [projectSummary, supportFiles]);
 
   const handleProjectFile = async (file: File | null) => {
+    setProjectFile(file);
     if (!file) return;
 
     setLoading(true);
@@ -64,6 +84,7 @@ export default function QgisProjectIntake() {
       const message = error instanceof Error ? error.message : "Falha ao interpretar projeto QGIS.";
       toast.error(message);
       setProjectSummary(null);
+      setProjectFile(null);
       setProjectFileName(null);
     } finally {
       setLoading(false);
