@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import VegetacaoModuleShell from "@/modules/vegetacao/VegetacaoModuleShell";
 import { VegetacaoPageHeader } from "@/modules/vegetacao/components/VegetacaoPageHeader";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,7 @@ import type { VegDocType, VegDocument, VegLocationPayload } from "@/modules/vege
 import { useVegDeleteDocumento, useVegDocumentoMutation, useVegDocumentos } from "@/modules/vegetacao/hooks/useVegetacao";
 import { getSupabase } from "@/integrations/supabase/client";
 import LocationPicker from "@/modules/vegetacao/components/LocationPicker";
+import { VegetacaoFormDialog, VegetacaoFormSection } from "@/modules/vegetacao/components/VegetacaoFormDialog";
 import { locationPayloadFromRow } from "@/modules/vegetacao/utils/location";
 import { useI18n } from "@/context/I18nContext";
 import { vegEnumLabel } from "@/modules/vegetacao/i18n";
@@ -283,104 +284,105 @@ export default function DocumentosPage() {
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>
-              {form.id ? t("vegetacao.pages.documentos.dialog.editTitle") : t("vegetacao.pages.documentos.dialog.createTitle")}
-            </DialogTitle>
-          </DialogHeader>
+        <VegetacaoFormDialog
+          title={form.id ? t("vegetacao.pages.documentos.dialog.editTitle") : t("vegetacao.pages.documentos.dialog.createTitle")}
+          description="Os metadados, vínculo operacional e localização do documento agora cabem melhor no viewport."
+          footer={
+            <>
+              <div>
+                {form.id && form.existing_file_path ? (
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      await remove({ id: form.id!, file_path: form.existing_file_path! });
+                      setModalOpen(false);
+                    }}
+                    disabled={deleteMutation.isPending}
+                  >
+                    {t("common.remove")}
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setModalOpen(false)}>
+                  {t("common.cancel")}
+                </Button>
+                <Button onClick={save} disabled={saveMutation.isPending}>
+                  {t("common.save")}
+                </Button>
+              </div>
+            </>
+          }
+        >
+          <VegetacaoFormSection title="Metadados do documento" description="Identifique o tipo documental, título e descrição para busca e rastreabilidade.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.documentos.form.type")}</Label>
+                <Select value={form.doc_type} onValueChange={(v) => setForm((p) => ({ ...p, doc_type: v as VegDocType }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(["ASV", "license", "environmental_report", "photo_report", "kml", "geojson", "pdf", "other"] as VegDocType[]).map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {vegEnumLabel.docType(t, value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.documentos.form.title")}</Label>
+                <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
+              </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.documentos.form.type")}</Label>
-              <Select value={form.doc_type} onValueChange={(v) => setForm((p) => ({ ...p, doc_type: v as VegDocType }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(["ASV", "license", "environmental_report", "photo_report", "kml", "geojson", "pdf", "other"] as VegDocType[]).map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {vegEnumLabel.docType(t, value)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.documentos.form.title")}</Label>
-              <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.documentos.form.description")}</Label>
-              <Textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.documentos.form.file")}</Label>
-              <Input
-                ref={fileRef}
-                type="file"
-                accept=".pdf,.kml,.geojson,application/pdf,application/vnd.google-earth.kml+xml,application/geo+json,application/json,image/*"
-                onChange={(e) => setForm((p) => ({ ...p, file: e.target.files?.[0] ?? null }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.documentos.form.linkAnomalyOptional")}</Label>
-              <Input value={form.linked_anomaly_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, linked_anomaly_id: e.target.value || null }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.documentos.form.linkWorkOrderOptional")}</Label>
-              <Input value={form.linked_work_order_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, linked_work_order_id: e.target.value || null }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.documentos.form.linkActionOptional")}</Label>
-              <Input value={form.linked_action_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, linked_action_id: e.target.value || null }))} />
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.documentos.form.tags")}</Label>
-              <Input
-                value={form.tagsText}
-                onChange={(e) => setForm((p) => ({ ...p, tagsText: e.target.value }))}
-                placeholder={t("vegetacao.pages.documentos.form.tagsPlaceholder")}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <Label>{t("vegetacao.pages.documentos.form.location")}</Label>
-              <div className="mt-2">
-                <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
+              <div className="md:col-span-2 space-y-2">
+                <Label>{t("vegetacao.pages.documentos.form.description")}</Label>
+                <Textarea className="min-h-28" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
               </div>
             </div>
-          </div>
+          </VegetacaoFormSection>
 
-          <DialogFooter className="flex items-center justify-between gap-2">
-            <div>
-              {form.id && form.existing_file_path ? (
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    await remove({ id: form.id!, file_path: form.existing_file_path! });
-                    setModalOpen(false);
-                  }}
-                  disabled={deleteMutation.isPending}
-                >
-                  {t("common.remove")}
-                </Button>
-              ) : null}
+          <VegetacaoFormSection title="Arquivo e vínculos" description="Centralize upload, amarrações com registros e marcações para recuperação futura.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2 space-y-2">
+                <Label>{t("vegetacao.pages.documentos.form.file")}</Label>
+                <Input
+                  ref={fileRef}
+                  type="file"
+                  accept=".pdf,.kml,.geojson,application/pdf,application/vnd.google-earth.kml+xml,application/geo+json,application/json,image/*"
+                  onChange={(e) => setForm((p) => ({ ...p, file: e.target.files?.[0] ?? null }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.documentos.form.linkAnomalyOptional")}</Label>
+                <Input value={form.linked_anomaly_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, linked_anomaly_id: e.target.value || null }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.documentos.form.linkWorkOrderOptional")}</Label>
+                <Input value={form.linked_work_order_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, linked_work_order_id: e.target.value || null }))} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>{t("vegetacao.pages.documentos.form.linkActionOptional")}</Label>
+                <Input value={form.linked_action_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, linked_action_id: e.target.value || null }))} />
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <Label>{t("vegetacao.pages.documentos.form.tags")}</Label>
+                <Input
+                  value={form.tagsText}
+                  onChange={(e) => setForm((p) => ({ ...p, tagsText: e.target.value }))}
+                  placeholder={t("vegetacao.pages.documentos.form.tagsPlaceholder")}
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setModalOpen(false)}>
-                {t("common.cancel")}
-              </Button>
-              <Button onClick={save} disabled={saveMutation.isPending}>
-                {t("common.save")}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title={t("vegetacao.pages.documentos.form.location")} description="Associe o documento ao trecho, ativo ou ocorrência usando referência espacial.">
+            <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
+          </VegetacaoFormSection>
+        </VegetacaoFormDialog>
       </Dialog>
     </VegetacaoModuleShell>
   );

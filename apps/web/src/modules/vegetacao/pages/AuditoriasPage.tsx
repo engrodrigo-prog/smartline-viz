@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import CardKPI from "@/components/CardKPI";
@@ -14,6 +14,7 @@ import { ClipboardCheck, XCircle, CheckCircle2 } from "lucide-react";
 import type { VegAudit, VegAuditResult } from "@/modules/vegetacao/api/vegetacaoApi";
 import { useVegAuditoriaMutation, useVegAuditorias, useVegDeleteAuditoria } from "@/modules/vegetacao/hooks/useVegetacao";
 import SpeciesSelect from "@/modules/vegetacao/components/SpeciesSelect";
+import { VegetacaoFormDialog, VegetacaoFormSection } from "@/modules/vegetacao/components/VegetacaoFormDialog";
 import type { VegSpeciesItem } from "@/modules/vegetacao/constants/species";
 import { findVegSpeciesByCommonName } from "@/modules/vegetacao/constants/species";
 import { useI18n } from "@/context/I18nContext";
@@ -192,96 +193,101 @@ export default function AuditoriasPage() {
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>
-              {form.id ? t("vegetacao.pages.auditorias.dialog.editTitle") : t("vegetacao.pages.auditorias.dialog.createTitle")}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.auditorias.form.result")}</Label>
-              <Select value={form.result} onValueChange={(v) => setForm((p) => ({ ...p, result: v as VegAuditResult }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {AUDIT_RESULT_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {t(`vegetacao.enums.auditResult.${value}`) || value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.auditorias.form.workOrderOptional")}</Label>
-              <Input value={form.work_order_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, work_order_id: e.target.value || null }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.auditorias.form.actionOptional")}</Label>
-              <Input value={form.action_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, action_id: e.target.value || null }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.auditorias.form.correctiveRequired")}</Label>
-              <Select
-                value={form.corrective_required ? "yes" : "no"}
-                onValueChange={(v) => setForm((p) => ({ ...p, corrective_required: v === "yes" }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="no">{t("common.no")}</SelectItem>
-                  <SelectItem value="yes">{t("common.yes")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.auditorias.form.speciesOptional")}</Label>
-              <SpeciesSelect value={form.species} onChange={(next) => setForm((p) => ({ ...p, species: next }))} />
-              {form.species?.typicalUseOrNotes ? (
-                <div className="text-xs text-muted-foreground">{form.species.typicalUseOrNotes}</div>
-              ) : null}
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.auditorias.form.checklistJson")}</Label>
-              <Textarea value={form.checklistText} onChange={(e) => setForm((p) => ({ ...p, checklistText: e.target.value }))} />
-            </div>
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.auditorias.form.notes")}</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
-            </div>
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.auditorias.form.correctiveNotes")}</Label>
-              <Textarea
-                value={form.corrective_notes}
-                onChange={(e) => setForm((p) => ({ ...p, corrective_notes: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex items-center justify-between gap-2">
-            <div>
-              {form.id ? (
-                <Button variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>
-                  {t("common.remove")}
+        <VegetacaoFormDialog
+          title={form.id ? t("vegetacao.pages.auditorias.dialog.editTitle") : t("vegetacao.pages.auditorias.dialog.createTitle")}
+          description="O fluxo de auditoria foi separado entre resultado e observações para reduzir scroll excessivo."
+          footer={
+            <>
+              <div>
+                {form.id ? (
+                  <Button variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>
+                    {t("common.remove")}
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setModalOpen(false)}>
+                  {t("common.cancel")}
                 </Button>
-              ) : null}
+                <Button onClick={save} disabled={saveMutation.isPending}>
+                  {t("common.save")}
+                </Button>
+              </div>
+            </>
+          }
+        >
+          <VegetacaoFormSection title="Resultado e escopo" description="Relacione a auditoria ao atendimento e indique se há correção obrigatória.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.auditorias.form.result")}</Label>
+                <Select value={form.result} onValueChange={(v) => setForm((p) => ({ ...p, result: v as VegAuditResult }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AUDIT_RESULT_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {t(`vegetacao.enums.auditResult.${value}`) || value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.auditorias.form.correctiveRequired")}</Label>
+                <Select
+                  value={form.corrective_required ? "yes" : "no"}
+                  onValueChange={(v) => setForm((p) => ({ ...p, corrective_required: v === "yes" }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no">{t("common.no")}</SelectItem>
+                    <SelectItem value="yes">{t("common.yes")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.auditorias.form.workOrderOptional")}</Label>
+                <Input value={form.work_order_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, work_order_id: e.target.value || null }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.auditorias.form.actionOptional")}</Label>
+                <Input value={form.action_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, action_id: e.target.value || null }))} />
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <Label>{t("vegetacao.pages.auditorias.form.speciesOptional")}</Label>
+                <SpeciesSelect value={form.species} onChange={(next) => setForm((p) => ({ ...p, species: next }))} />
+                {form.species?.typicalUseOrNotes ? (
+                  <div className="text-xs text-muted-foreground">{form.species.typicalUseOrNotes}</div>
+                ) : null}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setModalOpen(false)}>
-                {t("common.cancel")}
-              </Button>
-              <Button onClick={save} disabled={saveMutation.isPending}>
-                {t("common.save")}
-              </Button>
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title="Checklist e observações" description="Campos extensos ficam agrupados para leitura e edição contínua.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2 space-y-2">
+                <Label>{t("vegetacao.pages.auditorias.form.checklistJson")}</Label>
+                <Textarea className="min-h-28 font-mono text-xs" value={form.checklistText} onChange={(e) => setForm((p) => ({ ...p, checklistText: e.target.value }))} />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label>{t("vegetacao.pages.auditorias.form.notes")}</Label>
+                <Textarea className="min-h-28" value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label>{t("vegetacao.pages.auditorias.form.correctiveNotes")}</Label>
+                <Textarea
+                  className="min-h-28"
+                  value={form.corrective_notes}
+                  onChange={(e) => setForm((p) => ({ ...p, corrective_notes: e.target.value }))}
+                />
+              </div>
             </div>
-          </DialogFooter>
-        </DialogContent>
+          </VegetacaoFormSection>
+        </VegetacaoFormDialog>
       </Dialog>
     </VegetacaoModuleShell>
   );

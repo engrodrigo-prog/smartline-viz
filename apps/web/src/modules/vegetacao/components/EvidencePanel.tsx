@@ -250,7 +250,7 @@ export function EvidencePanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -266,9 +266,9 @@ export function EvidencePanel({
         ) : items.length === 0 ? (
           <div className="text-sm text-muted-foreground">Nenhuma evidência ainda.</div>
         ) : (
-          <div className="space-y-2">
+          <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
             {items.map((ev) => (
-              <div key={ev.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div key={ev.id} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-sm font-medium truncate">
                     {ev.file_path ? (ev.metadata?.original_name as string | undefined) ?? ev.file_path : "Nota"}
@@ -281,7 +281,7 @@ export function EvidencePanel({
                   ) : null}
                   {ev.text_note ? <div className="text-xs text-muted-foreground mt-1">{ev.text_note}</div> : null}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {ev.evidence_type === "photo" ? (
                     <Button
                       type="button"

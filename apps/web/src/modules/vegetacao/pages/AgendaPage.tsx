@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import VegetacaoModuleShell from "@/modules/vegetacao/VegetacaoModuleShell";
 import { VegetacaoPageHeader } from "@/modules/vegetacao/components/VegetacaoPageHeader";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,7 @@ import DataTableAdvanced from "@/components/DataTableAdvanced";
 import type { VegScheduleEvent, VegScheduleStatus, VegLocationPayload } from "@/modules/vegetacao/api/vegetacaoApi";
 import { useVegAgenda, useVegAgendaMutation, useVegDeleteAgenda } from "@/modules/vegetacao/hooks/useVegetacao";
 import LocationPicker from "@/modules/vegetacao/components/LocationPicker";
+import { VegetacaoFormDialog, VegetacaoFormSection } from "@/modules/vegetacao/components/VegetacaoFormDialog";
 import { locationPayloadFromRow } from "@/modules/vegetacao/utils/location";
 
 type FormState = {
@@ -249,78 +250,81 @@ export default function AgendaPage() {
       </Tabs>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{form.id ? "Editar evento" : "Novo evento"}</DialogTitle>
-            <DialogDescription>
-              Registre janelas de campo para inspeções, roçadas e operações preventivas ao longo do corredor monitorado.
-            </DialogDescription>
-          </DialogHeader>
+        <VegetacaoFormDialog
+          title={form.id ? "Editar evento" : "Novo evento"}
+          description="Registre janelas de campo para inspeções, roçadas e operações preventivas ao longo do corredor monitorado."
+          footer={
+            <>
+              <div>{form.id ? <Button variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>Remover</Button> : null}</div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setModalOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={save} disabled={saveMutation.isPending}>
+                  Salvar
+                </Button>
+              </div>
+            </>
+          }
+        >
+          <VegetacaoFormSection title="Janela operacional" description="Defina título, período e status da atividade programada.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Título</Label>
+                <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
+              </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 md:col-span-2">
-              <Label>Título</Label>
-              <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
-            </div>
+              <div className="space-y-2">
+                <Label>Início</Label>
+                <Input
+                  type="datetime-local"
+                  value={toLocalInput(form.start_at)}
+                  onChange={(e) => setForm((p) => ({ ...p, start_at: e.target.value ? new Date(e.target.value).toISOString() : p.start_at }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Fim</Label>
+                <Input
+                  type="datetime-local"
+                  value={toLocalInput(form.end_at)}
+                  onChange={(e) => setForm((p) => ({ ...p, end_at: e.target.value ? new Date(e.target.value).toISOString() : p.end_at }))}
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label>Início</Label>
-              <Input
-                type="datetime-local"
-                value={toLocalInput(form.start_at)}
-                onChange={(e) => setForm((p) => ({ ...p, start_at: e.target.value ? new Date(e.target.value).toISOString() : p.start_at }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Fim</Label>
-              <Input
-                type="datetime-local"
-                value={toLocalInput(form.end_at)}
-                onChange={(e) => setForm((p) => ({ ...p, end_at: e.target.value ? new Date(e.target.value).toISOString() : p.end_at }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegScheduleStatus }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(STATUS_LABEL) as VegScheduleStatus[]).map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {STATUS_LABEL[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <Label>Local (texto)</Label>
-              <Textarea value={form.location_text} onChange={(e) => setForm((p) => ({ ...p, location_text: e.target.value }))} />
-            </div>
-
-            <div className="md:col-span-2">
-              <Label>Localização</Label>
-              <div className="mt-2">
-                <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
+              <div className="space-y-2 md:col-span-2">
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegScheduleStatus }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(STATUS_LABEL) as VegScheduleStatus[]).map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {STATUS_LABEL[status]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </div>
+          </VegetacaoFormSection>
 
-          <DialogFooter className="flex items-center justify-between gap-2">
-            <div>{form.id ? <Button variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>Remover</Button> : null}</div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setModalOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={save} disabled={saveMutation.isPending}>
-                Salvar
-              </Button>
+          <VegetacaoFormSection title="Referência de campo" description="Mantenha a descrição textual do ponto e a marcação geográfica no mesmo fluxo.">
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Label>Local (texto)</Label>
+                <Textarea className="min-h-28" value={form.location_text} onChange={(e) => setForm((p) => ({ ...p, location_text: e.target.value }))} />
+              </div>
+
+              <div>
+                <Label>Localização</Label>
+                <div className="mt-2">
+                  <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
+                </div>
+              </div>
             </div>
-          </DialogFooter>
-        </DialogContent>
+          </VegetacaoFormSection>
+        </VegetacaoFormDialog>
       </Dialog>
     </VegetacaoModuleShell>
   );

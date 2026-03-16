@@ -90,7 +90,7 @@ export function LocationPicker({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" size="sm" onClick={captureGps}>
           Capturar GPS
         </Button>
@@ -136,40 +136,43 @@ export function LocationPicker({
       </div>
 
       <Dialog open={mapOpen} onOpenChange={setMapOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
+        <DialogContent className="flex h-[min(90vh,760px)] w-[calc(100vw-1rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0 sm:w-[calc(100vw-3rem)]">
+          <DialogHeader className="border-b px-4 py-4 pr-12 sm:px-6">
             <DialogTitle>Marcar no mapa</DialogTitle>
             <DialogDescription>
               Clique no mapa para posicionar o evento de campo e vincular a ocorrência ao trecho correto do corredor.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg overflow-hidden border">
-            <MapLibreUnified
-              height="420px"
-              initialCenter={center}
-              initialZoom={tempCoords ? 15 : 12}
-              customPoints={
-                tempCoords
-                  ? {
-                      type: "FeatureCollection",
-                      features: [
-                        {
-                          type: "Feature",
-                          geometry: { type: "Point", coordinates: [tempCoords.lng, tempCoords.lat] },
-                          properties: { color: "#22c55e", isFocus: true, size: 10 },
-                        },
-                      ],
-                    }
-                  : undefined
-              }
-              onMapLoad={(map) => {
-                map.on("click", (e) => {
-                  setTempCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-                });
-              }}
-            />
+          <div className="flex-1 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="overflow-hidden rounded-lg border">
+              <MapLibreUnified
+                height="clamp(280px, 55vh, 460px)"
+                initialCenter={center}
+                initialZoom={tempCoords ? 15 : 12}
+                customPoints={
+                  tempCoords
+                    ? {
+                        type: "FeatureCollection",
+                        features: [
+                          {
+                            type: "Feature",
+                            geometry: { type: "Point", coordinates: [tempCoords.lng, tempCoords.lat] },
+                            properties: { color: "#22c55e", isFocus: true, size: 10 },
+                          },
+                        ],
+                      }
+                    : undefined
+                }
+                onMapLoad={(map) => {
+                  map.on("click", (e) => {
+                    setTempCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+                  });
+                }}
+              />
+            </div>
+            <div className="mt-3 text-sm text-muted-foreground">Ponto selecionado: {formatCoords(tempCoords ?? undefined)}</div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="border-t px-4 py-3 pr-12 sm:px-6">
             <Button type="button" variant="outline" onClick={() => setMapOpen(false)}>
               Cancelar
             </Button>

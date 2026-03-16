@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import CardKPI from "@/components/CardKPI";
@@ -22,6 +22,7 @@ import type {
 } from "@/modules/vegetacao/api/vegetacaoApi";
 import LocationPicker from "@/modules/vegetacao/components/LocationPicker";
 import EvidencePanel from "@/modules/vegetacao/components/EvidencePanel";
+import { VegetacaoFormDialog, VegetacaoFormSection } from "@/modules/vegetacao/components/VegetacaoFormDialog";
 import { locationPayloadFromRow } from "@/modules/vegetacao/utils/location";
 import { useI18n } from "@/context/I18nContext";
 import { vegEnumLabel } from "@/modules/vegetacao/i18n";
@@ -300,182 +301,182 @@ export default function AnomaliasPage() {
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>
-              {form.id ? t("vegetacao.pages.anomalias.dialog.editTitle") : t("vegetacao.pages.anomalias.dialog.createTitle")}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.anomalias.form.title")}</Label>
-              <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.anomalias.form.type")}</Label>
-              <Select
-                value={form.anomaly_type}
-                onValueChange={(v) => setForm((p) => ({ ...p, anomaly_type: v as VegAnomalyType }))}
-              >
-                <SelectTrigger>
-                <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPE_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {vegEnumLabel.anomalyType(t, value)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.anomalias.form.status")}</Label>
-              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegAnomalyStatus }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {vegEnumLabel.anomalyStatus(t, value)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.anomalias.form.severity")}</Label>
-              <Select value={form.severity} onValueChange={(v) => setForm((p) => ({ ...p, severity: v as VegSeverity }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SEVERITY_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {vegEnumLabel.severity(t, value)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.anomalias.form.source")}</Label>
-              <Select value={form.source} onValueChange={(v) => setForm((p) => ({ ...p, source: v as VegSource }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SOURCE_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {vegEnumLabel.source(t, value)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.anomalias.form.dueDate")}</Label>
-              <Input
-                type="date"
-                value={form.due_date ?? ""}
-                onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label>{t("vegetacao.pages.anomalias.form.description")}</Label>
-              <Textarea
-                value={form.description ?? ""}
-                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label>{t("vegetacao.pages.anomalias.form.tree.sectionTitle")}</Label>
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t("vegetacao.pages.anomalias.form.tree.height")}</Label>
-                  <Input
-                    inputMode="decimal"
-                    placeholder={t("vegetacao.pages.anomalias.form.tree.heightPlaceholder")}
-                    value={form.tree_height_m ?? ""}
-                    onChange={(e) => setForm((p) => ({ ...p, tree_height_m: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t("vegetacao.pages.anomalias.form.tree.canopy")}</Label>
-                  <Input
-                    inputMode="decimal"
-                    placeholder={t("vegetacao.pages.anomalias.form.tree.canopyPlaceholder")}
-                    value={form.tree_canopy_diameter_m ?? ""}
-                    onChange={(e) => setForm((p) => ({ ...p, tree_canopy_diameter_m: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t("vegetacao.pages.anomalias.form.tree.trunk")}</Label>
-                  <Input
-                    inputMode="decimal"
-                    placeholder={t("vegetacao.pages.anomalias.form.tree.trunkPlaceholder")}
-                    value={form.tree_trunk_diameter_cm ?? ""}
-                    onChange={(e) => setForm((p) => ({ ...p, tree_trunk_diameter_cm: e.target.value }))}
-                  />
-                </div>
+        <VegetacaoFormDialog
+          title={form.id ? t("vegetacao.pages.anomalias.dialog.editTitle") : t("vegetacao.pages.anomalias.dialog.createTitle")}
+          description="Campos organizados por etapa para classificar a ocorrência, posicionar no corredor e anexar evidências sem perder o contexto."
+          footer={
+            <>
+              <div className="flex items-center gap-2">
+                {form.id ? (
+                  <Button type="button" variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>
+                    {t("common.remove")}
+                  </Button>
+                ) : null}
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.anomalias.form.assetRef")}</Label>
-              <Input value={form.asset_ref ?? ""} onChange={(e) => setForm((p) => ({ ...p, asset_ref: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.anomalias.form.tags")}</Label>
-              <Input
-                value={form.tagsText}
-                onChange={(e) => setForm((p) => ({ ...p, tagsText: e.target.value }))}
-                placeholder={t("vegetacao.pages.anomalias.form.tagsPlaceholder")}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <Label>{t("vegetacao.pages.anomalias.form.location")}</Label>
-              <div className="mt-2">
-                <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
-              </div>
-            </div>
-          </div>
-
-          {form.id ? (
-            <div className="mt-4">
-              <EvidencePanel linked={{ anomalyId: form.id }} defaultLocation={form.location} />
-            </div>
-          ) : (
-            <div className="mt-4 text-sm text-muted-foreground">
-              {t("vegetacao.pages.anomalias.states.saveToAttachEvidence")}
-            </div>
-          )}
-
-          <DialogFooter className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              {form.id ? (
-                <Button type="button" variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>
-                  {t("common.remove")}
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+                  {t("common.cancel")}
                 </Button>
-              ) : null}
+                <Button type="button" onClick={save} disabled={createOrUpdate.isPending}>
+                  {t("common.save")}
+                </Button>
+              </div>
+            </>
+          }
+        >
+          <VegetacaoFormSection title="Classificação e prazo" description="Defina tipo, criticidade, origem e descrição operacional da anomalia.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.anomalias.form.title")}</Label>
+                <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.anomalias.form.type")}</Label>
+                <Select
+                  value={form.anomaly_type}
+                  onValueChange={(v) => setForm((p) => ({ ...p, anomaly_type: v as VegAnomalyType }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TYPE_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {vegEnumLabel.anomalyType(t, value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.anomalias.form.status")}</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegAnomalyStatus }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {vegEnumLabel.anomalyStatus(t, value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.anomalias.form.severity")}</Label>
+                <Select value={form.severity} onValueChange={(v) => setForm((p) => ({ ...p, severity: v as VegSeverity }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEVERITY_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {vegEnumLabel.severity(t, value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.anomalias.form.source")}</Label>
+                <Select value={form.source} onValueChange={(v) => setForm((p) => ({ ...p, source: v as VegSource }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SOURCE_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {vegEnumLabel.source(t, value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.anomalias.form.dueDate")}</Label>
+                <Input
+                  type="date"
+                  value={form.due_date ?? ""}
+                  onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label>{t("vegetacao.pages.anomalias.form.description")}</Label>
+                <Textarea
+                  className="min-h-28"
+                  value={form.description ?? ""}
+                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
-                {t("common.cancel")}
-              </Button>
-              <Button type="button" onClick={save} disabled={createOrUpdate.isPending}>
-                {t("common.save")}
-              </Button>
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title="Medições e vínculo" description="Registre atributos dendrométricos, referência do ativo e marcadores operacionais.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label>{t("vegetacao.pages.anomalias.form.tree.sectionTitle")}</Label>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{t("vegetacao.pages.anomalias.form.tree.height")}</Label>
+                    <Input
+                      inputMode="decimal"
+                      placeholder={t("vegetacao.pages.anomalias.form.tree.heightPlaceholder")}
+                      value={form.tree_height_m ?? ""}
+                      onChange={(e) => setForm((p) => ({ ...p, tree_height_m: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{t("vegetacao.pages.anomalias.form.tree.canopy")}</Label>
+                    <Input
+                      inputMode="decimal"
+                      placeholder={t("vegetacao.pages.anomalias.form.tree.canopyPlaceholder")}
+                      value={form.tree_canopy_diameter_m ?? ""}
+                      onChange={(e) => setForm((p) => ({ ...p, tree_canopy_diameter_m: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{t("vegetacao.pages.anomalias.form.tree.trunk")}</Label>
+                    <Input
+                      inputMode="decimal"
+                      placeholder={t("vegetacao.pages.anomalias.form.tree.trunkPlaceholder")}
+                      value={form.tree_trunk_diameter_cm ?? ""}
+                      onChange={(e) => setForm((p) => ({ ...p, tree_trunk_diameter_cm: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.anomalias.form.assetRef")}</Label>
+                <Input value={form.asset_ref ?? ""} onChange={(e) => setForm((p) => ({ ...p, asset_ref: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.anomalias.form.tags")}</Label>
+                <Input
+                  value={form.tagsText}
+                  onChange={(e) => setForm((p) => ({ ...p, tagsText: e.target.value }))}
+                  placeholder={t("vegetacao.pages.anomalias.form.tagsPlaceholder")}
+                />
+              </div>
             </div>
-          </DialogFooter>
-        </DialogContent>
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title={t("vegetacao.pages.anomalias.form.location")} description="Confirme a posição geográfica e a referência usada pela equipe de campo.">
+            <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title="Evidências" description="Fotos, vídeos e notas ficam disponíveis no mesmo fluxo sem esconder os botões principais.">
+            {form.id ? (
+              <EvidencePanel linked={{ anomalyId: form.id }} defaultLocation={form.location} />
+            ) : (
+              <div className="text-sm text-muted-foreground">{t("vegetacao.pages.anomalias.states.saveToAttachEvidence")}</div>
+            )}
+          </VegetacaoFormSection>
+        </VegetacaoFormDialog>
       </Dialog>
     </VegetacaoModuleShell>
   );

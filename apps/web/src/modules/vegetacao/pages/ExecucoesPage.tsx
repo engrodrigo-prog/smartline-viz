@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import CardKPI from "@/components/CardKPI";
@@ -16,6 +16,7 @@ import { useVegDeleteExecucao, useVegExecucaoMutation, useVegExecucoes } from "@
 import LocationPicker from "@/modules/vegetacao/components/LocationPicker";
 import EvidencePanel from "@/modules/vegetacao/components/EvidencePanel";
 import SpeciesSelect from "@/modules/vegetacao/components/SpeciesSelect";
+import { VegetacaoFormDialog, VegetacaoFormSection } from "@/modules/vegetacao/components/VegetacaoFormDialog";
 import type { VegSpeciesItem } from "@/modules/vegetacao/constants/species";
 import { findVegSpeciesByCommonName } from "@/modules/vegetacao/constants/species";
 import { locationPayloadFromRow } from "@/modules/vegetacao/utils/location";
@@ -225,129 +226,129 @@ export default function ExecucoesPage() {
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>
-              {form.id ? t("vegetacao.pages.execucoes.dialog.editTitle") : t("vegetacao.pages.execucoes.dialog.createTitle")}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.execucoes.form.actionType")}</Label>
-              <Select value={form.action_type} onValueChange={(v) => setForm((p) => ({ ...p, action_type: v as VegActionType }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACTION_TYPE_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {t(`vegetacao.enums.actionType.${value}`) || value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.execucoes.form.status")}</Label>
-              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegActionStatus }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACTION_STATUS_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {vegEnumLabel.actionStatus(t, value)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.execucoes.form.workOrderOptional")}</Label>
-              <Input value={form.work_order_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, work_order_id: e.target.value || null }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.execucoes.form.anomalyOptional")}</Label>
-              <Input value={form.anomaly_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, anomaly_id: e.target.value || null }))} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.execucoes.form.executedAt")}</Label>
-              <Input
-                type="datetime-local"
-                value={toLocalInput(form.executed_at)}
-                onChange={(e) => setForm((p) => ({ ...p, executed_at: e.target.value ? new Date(e.target.value).toISOString() : null }))}
-              />
-            </div>
-
-            <div className="grid gap-2 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>{t("vegetacao.pages.execucoes.form.quantity")}</Label>
-                <Input
-                  type="number"
-                  value={form.quantity ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, quantity: e.target.value ? Number(e.target.value) : null }))}
-                />
+        <VegetacaoFormDialog
+          title={form.id ? t("vegetacao.pages.execucoes.dialog.editTitle") : t("vegetacao.pages.execucoes.dialog.createTitle")}
+          description="A execução agora é dividida por bloco operacional para reduzir rolagem perdida e manter ações sempre visíveis."
+          footer={
+            <>
+              <div>
+                {form.id ? (
+                  <Button variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>
+                    {t("common.remove")}
+                  </Button>
+                ) : null}
               </div>
-              <div className="space-y-2">
-                <Label>{t("vegetacao.pages.execucoes.form.unit")}</Label>
-                <Input
-                  value={form.unit ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, unit: e.target.value || null }))}
-                  placeholder={t("vegetacao.pages.execucoes.form.unitPlaceholder")}
-                />
-              </div>
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.execucoes.form.speciesOptional")}</Label>
-              <SpeciesSelect value={form.species} onChange={(next) => setForm((p) => ({ ...p, species: next }))} />
-              {form.species?.typicalUseOrNotes ? (
-                <div className="text-xs text-muted-foreground">{form.species.typicalUseOrNotes}</div>
-              ) : null}
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.execucoes.form.notes")}</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
-            </div>
-
-            <div className="md:col-span-2">
-              <Label>{t("vegetacao.pages.execucoes.form.location")}</Label>
-              <div className="mt-2">
-                <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
-              </div>
-            </div>
-          </div>
-
-          {form.id ? (
-            <div className="mt-4">
-              <EvidencePanel linked={{ actionId: form.id }} defaultLocation={form.location} />
-            </div>
-          ) : (
-            <div className="mt-4 text-sm text-muted-foreground">{t("vegetacao.pages.execucoes.states.saveToAttachEvidence")}</div>
-          )}
-
-          <DialogFooter className="flex items-center justify-between gap-2">
-            <div>
-              {form.id ? (
-                <Button variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>
-                  {t("common.remove")}
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setModalOpen(false)}>
+                  {t("common.cancel")}
                 </Button>
-              ) : null}
+                <Button onClick={save} disabled={saveMutation.isPending}>
+                  {t("common.save")}
+                </Button>
+              </div>
+            </>
+          }
+        >
+          <VegetacaoFormSection title="Execução" description="Informe o tipo de serviço, status, data e quantidades executadas.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.execucoes.form.actionType")}</Label>
+                <Select value={form.action_type} onValueChange={(v) => setForm((p) => ({ ...p, action_type: v as VegActionType }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTION_TYPE_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {t(`vegetacao.enums.actionType.${value}`) || value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.execucoes.form.status")}</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegActionStatus }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTION_STATUS_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {vegEnumLabel.actionStatus(t, value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.execucoes.form.executedAt")}</Label>
+                <Input
+                  type="datetime-local"
+                  value={toLocalInput(form.executed_at)}
+                  onChange={(e) => setForm((p) => ({ ...p, executed_at: e.target.value ? new Date(e.target.value).toISOString() : null }))}
+                />
+              </div>
+
+              <div className="grid gap-2 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>{t("vegetacao.pages.execucoes.form.quantity")}</Label>
+                  <Input
+                    type="number"
+                    value={form.quantity ?? ""}
+                    onChange={(e) => setForm((p) => ({ ...p, quantity: e.target.value ? Number(e.target.value) : null }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("vegetacao.pages.execucoes.form.unit")}</Label>
+                  <Input
+                    value={form.unit ?? ""}
+                    onChange={(e) => setForm((p) => ({ ...p, unit: e.target.value || null }))}
+                    placeholder={t("vegetacao.pages.execucoes.form.unitPlaceholder")}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setModalOpen(false)}>
-                {t("common.cancel")}
-              </Button>
-              <Button onClick={save} disabled={saveMutation.isPending}>
-                {t("common.save")}
-              </Button>
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title="Vínculos e espécie" description="Conecte a execução à OS, anomalia e espécie associada.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.execucoes.form.workOrderOptional")}</Label>
+                <Input value={form.work_order_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, work_order_id: e.target.value || null }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.execucoes.form.anomalyOptional")}</Label>
+                <Input value={form.anomaly_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, anomaly_id: e.target.value || null }))} />
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <Label>{t("vegetacao.pages.execucoes.form.speciesOptional")}</Label>
+                <SpeciesSelect value={form.species} onChange={(next) => setForm((p) => ({ ...p, species: next }))} />
+                {form.species?.typicalUseOrNotes ? (
+                  <div className="text-xs text-muted-foreground">{form.species.typicalUseOrNotes}</div>
+                ) : null}
+              </div>
             </div>
-          </DialogFooter>
-        </DialogContent>
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title="Notas" description="Registre observações de campo e contexto adicional da execução.">
+            <Textarea className="min-h-28" value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title={t("vegetacao.pages.execucoes.form.location")} description="A posição geográfica fica no mesmo fluxo, sem abrir uma tela separada.">
+            <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title="Evidências" description="Anexe fotos, vídeos e notas mantendo a referência espacial da execução.">
+            {form.id ? (
+              <EvidencePanel linked={{ actionId: form.id }} defaultLocation={form.location} />
+            ) : (
+              <div className="text-sm text-muted-foreground">{t("vegetacao.pages.execucoes.states.saveToAttachEvidence")}</div>
+            )}
+          </VegetacaoFormSection>
+        </VegetacaoFormDialog>
       </Dialog>
     </VegetacaoModuleShell>
   );

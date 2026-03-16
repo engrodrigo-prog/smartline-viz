@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
 import CardKPI from "@/components/CardKPI";
 import { ShieldAlert, TriangleAlert } from "lucide-react";
 import type { VegRisk, VegRiskCategory, VegRiskStatus } from "@/modules/vegetacao/api/vegetacaoApi";
 import { useVegDeleteRisco, useVegRiscoMutation, useVegRiscos } from "@/modules/vegetacao/hooks/useVegetacao";
+import { VegetacaoFormDialog, VegetacaoFormSection } from "@/modules/vegetacao/components/VegetacaoFormDialog";
 import { useI18n } from "@/context/I18nContext";
 
 type FormState = {
@@ -164,95 +165,96 @@ export default function RiscoPage() {
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{form.id ? t("vegetacao.pages.risco.dialog.editTitle") : t("vegetacao.pages.risco.dialog.createTitle")}</DialogTitle>
-          </DialogHeader>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.risco.form.category")}</Label>
-              <Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v as VegRiskCategory }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RISK_CATEGORY_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {t(`vegetacao.enums.riskCategory.${value}`) || value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.risco.form.status")}</Label>
-              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegRiskStatus }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RISK_STATUS_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {t(`vegetacao.enums.riskStatus.${value}`) || value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.risco.form.probability")}</Label>
-              <Input type="number" value={form.probability} onChange={(e) => setForm((p) => ({ ...p, probability: Number(e.target.value) }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.risco.form.impact")}</Label>
-              <Input type="number" value={form.impact} onChange={(e) => setForm((p) => ({ ...p, impact: Number(e.target.value) }))} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.risco.form.slaDays")}</Label>
-              <Input
-                type="number"
-                value={form.sla_days ?? ""}
-                onChange={(e) => setForm((p) => ({ ...p, sla_days: e.target.value ? Number(e.target.value) : null }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.risco.form.anomalyOptional")}</Label>
-              <Input value={form.related_anomaly_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, related_anomaly_id: e.target.value || null }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.risco.form.workOrderOptional")}</Label>
-              <Input value={form.related_work_order_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, related_work_order_id: e.target.value || null }))} />
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.risco.form.notes")}</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
-            </div>
-          </div>
-
-          <DialogFooter className="flex items-center justify-between gap-2">
-            <div>
-              {form.id ? (
-                <Button variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>
-                  {t("common.remove")}
+        <VegetacaoFormDialog
+          title={form.id ? t("vegetacao.pages.risco.dialog.editTitle") : t("vegetacao.pages.risco.dialog.createTitle")}
+          description="A avaliação de risco ficou mais legível em telas menores, com classificação e notas separadas."
+          footer={
+            <>
+              <div>
+                {form.id ? (
+                  <Button variant="destructive" onClick={remove} disabled={deleteMutation.isPending}>
+                    {t("common.remove")}
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setModalOpen(false)}>
+                  {t("common.cancel")}
                 </Button>
-              ) : null}
+                <Button onClick={save} disabled={saveMutation.isPending}>
+                  {t("common.save")}
+                </Button>
+              </div>
+            </>
+          }
+        >
+          <VegetacaoFormSection title="Classificação do risco" description="Defina categoria, status, probabilidade, impacto e vínculos operacionais.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.risco.form.category")}</Label>
+                <Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v as VegRiskCategory }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RISK_CATEGORY_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {t(`vegetacao.enums.riskCategory.${value}`) || value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.risco.form.status")}</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegRiskStatus }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RISK_STATUS_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {t(`vegetacao.enums.riskStatus.${value}`) || value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.risco.form.probability")}</Label>
+                <Input type="number" value={form.probability} onChange={(e) => setForm((p) => ({ ...p, probability: Number(e.target.value) }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.risco.form.impact")}</Label>
+                <Input type="number" value={form.impact} onChange={(e) => setForm((p) => ({ ...p, impact: Number(e.target.value) }))} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.risco.form.slaDays")}</Label>
+                <Input
+                  type="number"
+                  value={form.sla_days ?? ""}
+                  onChange={(e) => setForm((p) => ({ ...p, sla_days: e.target.value ? Number(e.target.value) : null }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.risco.form.anomalyOptional")}</Label>
+                <Input value={form.related_anomaly_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, related_anomaly_id: e.target.value || null }))} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>{t("vegetacao.pages.risco.form.workOrderOptional")}</Label>
+                <Input value={form.related_work_order_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, related_work_order_id: e.target.value || null }))} />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setModalOpen(false)}>
-                {t("common.cancel")}
-              </Button>
-              <Button onClick={save} disabled={saveMutation.isPending}>
-                {t("common.save")}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title="Notas" description="Use este bloco para justificativa técnica, mitigação e observações do risco.">
+            <Textarea className="min-h-28" value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
+          </VegetacaoFormSection>
+        </VegetacaoFormDialog>
       </Dialog>
     </VegetacaoModuleShell>
   );

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import DataTableAdvanced from "@/components/DataTableAdvanced";
@@ -17,6 +17,7 @@ import { useVegDeleteInspecao, useVegInspecaoMutation, useVegInspecoes } from "@
 import LocationPicker from "@/modules/vegetacao/components/LocationPicker";
 import EvidencePanel from "@/modules/vegetacao/components/EvidencePanel";
 import SpeciesSelect from "@/modules/vegetacao/components/SpeciesSelect";
+import { VegetacaoFormDialog, VegetacaoFormSection } from "@/modules/vegetacao/components/VegetacaoFormDialog";
 import type { VegSpeciesItem } from "@/modules/vegetacao/constants/species";
 import { findVegSpeciesByCommonName } from "@/modules/vegetacao/constants/species";
 import { locationPayloadFromRow } from "@/modules/vegetacao/utils/location";
@@ -257,172 +258,177 @@ export default function InspecoesPage() {
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>
-              {form.id ? t("vegetacao.pages.inspecoes.dialog.editTitle") : t("vegetacao.pages.inspecoes.dialog.createTitle")}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegInspectionStatus }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="open">Aberta</SelectItem>
-                  <SelectItem value="closed">Fechada</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Severidade</Label>
-              <Select
-                value={form.severity ?? "none"}
-                onValueChange={(v) => setForm((p) => ({ ...p, severity: v === "none" ? null : (v as VegSeverity) }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">—</SelectItem>
-                  {SEVERITY_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {vegEnumLabel.severity(t, value)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.inspecoes.tree.height")}</Label>
-              <Input
-                inputMode="decimal"
-                value={form.tree_height_m}
-                onChange={(e) => setForm((p) => ({ ...p, tree_height_m: e.target.value }))}
-                placeholder={t("vegetacao.pages.inspecoes.tree.heightPlaceholder")}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.inspecoes.tree.canopy")}</Label>
-              <Input
-                inputMode="decimal"
-                value={form.tree_canopy_diameter_m}
-                onChange={(e) => setForm((p) => ({ ...p, tree_canopy_diameter_m: e.target.value }))}
-                placeholder={t("vegetacao.pages.inspecoes.tree.canopyPlaceholder")}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("vegetacao.pages.inspecoes.tree.trunk")}</Label>
-              <Input
-                inputMode="decimal"
-                value={form.tree_trunk_diameter_cm}
-                onChange={(e) => setForm((p) => ({ ...p, tree_trunk_diameter_cm: e.target.value }))}
-                placeholder={t("vegetacao.pages.inspecoes.tree.trunkPlaceholder")}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Anomalia vinculada (opcional)</Label>
-              <Input value={form.anomaly_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, anomaly_id: e.target.value }))} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Sugestão de ação</Label>
-              <Select
-                value={form.suggested_action_type ?? "none"}
-          onValueChange={(v) =>
-            setForm((p) => ({ ...p, suggested_action_type: v === "none" ? null : (v as VegActionType) }))
+        <VegetacaoFormDialog
+          title={form.id ? t("vegetacao.pages.inspecoes.dialog.editTitle") : t("vegetacao.pages.inspecoes.dialog.createTitle")}
+          description="A navegação prioriza resultado, medições, localização e evidências sem esconder o rodapé de ação."
+          footer={
+            <>
+              <div>
+                {form.id ? (
+                  <Button variant="destructive" onClick={remove}>
+                    {t("common.remove")}
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setModalOpen(false)}>
+                  {t("common.cancel")}
+                </Button>
+                <Button onClick={save} disabled={saveMutation.isPending}>
+                  {t("common.save")}
+                </Button>
+              </div>
+            </>
           }
         >
-                <SelectTrigger>
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">—</SelectItem>
-                  {(
-                    [
-                      "pruning",
-                      "mowing",
-                      "laser_pruning",
-                      "tree_removal",
-                      "clearing",
-                      "inspection",
-                      "verification",
-                      "other",
-                    ] as VegActionType[]
-                  ).map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <VegetacaoFormSection title="Resultado da inspeção" description="Registre situação, severidade e encaminhamento sugerido para a equipe operacional.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as VegInspectionStatus }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Aberta</SelectItem>
+                    <SelectItem value="closed">Fechada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Severidade</Label>
+                <Select
+                  value={form.severity ?? "none"}
+                  onValueChange={(v) => setForm((p) => ({ ...p, severity: v === "none" ? null : (v as VegSeverity) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">—</SelectItem>
+                    {SEVERITY_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {vegEnumLabel.severity(t, value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.inspecoes.form.speciesOptional")}</Label>
-              <SpeciesSelect value={form.species} onChange={(next) => setForm((p) => ({ ...p, species: next }))} />
-              {form.species?.typicalUseOrNotes ? (
-                <div className="text-xs text-muted-foreground">{form.species.typicalUseOrNotes}</div>
-              ) : null}
-            </div>
+              <div className="space-y-2">
+                <Label>Anomalia vinculada (opcional)</Label>
+                <Input value={form.anomaly_id ?? ""} onChange={(e) => setForm((p) => ({ ...p, anomaly_id: e.target.value }))} />
+              </div>
 
-            <div className="md:col-span-2 flex items-center gap-2">
-              <Checkbox
-                checked={form.requires_action}
-                onCheckedChange={(v) => setForm((p) => ({ ...p, requires_action: Boolean(v) }))}
-              />
-              <Label>{t("vegetacao.pages.inspecoes.form.requiresAction")}</Label>
-            </div>
+              <div className="space-y-2">
+                <Label>Sugestão de ação</Label>
+                <Select
+                  value={form.suggested_action_type ?? "none"}
+                  onValueChange={(v) =>
+                    setForm((p) => ({ ...p, suggested_action_type: v === "none" ? null : (v as VegActionType) }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">—</SelectItem>
+                    {(
+                      [
+                        "pruning",
+                        "mowing",
+                        "laser_pruning",
+                        "tree_removal",
+                        "clearing",
+                        "inspection",
+                        "verification",
+                        "other",
+                      ] as VegActionType[]
+                    ).map((actionType) => (
+                      <SelectItem key={actionType} value={actionType}>
+                        {actionType}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.inspecoes.form.findingsJson")}</Label>
-              <Textarea value={form.findingsText} onChange={(e) => setForm((p) => ({ ...p, findingsText: e.target.value }))} />
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <Label>{t("vegetacao.pages.inspecoes.form.notes")}</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
-            </div>
-
-            <div className="md:col-span-2">
-              <Label>{t("vegetacao.pages.inspecoes.form.location")}</Label>
-              <div className="mt-2">
-                <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
+              <div className="md:col-span-2 flex items-center gap-2 rounded-lg border bg-background px-3 py-3">
+                <Checkbox
+                  checked={form.requires_action}
+                  onCheckedChange={(v) => setForm((p) => ({ ...p, requires_action: Boolean(v) }))}
+                />
+                <Label>{t("vegetacao.pages.inspecoes.form.requiresAction")}</Label>
               </div>
             </div>
-          </div>
+          </VegetacaoFormSection>
 
-          {form.id ? (
-            <div className="mt-4">
+          <VegetacaoFormSection title="Espécie e medições" description="Concentre a identificação botânica e as medidas de campo em um bloco único.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label>{t("vegetacao.pages.inspecoes.form.speciesOptional")}</Label>
+                <SpeciesSelect value={form.species} onChange={(next) => setForm((p) => ({ ...p, species: next }))} />
+                {form.species?.typicalUseOrNotes ? (
+                  <div className="text-xs text-muted-foreground">{form.species.typicalUseOrNotes}</div>
+                ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.inspecoes.tree.height")}</Label>
+                <Input
+                  inputMode="decimal"
+                  value={form.tree_height_m}
+                  onChange={(e) => setForm((p) => ({ ...p, tree_height_m: e.target.value }))}
+                  placeholder={t("vegetacao.pages.inspecoes.tree.heightPlaceholder")}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("vegetacao.pages.inspecoes.tree.canopy")}</Label>
+                <Input
+                  inputMode="decimal"
+                  value={form.tree_canopy_diameter_m}
+                  onChange={(e) => setForm((p) => ({ ...p, tree_canopy_diameter_m: e.target.value }))}
+                  placeholder={t("vegetacao.pages.inspecoes.tree.canopyPlaceholder")}
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>{t("vegetacao.pages.inspecoes.tree.trunk")}</Label>
+                <Input
+                  inputMode="decimal"
+                  value={form.tree_trunk_diameter_cm}
+                  onChange={(e) => setForm((p) => ({ ...p, tree_trunk_diameter_cm: e.target.value }))}
+                  placeholder={t("vegetacao.pages.inspecoes.tree.trunkPlaceholder")}
+                />
+              </div>
+            </div>
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title="Achados e notas" description="Os campos longos ficam juntos e com rolagem independente do viewport.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label>{t("vegetacao.pages.inspecoes.form.findingsJson")}</Label>
+                <Textarea className="min-h-28 font-mono text-xs" value={form.findingsText} onChange={(e) => setForm((p) => ({ ...p, findingsText: e.target.value }))} />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label>{t("vegetacao.pages.inspecoes.form.notes")}</Label>
+                <Textarea className="min-h-28" value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
+              </div>
+            </div>
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title={t("vegetacao.pages.inspecoes.form.location")} description="Marque a posição da inspeção sem sair do fluxo principal da tela.">
+            <LocationPicker value={form.location} onChange={(next) => setForm((p) => ({ ...p, location: next }))} />
+          </VegetacaoFormSection>
+
+          <VegetacaoFormSection title="Evidências" description="Ao editar um registro, os anexos ficam disponíveis no mesmo modal com rolagem controlada.">
+            {form.id ? (
               <EvidencePanel linked={{ inspectionId: form.id }} defaultLocation={form.location} />
-            </div>
-          ) : (
-            <div className="mt-4 text-sm text-muted-foreground">{t("vegetacao.pages.inspecoes.states.saveToAttachEvidence")}</div>
-          )}
-
-          <DialogFooter className="flex items-center justify-between gap-2">
-            <div>
-              {form.id ? (
-                <Button variant="destructive" onClick={remove}>
-                  {t("common.remove")}
-                </Button>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setModalOpen(false)}>
-                {t("common.cancel")}
-              </Button>
-              <Button onClick={save} disabled={saveMutation.isPending}>
-                {t("common.save")}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
+            ) : (
+              <div className="text-sm text-muted-foreground">{t("vegetacao.pages.inspecoes.states.saveToAttachEvidence")}</div>
+            )}
+          </VegetacaoFormSection>
+        </VegetacaoFormDialog>
       </Dialog>
     </VegetacaoModuleShell>
   );
