@@ -445,10 +445,10 @@ const Travessias = () => {
         <ModuleDemoBanner />
         {cruzamentosQuery.isFallback ? (
           <p className="text-xs text-muted-foreground">
-            Exibindo travessias do dataset demo enquanto o backend de LiPowerline não está disponível.
+            Exibindo travessias do dataset demo enquanto o backend analítico não está disponível.
           </p>
         ) : cruzamentosQuery.isLoading ? (
-          <p className="text-xs text-muted-foreground">Carregando cruzamentos LiPowerline...</p>
+          <p className="text-xs text-muted-foreground">Carregando cruzamentos analíticos...</p>
         ) : null}
         <FiltersBar>
           <div className="flex flex-wrap gap-2 mt-4">

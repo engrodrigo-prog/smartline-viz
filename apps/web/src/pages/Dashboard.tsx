@@ -192,7 +192,7 @@ const Dashboard = () => {
               <CardHeader>
                 <CardTitle>Simulação de Risco (MVP)</CardTitle>
                 <CardDescription>
-                  Estima a redução de risco ao tratar os vãos mais críticos da linha selecionada (LiPowerline).
+                  Estima a redução de risco ao tratar os vãos mais críticos da linha selecionada.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

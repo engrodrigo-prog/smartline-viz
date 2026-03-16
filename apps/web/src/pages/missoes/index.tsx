@@ -263,7 +263,7 @@ const MissoesPage = () => {
             <CardHeader>
               <CardTitle>Padrão de Nomes de Mídia</CardTitle>
               <CardDescription>
-                Utilize o padrão abaixo para garantir sincronização automática com LiPowerline e Upload Unificado.
+                Utilize o padrão abaixo para garantir sincronização automática com o SmartLine e o Upload Unificado.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
