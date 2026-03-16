@@ -1,11 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
+import type { FeatureCollection, LineString } from "geojson";
 
 export interface FirmsRiskParams {
   lineId?: string;
-  linha?: unknown;
+  lineName?: string;
+  empresa?: string;
+  regiao?: string;
+  seCode?: string;
+  tensaoKv?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  daysBack?: number;
   horizons?: number[];
   count?: number;
   windHeight?: number;
+  maxDistanceKm?: number;
+  sensors?: string[];
 }
 
 export interface WindLevelSample {
@@ -24,6 +34,33 @@ export interface WindTimelineEntry {
 export interface FirmsRiskMeta {
   generated_at: string;
   horizons: number[];
+  source?: string;
+  notes?: string[];
+  degraded?: boolean;
+  corridor?: FeatureCollection<LineString>;
+  asset_scope?: {
+    count: number;
+    line_count: number;
+    structure_count: number;
+    other_count: number;
+    companies: string[];
+    regions: string[];
+    line_codes: string[];
+    se_codes: string[];
+    bbox: [number, number, number, number] | null;
+  };
+  query?: {
+    lineId?: string | null;
+    lineName?: string | null;
+    empresa?: string | null;
+    regiao?: string | null;
+    seCode?: string | null;
+    maxDistanceKm?: number | null;
+    bbox?: [number, number, number, number];
+    date_from?: string;
+    date_to?: string;
+    sensors?: string[] | null;
+  };
   wind?: {
     location: { lat: number; lon: number };
     height_used_for_risk: number;
@@ -44,12 +81,11 @@ export interface FirmsRiskFeatureCollection extends GeoJSON.FeatureCollection {
   meta?: FirmsRiskMeta;
 }
 
-import { ENV } from "@/config/env";
+import { postJSON } from "@/services/api";
 import { SHOULD_USE_DEMO_API } from "@/lib/demoApi";
 import { demoFirmsResponse } from "@/data/demo/apiFallbacks";
 
 export const useFirmsRisk = (params: FirmsRiskParams) => {
-  const base = ENV.API_BASE_URL || "";
   const defaultHeight = Number(import.meta.env.VITE_WIND_HEIGHT ?? 0) || undefined;
   const body = { ...params } as FirmsRiskParams;
   if (body.windHeight == null && defaultHeight != null) {
@@ -57,21 +93,14 @@ export const useFirmsRisk = (params: FirmsRiskParams) => {
   }
 
   return useQuery({
-    queryKey: ["firms-risk", params],
+    queryKey: ["firms-risk", body],
     queryFn: async () => {
-      if (SHOULD_USE_DEMO_API || !base) {
+      if (SHOULD_USE_DEMO_API) {
         return demoFirmsResponse as unknown as FirmsRiskFeatureCollection;
       }
-      const resp = await fetch(`${base.replace(/\/+$/, "")}/firms/risk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-      if (!resp.ok) {
-        throw new Error("FIRMS risk indisponível");
-      }
-      return resp.json() as Promise<FirmsRiskFeatureCollection>;
+      return postJSON<FirmsRiskFeatureCollection>("/firms/risk", body, { timeoutMs: 20000 });
     },
-    staleTime: 60_000
+    staleTime: 2 * 60_000,
+    retry: 1,
   });
 };

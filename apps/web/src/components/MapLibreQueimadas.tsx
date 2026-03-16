@@ -55,8 +55,19 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
   const [isLoading, setIsLoading] = useState(true);
   const windCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const lastAnimationFrameRef = useRef(0);
   const particlesRef = useRef<Array<{ x: number; y: number }>>([]);
   const dprRef = useRef<number>(1);
+  const lastFitBoundsKeyRef = useRef<string | null>(null);
+
+  const isMapStyleReady = () => {
+    if (!map.current) return false;
+    try {
+      return Boolean(map.current.getStyle()) && map.current.isStyleLoaded();
+    } catch {
+      return false;
+    }
+  };
 
   const buildVectors = (src: GeoJSON.FeatureCollection): FeatureCollection<LineString> => {
     const features: Array<Feature<LineString>> = [];
@@ -295,9 +306,14 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
         syncCanvasSize();
         setupParticles();
 
-        const step = () => {
+        const step = (timestamp: number) => {
           const currentCanvas = windCanvasRef.current;
           if (!currentCanvas) return;
+          if (timestamp - lastAnimationFrameRef.current < 33) {
+            rafRef.current = requestAnimationFrame(step);
+            return;
+          }
+          lastAnimationFrameRef.current = timestamp;
           const { vx, vy, speed } = windVectorRef.current;
           const base = Math.max(0.5, Math.min(2, Math.abs(speed) / 3));
           const width = currentCanvas.width / dprRef.current;
@@ -397,7 +413,11 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
 
       if (fitBounds) {
         try {
-          map.current.fitBounds(fitBounds, { padding: 60, duration: 800, maxZoom: 11 });
+          const key = JSON.stringify(fitBounds);
+          if (lastFitBoundsKeyRef.current !== key) {
+            lastFitBoundsKeyRef.current = key;
+            map.current.fitBounds(fitBounds, { padding: 60, duration: 600, maxZoom: 11 });
+          }
         } catch (error) {
           console.warn('fitBounds (queimadas) failed', error);
         }
@@ -406,7 +426,7 @@ export const MapLibreQueimadas = ({ geojson, onFeatureClick, fitBounds, corridor
   }, [geojson, fitBounds]);
 
   useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded()) return;
+    if (!map.current || !isMapStyleReady()) return;
     upsertCorridorSource(corridor);
   }, [corridor]);
 

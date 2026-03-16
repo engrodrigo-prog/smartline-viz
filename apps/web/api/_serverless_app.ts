@@ -4,7 +4,17 @@ import { logger } from 'hono/logger';
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { buildImportPayload, parseGeoPackage } from './_geopackage';
+import { buildImportPayload, parseGeoPackage } from './_geopackage.js';
+import {
+  buildDateRange,
+  buildFirmsRiskCollection,
+  buildOperationalAssets,
+  cachedQueimadasToRecords,
+  computeAssetBboxForFirms,
+  type DashboardGeoAssetRow,
+  type FirmsRiskBody,
+  fetchFirmsRecords,
+} from './_firms.js';
 
 const app = new Hono();
 
@@ -794,20 +804,257 @@ app.get('/firms/wfs', (c) =>
   ),
 );
 app.post('/firms/risk', async (c) => {
-  const body = await c.req.json().catch(() => ({} as any));
+  const bodySchema = z.object({
+    lineId: z.string().trim().min(1).optional(),
+    lineName: z.string().trim().min(1).optional(),
+    empresa: z.string().trim().min(1).optional(),
+    regiao: z.string().trim().min(1).optional(),
+    seCode: z.string().trim().min(1).optional(),
+    tensaoKv: z.union([z.string(), z.number()]).optional().transform((value) => (value != null ? String(value) : undefined)),
+    dateFrom: z.string().trim().min(1).optional(),
+    dateTo: z.string().trim().min(1).optional(),
+    daysBack: z.coerce.number().int().min(1).max(10).optional(),
+    count: z.coerce.number().int().min(1).max(5000).optional(),
+    maxDistanceKm: z.coerce.number().positive().max(100).optional(),
+    sensors: z.array(z.string().trim().min(1)).max(8).optional(),
+    horizons: z.array(z.number().int().min(0)).optional(),
+  });
+
+  const parsedBody = await parseJsonBody(c, bodySchema);
+  if (!parsedBody.ok) return parsedBody.res;
+
+  const body = parsedBody.data as FirmsRiskBody;
+  const notes: string[] = [];
+  const authHeader = c.req.header('authorization') ?? c.req.header('Authorization') ?? null;
+  const authToken = bearerTokenFromAuthHeader(authHeader);
+  const rlsClient =
+    authToken && isJwtLike(authToken)
+      ? createRlsClient(`Bearer ${authToken}`)
+      : null;
+  const readClient = createServiceClient() ?? rlsClient;
+  let assetRows: DashboardGeoAssetRow[] = [];
+
+  if (readClient) {
+    let query = readClient
+      .from('vw_dashboard_geo_features')
+      .select('source_table,source_id,title,company_name,region_code,line_code,asset_type,geometry_kind,properties,geom_geojson,created_at')
+      .contains('dashboard_contexts', ['dashboard'])
+      .not('geom_geojson', 'is', null);
+
+    if (body.empresa) query = query.eq('company_name', body.empresa);
+    if (body.regiao) query = query.eq('region_code', body.regiao);
+    if (body.lineId) query = query.eq('line_code', body.lineId);
+
+    const { data, error } = await query.limit(4000);
+    if (error) {
+      if (isMissingSchemaEntityError(error, ['vw_dashboard_geo_features'])) {
+        notes.push('vw_dashboard_geo_features ausente neste ambiente; risco geoespacial degradado.');
+      } else {
+        console.error('[api] /firms/risk asset query error:', error);
+        notes.push('Nao foi possivel carregar os ativos cadastrados para correlacao.');
+      }
+    } else {
+      assetRows = (data ?? []) as DashboardGeoAssetRow[];
+    }
+  } else {
+    notes.push(
+      authToken
+        ? 'Nao foi possivel inicializar a leitura RLS dos ativos para o usuario autenticado.'
+        : 'Service role do Supabase nao configurada e requisicao sem token; sem leitura enriquecida de ativos.',
+    );
+  }
+
+  const assets = buildOperationalAssets(assetRows, {
+    lineId: body.lineId ?? null,
+    lineName: body.lineName ?? null,
+    empresa: body.empresa ?? null,
+    regiao: body.regiao ?? null,
+    seCode: body.seCode ?? null,
+    tensaoKv: body.tensaoKv ?? null,
+  });
+
+  if (!assets.length) {
+    return c.json({
+      type: 'FeatureCollection',
+      features: [],
+      meta: {
+        generated_at: nowIso(),
+        source: 'asset-scope-empty',
+        horizons: Array.isArray(parsedBody.data.horizons) ? parsedBody.data.horizons : [0, 3, 6, 24],
+        stats: {
+          hotspots_total: 0,
+          risk_max: 0,
+          risk_avg: 0,
+          corridor_count: 0,
+          frp_sum: 0,
+        },
+        notes: [
+          ...notes,
+          'Nenhum ativo cadastrado corresponde aos filtros atuais. Ajuste empresa/regiao/linha ou ingira o tracado primeiro.',
+        ],
+        asset_scope: {
+          count: 0,
+          line_count: 0,
+          structure_count: 0,
+          other_count: 0,
+          companies: [],
+          regions: [],
+          line_codes: [],
+          se_codes: [],
+          bbox: null,
+        },
+      },
+    });
+  }
+
+  const dateRange = buildDateRange(body);
+  const bbox = computeAssetBboxForFirms(assets, body.maxDistanceKm ?? 5);
+
+  if (!bbox) {
+    return c.json({
+      type: 'FeatureCollection',
+      features: [],
+      meta: {
+        generated_at: nowIso(),
+        source: 'asset-geometry-empty',
+        horizons: Array.isArray(parsedBody.data.horizons) ? parsedBody.data.horizons : [0, 3, 6, 24],
+        stats: {
+          hotspots_total: 0,
+          risk_max: 0,
+          risk_avg: 0,
+          corridor_count: 0,
+          frp_sum: 0,
+        },
+        notes: [...notes, 'Os ativos filtrados nao possuem geometria utilizavel para consulta FIRMS.'],
+      },
+    });
+  }
+
+  const apiKey = (process.env.FIRMS_API_KEY ?? '').trim();
+  let liveNotes: string[] = [];
+  let liveRecords: ReturnType<typeof cachedQueimadasToRecords> = [];
+
+  if (apiKey) {
+    try {
+      const liveResponse = await fetchFirmsRecords({
+        apiKey,
+        bbox,
+        dateRange,
+        sensors: body.sensors ?? null,
+      });
+      liveNotes = liveResponse.notes;
+      liveRecords = liveResponse.records;
+    } catch (error) {
+      liveNotes.push(error instanceof Error ? error.message : String(error));
+    }
+  } else {
+    liveNotes.push('FIRMS_API_KEY nao configurada; usando cache local quando disponivel.');
+  }
+
+  const baseCollection = buildFirmsRiskCollection({
+    records: liveRecords,
+    assets,
+    options: {
+      lineId: body.lineId ?? null,
+      lineName: body.lineName ?? null,
+      empresa: body.empresa ?? null,
+      regiao: body.regiao ?? null,
+      seCode: body.seCode ?? null,
+      tensaoKv: body.tensaoKv ?? null,
+      dateFrom: body.dateFrom ?? dateRange.start.toISOString(),
+      dateTo: body.dateTo ?? dateRange.end.toISOString(),
+      count: body.count ?? 2000,
+      maxDistanceKm: body.maxDistanceKm ?? 5,
+    },
+    source: apiKey ? 'nasa-firms-live' : 'firms-live-unavailable',
+  });
+
+  if (baseCollection.features.length > 0) {
+    return c.json({
+      ...baseCollection,
+      meta: {
+        ...baseCollection.meta,
+        horizons: Array.isArray(parsedBody.data.horizons) ? parsedBody.data.horizons : [0, 3, 6, 24],
+        notes: [...notes, ...liveNotes],
+        query: {
+          ...baseCollection.meta.query,
+          bbox,
+          date_from: dateRange.start.toISOString(),
+          date_to: dateRange.end.toISOString(),
+          sensors: body.sensors ?? null,
+        },
+      },
+    });
+  }
+
+  if (!readClient) {
+    return c.json({
+      ...baseCollection,
+      meta: {
+        ...baseCollection.meta,
+        horizons: Array.isArray(parsedBody.data.horizons) ? parsedBody.data.horizons : [0, 3, 6, 24],
+        notes: [...notes, ...liveNotes, 'Sem service role para consultar a cache de queimadas.'],
+      },
+    });
+  }
+
+  let cacheQuery = readClient
+    .from('queimadas')
+    .select('id,fonte,satelite,data_aquisicao,brilho,confianca,geometry,nivel_risco,distancia_m,ramal,concessao,wind_direction,wind_speed')
+    .gte('data_aquisicao', dateRange.start.toISOString())
+    .lte('data_aquisicao', dateRange.end.toISOString())
+    .order('data_aquisicao', { ascending: false })
+    .limit(5000);
+
+  if (body.lineId) cacheQuery = cacheQuery.eq('ramal', body.lineId);
+
+  const { data: cachedRows, error: cachedError } = await cacheQuery;
+  if (cachedError) {
+    const degradedNotes = [...notes, ...liveNotes];
+    if (!isMissingRelationError(cachedError, 'queimadas')) {
+      console.error('[api] /firms/risk cache query error:', cachedError);
+      degradedNotes.push('Falha ao consultar a cache local de queimadas.');
+    }
+    return c.json({
+      ...baseCollection,
+      meta: {
+        ...baseCollection.meta,
+        horizons: Array.isArray(parsedBody.data.horizons) ? parsedBody.data.horizons : [0, 3, 6, 24],
+        notes: degradedNotes,
+      },
+    });
+  }
+
+  const cachedCollection = buildFirmsRiskCollection({
+    records: cachedQueimadasToRecords((cachedRows ?? []) as any[]),
+    assets,
+    options: {
+      lineId: body.lineId ?? null,
+      lineName: body.lineName ?? null,
+      empresa: body.empresa ?? null,
+      regiao: body.regiao ?? null,
+      seCode: body.seCode ?? null,
+      tensaoKv: body.tensaoKv ?? null,
+      dateFrom: body.dateFrom ?? dateRange.start.toISOString(),
+      dateTo: body.dateTo ?? dateRange.end.toISOString(),
+      count: body.count ?? 2000,
+      maxDistanceKm: body.maxDistanceKm ?? 5,
+    },
+    source: 'supabase-queimadas-cache',
+  });
+
   return c.json({
-    type: 'FeatureCollection',
-    features: [],
+    ...cachedCollection,
     meta: {
-      generated_at: nowIso(),
-      horizons: Array.isArray(body?.horizons) ? body.horizons : [0, 3, 6, 24],
-      source: 'stub',
-      stats: {
-        hotspots_total: 0,
-        risk_max: 0,
-        risk_avg: 0,
-        corridor_count: 0,
-        frp_sum: 0,
+      ...cachedCollection.meta,
+      horizons: Array.isArray(parsedBody.data.horizons) ? parsedBody.data.horizons : [0, 3, 6, 24],
+      notes: [...notes, ...liveNotes, 'Sem hotspots vivos no FIRMS para o escopo atual; exibindo a cache mais recente.'],
+      query: {
+        ...cachedCollection.meta.query,
+        bbox,
+        date_from: dateRange.start.toISOString(),
+        date_to: dateRange.end.toISOString(),
+        sensors: body.sensors ?? null,
       },
     },
   });
