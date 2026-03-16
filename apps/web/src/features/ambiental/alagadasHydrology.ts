@@ -76,14 +76,28 @@ type HydroPointProps = {
 
 const baseDate = "2026-03-14T12:00:00.000Z";
 
-const ring = (positions: Position[]): Position[] => {
-  if (positions.length === 0) return positions;
+const ring = (positions?: Position[] | null): Position[] => {
+  if (!Array.isArray(positions) || positions.length === 0) return [];
   const [firstLon, firstLat] = positions[0];
   const last = positions[positions.length - 1];
   if (last?.[0] === firstLon && last?.[1] === firstLat) {
     return positions;
   }
   return [...positions, [firstLon, firstLat]];
+};
+
+const buildRectangleAroundCoords = (
+  coords: [number, number],
+  halfWidth = 0.012,
+  halfHeight = 0.008,
+): Position[] => {
+  const [lat, lon] = coords;
+  return ring([
+    [lon - halfWidth, lat - halfHeight],
+    [lon + halfWidth, lat - halfHeight],
+    [lon + halfWidth, lat + halfHeight],
+    [lon - halfWidth, lat + halfHeight],
+  ]);
 };
 
 const polygonFeature = (
@@ -737,6 +751,120 @@ export const floodedAreasScenarioAreas: FloodAreaRecord[] = [
   },
 ];
 
+const isRiskLevel = (value: unknown): value is FloodRiskLevel =>
+  value === "Baixo" || value === "Médio" || value === "Alto";
+
+const isStatus = (value: unknown): value is FloodStatus =>
+  value === "Monitorado" || value === "Alerta" || value === "Crítico";
+
+const isWaterBodyKind = (value: unknown): value is WaterBodyKind =>
+  value === "Rio" || value === "Canal" || value === "Lagoa" || value === "Reservatório";
+
+const pickFloodTemplate = (area: Partial<FloodAreaRecord>, index: number) => {
+  const scopedTemplates = floodedAreasScenarioAreas.filter((template) => {
+    if (area.linha && template.linha === area.linha) return true;
+    if (area.regiao && template.regiao === area.regiao) return true;
+    return false;
+  });
+
+  const pool = scopedTemplates.length > 0 ? scopedTemplates : floodedAreasScenarioAreas;
+  return pool[index % pool.length] ?? floodedAreasScenarioAreas[0];
+};
+
+const coerceCoords = (value: unknown, fallback: [number, number]): [number, number] => {
+  if (
+    Array.isArray(value) &&
+    value.length >= 2 &&
+    typeof value[0] === "number" &&
+    typeof value[1] === "number"
+  ) {
+    return [value[0], value[1]];
+  }
+  return fallback;
+};
+
+const ensureAreaPolygon = (area: Partial<FloodAreaRecord>, coords: [number, number]) => {
+  const normalizedRing = ring(area.areaPolygon);
+  if (normalizedRing.length >= 4) {
+    return normalizedRing;
+  }
+  return buildRectangleAroundCoords(coords);
+};
+
+export const normalizeFloodAreas = (areas: FloodAreaRecord[] | undefined | null): FloodAreaRecord[] => {
+  if (!Array.isArray(areas)) return floodedAreasScenarioAreas;
+  if (areas.length === 0) return [];
+
+  return areas.map((rawArea, index) => {
+    const template = pickFloodTemplate(rawArea, index);
+    const coords = coerceCoords(rawArea.coords, template.coords);
+    const torresAfetadas =
+      Array.isArray(rawArea.torres_afetadas) &&
+      rawArea.torres_afetadas.some((value) => typeof value === "string" && value.trim().length > 0)
+        ? rawArea.torres_afetadas.filter(
+            (value): value is string => typeof value === "string" && value.trim().length > 0,
+          )
+        : template.torres_afetadas;
+
+    return {
+      ...template,
+      ...rawArea,
+      empresa: typeof rawArea.empresa === "string" && rawArea.empresa ? rawArea.empresa : template.empresa,
+      regiao: typeof rawArea.regiao === "string" && rawArea.regiao ? rawArea.regiao : template.regiao,
+      linha: typeof rawArea.linha === "string" && rawArea.linha ? rawArea.linha : template.linha,
+      nomeLinha:
+        typeof rawArea.nomeLinha === "string" && rawArea.nomeLinha ? rawArea.nomeLinha : template.nomeLinha,
+      ramal: typeof rawArea.ramal === "string" && rawArea.ramal ? rawArea.ramal : template.ramal,
+      tensaoKv: typeof rawArea.tensaoKv === "string" && rawArea.tensaoKv ? rawArea.tensaoKv : template.tensaoKv,
+      coords,
+      areaCritica:
+        typeof rawArea.areaCritica === "number" && Number.isFinite(rawArea.areaCritica)
+          ? rawArea.areaCritica
+          : template.areaCritica,
+      nivelRisco: isRiskLevel(rawArea.nivelRisco) ? rawArea.nivelRisco : template.nivelRisco,
+      ultimaAtualizacao:
+        typeof rawArea.ultimaAtualizacao === "string" && rawArea.ultimaAtualizacao
+          ? rawArea.ultimaAtualizacao
+          : template.ultimaAtualizacao,
+      status: isStatus(rawArea.status) ? rawArea.status : template.status,
+      torres_afetadas: torresAfetadas,
+      microbaciaId:
+        typeof rawArea.microbaciaId === "string" && rawArea.microbaciaId
+          ? rawArea.microbaciaId
+          : template.microbaciaId,
+      microbacia:
+        typeof rawArea.microbacia === "string" && rawArea.microbacia ? rawArea.microbacia : template.microbacia,
+      riverId: typeof rawArea.riverId === "string" && rawArea.riverId ? rawArea.riverId : template.riverId,
+      rioPrincipal:
+        typeof rawArea.rioPrincipal === "string" && rawArea.rioPrincipal
+          ? rawArea.rioPrincipal
+          : template.rioPrincipal,
+      waterBodyId:
+        typeof rawArea.waterBodyId === "string" && rawArea.waterBodyId
+          ? rawArea.waterBodyId
+          : template.waterBodyId,
+      corpoHidrico:
+        typeof rawArea.corpoHidrico === "string" && rawArea.corpoHidrico
+          ? rawArea.corpoHidrico
+          : template.corpoHidrico,
+      tipoCorpoHidrico: isWaterBodyKind(rawArea.tipoCorpoHidrico)
+        ? rawArea.tipoCorpoHidrico
+        : template.tipoCorpoHidrico,
+      distanciaCorpoHidricoM:
+        typeof rawArea.distanciaCorpoHidricoM === "number" && Number.isFinite(rawArea.distanciaCorpoHidricoM)
+          ? rawArea.distanciaCorpoHidricoM
+          : template.distanciaCorpoHidricoM,
+      cotaOperacionalM:
+        typeof rawArea.cotaOperacionalM === "number" && Number.isFinite(rawArea.cotaOperacionalM)
+          ? rawArea.cotaOperacionalM
+          : template.cotaOperacionalM,
+      observacao:
+        typeof rawArea.observacao === "string" && rawArea.observacao ? rawArea.observacao : template.observacao,
+      areaPolygon: ensureAreaPolygon(rawArea, coords),
+    };
+  });
+};
+
 const allHydroPolygons = [...microbaciasFeatures, ...waterBodiesFeatures];
 
 const matchesFilterContext = (
@@ -794,9 +922,10 @@ export const buildAreasAlagadasMapData = (
   areas: FloodAreaRecord[],
   filters: FiltersState,
 ) => {
-  const activeAreaMicrobacias = new Set(areas.map((area) => area.microbaciaId));
-  const activeAreaRivers = new Set(areas.map((area) => area.riverId));
-  const activeAreaWaterBodies = new Set(areas.map((area) => area.waterBodyId));
+  const normalizedAreas = normalizeFloodAreas(areas);
+  const activeAreaMicrobacias = new Set(normalizedAreas.map((area) => area.microbaciaId));
+  const activeAreaRivers = new Set(normalizedAreas.map((area) => area.riverId));
+  const activeAreaWaterBodies = new Set(normalizedAreas.map((area) => area.waterBodyId));
   const useAreaScopedHydrology = activeAreaMicrobacias.size > 0 || activeAreaRivers.size > 0 || activeAreaWaterBodies.size > 0;
 
   const microbacias = microbaciasFeatures.filter((feature) => {
@@ -817,7 +946,7 @@ export const buildAreasAlagadasMapData = (
     return activeAreaRivers.has(feature.properties.id);
   });
 
-  const alertPolygons: Feature<Polygon, HydroPolygonProps>[] = areas.map((area) =>
+  const alertPolygons: Feature<Polygon, HydroPolygonProps>[] = normalizedAreas.map((area) =>
     polygonFeature(
       {
         empresa: area.empresa,
@@ -833,11 +962,11 @@ export const buildAreasAlagadasMapData = (
         strokeColor: "#0f172a",
         strokeWidth: area.nivelRisco === "Alto" ? 1.7 : 1.3,
       },
-      area.areaPolygon,
+      ensureAreaPolygon(area, area.coords),
     ),
   );
 
-  const alertPoints: Feature<Point, HydroPointProps>[] = areas.map((area) => ({
+  const alertPoints: Feature<Point, HydroPointProps>[] = normalizedAreas.map((area) => ({
     type: "Feature",
     geometry: {
       type: "Point",

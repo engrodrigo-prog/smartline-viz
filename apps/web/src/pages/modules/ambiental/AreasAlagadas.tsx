@@ -15,6 +15,7 @@ import { useFilters } from "@/context/FiltersContext";
 import {
   buildAreasAlagadasMapData,
   getAreasAlagadasHydroLabels,
+  normalizeFloodAreas,
   type FloodAreaRecord,
   type WaterBodyKind,
 } from "@/features/ambiental/alagadasHydrology";
@@ -38,9 +39,10 @@ const AreasAlagadas = () => {
   const [nivelRiscoFilter, setNivelRiscoFilter] = useState<string>("");
   const [hydroContextFilter, setHydroContextFilter] = useState<string>("");
   const areasDataset = useDatasetData((data) => data.areasAlagadas as FloodAreaRecord[]);
+  const normalizedAreasDataset = useMemo(() => normalizeFloodAreas(areasDataset), [areasDataset]);
 
   const filteredData = useMemo(() => {
-    let data = areasDataset;
+    let data = normalizedAreasDataset;
 
     if (filters.empresa) data = data.filter((area) => area.empresa === filters.empresa);
     if (filters.regiao) data = data.filter((area) => area.regiao === filters.regiao);
@@ -79,7 +81,7 @@ const AreasAlagadas = () => {
     }
 
     return data;
-  }, [areasDataset, filters, hydroContextFilter, nivelRiscoFilter]);
+  }, [filters, hydroContextFilter, nivelRiscoFilter, normalizedAreasDataset]);
 
   const mapData = useMemo(
     () => buildAreasAlagadasMapData(filteredData, filters),
