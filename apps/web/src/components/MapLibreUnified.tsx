@@ -47,7 +47,17 @@ interface MapLibreUnifiedProps {
     Polygon,
     { color?: string; ndvi?: number; fillOpacity?: number; strokeColor?: string; strokeWidth?: number }
   >;
-  customLines?: FeatureCollection<LineString, { color?: string; width?: number; opacity?: number }>;
+  customLines?: FeatureCollection<
+    LineString,
+    {
+      color?: string;
+      width?: number;
+      opacity?: number;
+      corridorColor?: string;
+      corridorWidth?: number;
+      corridorOpacity?: number;
+    }
+  >;
   local3DLayers?: Local3DLayer[];
   height?: string;
   initialBasemapId?: BasemapId;
@@ -516,6 +526,9 @@ export const MapLibreUnified = ({
           color: f.properties?.color ?? "#0284c7",
           width: f.properties?.width ?? 3,
           opacity: f.properties?.opacity ?? 0.9,
+          corridorColor: f.properties?.corridorColor ?? "#22d3ee",
+          corridorWidth: f.properties?.corridorWidth ?? 10,
+          corridorOpacity: f.properties?.corridorOpacity ?? 0.25,
         },
       })),
     };
@@ -533,9 +546,9 @@ export const MapLibreUnified = ({
           type: "line",
           source: sourceId,
           paint: {
-            "line-color": "#22d3ee",
-            "line-width": 10,
-            "line-opacity": 0.25,
+            "line-color": ["coalesce", ["get", "corridorColor"], "#22d3ee"],
+            "line-width": ["coalesce", ["get", "corridorWidth"], 10],
+            "line-opacity": ["coalesce", ["get", "corridorOpacity"], 0.25],
           },
         });
       }

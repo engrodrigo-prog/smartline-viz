@@ -2,6 +2,10 @@ import {
   baixadaSantistaRightOfWaySites,
   baixadaSantistaWildfireSeeds,
 } from "./baixadaSantistaScenario";
+import {
+  floodedAreasScenarioAreas,
+  type FloodAreaRecord,
+} from "@/features/ambiental/alagadasHydrology";
 
 export const regioes = ['A', 'B', 'C'] as const;
 
@@ -333,45 +337,9 @@ export const mockChartData = {
 // ============= NOVOS TIPOS E DADOS EXPANDIDOS =============
 
 // Áreas Alagadas
-export type AreaAlagada = {
-  id: string;
-  nome: string;
-  regiao: 'A' | 'B' | 'C';
-  linha: string;
-  ramal: string;
-  coords: [number, number];
-  areaCritica: number; // em km²
-  nivelRisco: 'Baixo' | 'Médio' | 'Alto';
-  ultimaAtualizacao: string;
-  status: 'Monitorado' | 'Alerta' | 'Crítico';
-  torres_afetadas: string[];
-  protecao_instalada?: boolean;
-};
+export type AreaAlagada = FloodAreaRecord;
 
-export const areasAlagadas: AreaAlagada[] = Array.from({ length: 45 }, (_, i) => {
-  const linha = linhas[Math.floor(Math.random() * linhas.length)];
-  const ramal = linha.ramais[Math.floor(Math.random() * linha.ramais.length)];
-  const numTorres = Math.floor(Math.random() * 8) + 2;
-  // Coordenadas simuladas próximas à RMSP
-  const lat = -23.55 + (Math.random() - 0.5) * 2;
-  const lon = -46.63 + (Math.random() - 0.5) * 2;
-  
-  return {
-    id: `ALG-${String(i + 1).padStart(3, '0')}`,
-    nome: `Área Alagada ${i + 1}`,
-    regiao: regioes[Math.floor(Math.random() * regioes.length)],
-    linha: linha.id,
-    ramal,
-    // Mantém em faixa continental (não crítico para mock)
-    coords: [lat, lon],
-    areaCritica: parseFloat((Math.random() * 5 + 0.5).toFixed(2)),
-    nivelRisco: ['Baixo', 'Médio', 'Alto'][Math.floor(Math.random() * 3)] as any,
-    ultimaAtualizacao: new Date(2025, 9, Math.floor(Math.random() * 30) + 1).toISOString(),
-    status: ['Monitorado', 'Alerta', 'Crítico'][Math.floor(Math.random() * 3)] as any,
-    torres_afetadas: Array.from({ length: numTorres }, (_, j) => `TRN-${String(i * 10 + j).padStart(3, '0')}`),
-    protecao_instalada: Math.random() > 0.6,
-  };
-});
+export const areasAlagadas: AreaAlagada[] = floodedAreasScenarioAreas;
 
 // Ocupação de Faixa
 export type OcupacaoFaixa = {

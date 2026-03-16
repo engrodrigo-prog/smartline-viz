@@ -38,6 +38,7 @@ test.describe('SmartLine AssetHealth – smoke', () => {
   });
 
   test('environmental placeholder replacements are reachable', async ({ page }) => {
+    await expectProtectedPageOrLogin(page, '/ambiental/alagadas', /Áreas Alagadas/i);
     await expectProtectedPageOrLogin(page, '/ambiental/distancia', /Distâncias de Segurança/i);
     await expectProtectedPageOrLogin(page, '/ambiental/compliance', /Compliance Ambiental/i);
   });
