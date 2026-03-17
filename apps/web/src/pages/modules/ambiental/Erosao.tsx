@@ -365,7 +365,7 @@ const Erosao = () => {
     enabled: publicRiskLinePayload.length > 0,
   });
 
-  const soilGeoJson = useMemo(() => ({
+  const localSoilSampleGeoJson = useMemo(() => ({
     type: "FeatureCollection",
     features: soilSamples.map((sample) => ({
       type: "Feature",
@@ -375,21 +375,38 @@ const Erosao = () => {
       },
       properties: {
         soilType: sample.soilType,
+        soilSource: "amostra-local-cadastrada",
         depth: sample.depth,
         cohesion: sample.cohesion,
         permeability: sample.permeability,
         moisture: sample.moisture,
         notes: sample.notes,
+        label: `${sample.soilType} • amostra cadastrada`,
+        color: "#f472b6",
+        size: 7,
       },
     })),
   }), [soilSamples]);
+
+  const publicSoilGeoJson = useMemo(
+    () => publicRisk.data?.soilPoints ?? { type: "FeatureCollection" as const, features: [] },
+    [publicRisk.data],
+  );
+
+  const soilGeoJson = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: [...publicSoilGeoJson.features, ...localSoilSampleGeoJson.features],
+    }),
+    [localSoilSampleGeoJson.features, publicSoilGeoJson.features],
+  );
 
   const layerOrder = useMemo(() => {
     const base = erosionLayerTop
       ? ["infrastructure-layer", "erosao-points"]
       : ["erosao-points", "infrastructure-layer"];
 
-    if (!showSoilLayer || soilSamples.length === 0) {
+    if (!showSoilLayer || soilGeoJson.features.length === 0) {
       return base;
     }
 
@@ -406,7 +423,7 @@ const Erosao = () => {
     }
 
     return [...base, "soil-samples"];
-  }, [erosionLayerTop, showSoilLayer, soilLayerPosition, soilSamples]);
+  }, [erosionLayerTop, showSoilLayer, soilGeoJson.features.length, soilLayerPosition]);
 
   const operationalLineGeoJson = useMemo(
     () => ({
@@ -539,11 +556,12 @@ const Erosao = () => {
             Fluxo SmartLine – Risco de Erosão por corredor
           </h2>
           <p className="text-xs text-muted-foreground mb-3">
-            O módulo agora cruza o traçado ingerido no sistema com chuva acumulada pública, topografia pública e fator de solo local para priorizar trechos em um corredor operacional de 50 m.
+            O módulo agora cruza o traçado ingerido no sistema com chuva acumulada pública, topografia pública e camada pedológica pública SoilGrids, com override por amostra local quando houver evidência de campo.
           </p>
           <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
             <li>Consulta de chuva acumulada pública via Open-Meteo para os pontos amostrados ao longo da linha.</li>
             <li>Consulta de elevação pública via OpenTopoData SRTM30m e derivação de declividade entre amostras.</li>
+            <li>Consulta de solo público SoilGrids 250 m (0-5 cm) e substituição por amostra local quando ela estiver próxima do trecho.</li>
             <li>Geração de corredor analítico de 50 m ao redor do traçado para destacar trechos sensíveis no mapa.</li>
             <li>Composição de score operacional (0–100) para priorização de inspeção, drenagem e contenção.</li>
           </ol>
@@ -609,6 +627,7 @@ const Erosao = () => {
                 <p>Não foi possível calcular o risco público agora. O módulo segue com os registros locais de erosão.</p>
               ) : (
                 <>
+                  <p className="font-medium text-foreground">Fonte de solo: {publicRisk.data?.source.soil ?? "aguardando consulta"}</p>
                   {publicRisk.data?.notes.map((note) => (
                     <p key={note}>{note}</p>
                   ))}
@@ -666,12 +685,12 @@ const Erosao = () => {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={() => setSoilDialogOpen(true)}>Amostras de Solo</Button>
+            <Button size="sm" onClick={() => setSoilDialogOpen(true)}>Amostras Locais de Solo</Button>
             <Button size="sm" variant="outline" onClick={handleGenerateDemoSoil}>Gerar amostras demo</Button>
             <div className="text-xs text-muted-foreground ml-2">
               <label className="inline-flex items-center gap-2">
                 <Switch checked={showSoilLayer} onCheckedChange={setShowSoilLayer} />
-                Exibir amostras no mapa ({soilSamples.length})
+                Exibir camada pedológica ({soilGeoJson.features.length})
               </label>
             </div>
           </div>
@@ -681,11 +700,11 @@ const Erosao = () => {
           <div className="xl:col-span-2 space-y-4 border border-border rounded-lg bg-card/60 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Erosões e Amostras</h3>
-                <p className="text-xs text-muted-foreground mt-1">Acesse o cadastro de amostras de solo pelo botão acima. Os pontos cadastrados aparecerão no mapa.</p>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Erosões e Camada Pedológica</h3>
+                <p className="text-xs text-muted-foreground mt-1">A camada no mapa combina SoilGrids 250 m ao longo do corredor e sobrescreve o solo público quando houver amostra local próxima.</p>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" onClick={() => setSoilDialogOpen(true)}>Amostras de Solo</Button>
+                <Button size="sm" onClick={() => setSoilDialogOpen(true)}>Amostras Locais de Solo</Button>
                 <Button size="sm" variant="outline" onClick={handleGenerateDemoSoil}>Gerar amostras demo</Button>
               </div>
             </div>
@@ -694,7 +713,7 @@ const Erosao = () => {
           <div className="space-y-4 border border-border rounded-lg bg-card/60 p-4">
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Camadas do mapa</h3>
-              <p className="text-xs text-muted-foreground mt-1">Controle a sobreposição entre infraestrutura, pontos de erosão e dados de solo.</p>
+              <p className="text-xs text-muted-foreground mt-1">Controle a sobreposição entre infraestrutura, pontos de erosão e a camada pedológica pública com override local.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -714,9 +733,9 @@ const Erosao = () => {
             </div>
             <div className="flex items-center gap-2">
               <Switch id="soil-layer-toggle" checked={showSoilLayer} onCheckedChange={setShowSoilLayer} />
-              <Label htmlFor="soil-layer-toggle" className="text-sm">Exibir camada de amostras de solo</Label>
+              <Label htmlFor="soil-layer-toggle" className="text-sm">Exibir camada pedológica pública e amostras locais</Label>
             </div>
-            {showSoilLayer && soilSamples.length > 0 && (
+            {showSoilLayer && soilGeoJson.features.length > 0 && (
               <div className="space-y-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Ordem da camada de solo
@@ -917,10 +936,10 @@ const Erosao = () => {
       </div>
 
       {/* Dialog de Amostras de Solo */}
-      <Dialog open={soilDialogOpen} onOpenChange={setSoilDialogOpen}>
+          <Dialog open={soilDialogOpen} onOpenChange={setSoilDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Amostras de Solo</DialogTitle>
+            <DialogTitle>Amostras Locais de Solo</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

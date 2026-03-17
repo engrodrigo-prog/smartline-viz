@@ -55,6 +55,7 @@
     "dotenv": "^16.4.5",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.22",
+    "geotiff": "^3.0.5",
     "hono": "^4.10.1",
     "input-otp": "^1.4.2",
     "jszip": "^3.10.1",

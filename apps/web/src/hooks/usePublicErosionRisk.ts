@@ -46,6 +46,7 @@ export type PublicErosionRiskResponse = {
   corridors: GeoJSON.FeatureCollection<GeoJSON.Polygon>;
   segments: GeoJSON.FeatureCollection<GeoJSON.LineString>;
   hotspots: GeoJSON.FeatureCollection<GeoJSON.Point>;
+  soilPoints: GeoJSON.FeatureCollection<GeoJSON.Point>;
 };
 
 interface UsePublicErosionRiskOptions {

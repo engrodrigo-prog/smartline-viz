@@ -1,3 +1,4 @@
+import { fromArrayBuffer } from 'geotiff';
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 
 export type PublicErosionRiskLineInput = {
@@ -43,6 +44,12 @@ type SoilContext = {
   soilSource: string;
   soilDistanceMeters: number | null;
   soilScore: number;
+  clayGkg: number | null;
+  sandGkg: number | null;
+  siltGkg: number | null;
+  color: string;
+  label: string;
+  overrideApplied: boolean;
 };
 
 type SegmentRisk = {
@@ -63,6 +70,12 @@ type SegmentRisk = {
   soilType: string;
   soilSource: string;
   soilDistanceMeters: number | null;
+  soilOverride: boolean;
+  soilColor: string;
+  soilLabel: string;
+  clayGkg: number | null;
+  sandGkg: number | null;
+  siltGkg: number | null;
   score: number;
   severity: 'Baixo' | 'Médio' | 'Alto' | 'Crítico';
   color: string;
@@ -92,9 +105,30 @@ export type PublicErosionRiskResponse = {
   corridors: FeatureCollection<Polygon>;
   segments: FeatureCollection<LineString>;
   hotspots: FeatureCollection<Point>;
+  soilPoints: FeatureCollection<Point>;
+};
+
+type SoilRasterProperty = 'clay' | 'sand';
+
+type SoilRaster = {
+  property: SoilRasterProperty;
+  bbox: [number, number, number, number];
+  width: number;
+  height: number;
+  values: number[];
+  noData: number | null;
+};
+
+type SoilRasterPair = {
+  clay: SoilRaster | null;
+  sand: SoilRaster | null;
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const SOIL_OVERRIDE_MAX_DISTANCE_METERS = 1_500;
+const SOIL_RASTER_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const SOIL_WCS_CRS = 'http://www.opengis.net/def/crs/EPSG/0/4326';
+const soilRasterCache = new Map<string, { expiresAt: number; raster: SoilRaster | null }>();
 
 const round = (value: number, digits = 1) => {
   const factor = 10 ** digits;
@@ -115,6 +149,11 @@ const haversineMeters = (lon1: number, lat1: number, lon2: number, lat2: number)
 };
 
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+const uniquePush = (notes: string[], note: string) => {
+  if (!notes.includes(note)) {
+    notes.push(note);
+  }
+};
 
 const chunk = <T,>(values: T[], size: number) => {
   const chunks: T[][] = [];
@@ -211,6 +250,16 @@ const computeBounds = (coordinates: Array<[number, number]>): [number, number, n
   return [minLon, minLat, maxLon, maxLat];
 };
 
+const expandBounds = (
+  bounds: [number, number, number, number],
+  paddingDegrees = 0.015,
+): [number, number, number, number] => [
+  round(bounds[0] - paddingDegrees, 6),
+  round(bounds[1] - paddingDegrees, 6),
+  round(bounds[2] + paddingDegrees, 6),
+  round(bounds[3] + paddingDegrees, 6),
+];
+
 const severityForScore = (score: number): SegmentRisk['severity'] => {
   if (score >= 80) return 'Crítico';
   if (score >= 65) return 'Alto';
@@ -224,6 +273,54 @@ const colorForSeverity = (severity: SegmentRisk['severity']) => {
   if (severity === 'Médio') return '#eab308';
   return '#16a34a';
 };
+
+const canonicalSoilType = (soilType: string) => {
+  const normalized = soilType.trim().toLowerCase();
+  if (normalized.includes('aren')) return 'Arenoso';
+  if (normalized.includes('silt')) return 'Siltoso';
+  if (normalized.includes('argil')) return 'Argiloso';
+  if (normalized.includes('franco') && normalized.includes('argil')) return 'Franco-argiloso';
+  if (normalized.includes('franco') && normalized.includes('aren')) return 'Franco-arenoso';
+  if (normalized.includes('franco')) return 'Franco';
+  if (normalized.includes('org')) return 'Orgânico';
+  return soilType.trim() || 'Solo';
+};
+
+const soilColorForType = (soilType: string) => {
+  const canonical = canonicalSoilType(soilType);
+  if (canonical === 'Arenoso') return '#f59e0b';
+  if (canonical === 'Siltoso') return '#a16207';
+  if (canonical === 'Argiloso') return '#8b5e3c';
+  if (canonical === 'Franco-arenoso') return '#d97706';
+  if (canonical === 'Franco-argiloso') return '#92400e';
+  if (canonical === 'Orgânico') return '#15803d';
+  if (canonical === 'Franco') return '#b45309';
+  return '#7c3aed';
+};
+
+const soilTypeFromTexture = (clayGkg: number, sandGkg: number, siltGkg: number) => {
+  if (sandGkg >= 700 && clayGkg < 150) return 'Arenoso';
+  if (clayGkg >= 400) return 'Argiloso';
+  if (siltGkg >= 500 && clayGkg < 270) return 'Siltoso';
+  if (clayGkg >= 270) return 'Franco-argiloso';
+  if (sandGkg >= 430 && clayGkg < 200) return 'Franco-arenoso';
+  return 'Franco';
+};
+
+const soilScoreFromTexture = (soilType: string) => {
+  const canonical = canonicalSoilType(soilType);
+  if (canonical === 'Arenoso') return 20;
+  if (canonical === 'Siltoso') return 18;
+  if (canonical === 'Franco-arenoso') return 16;
+  if (canonical === 'Orgânico') return 16;
+  if (canonical === 'Franco') return 14;
+  if (canonical === 'Franco-argiloso') return 12;
+  if (canonical === 'Argiloso') return 11;
+  return 12;
+};
+
+const soilRasterCacheKey = (property: SoilRasterProperty, bounds: [number, number, number, number]) =>
+  `${property}:${bounds.map((value) => value.toFixed(4)).join(':')}`;
 
 const soilScoreFromSample = (sample: PublicErosionSoilSampleInput | null) => {
   if (!sample) return 12;
@@ -252,19 +349,10 @@ const soilScoreFromSample = (sample: PublicErosionSoilSampleInput | null) => {
   return clamp(score, 8, 24);
 };
 
-const nearestSoilContext = (
+const findNearestSoilSample = (
   point: [number, number],
   samples: PublicErosionSoilSampleInput[],
-): SoilContext => {
-  if (samples.length === 0) {
-    return {
-      soilType: 'Sem amostra',
-      soilSource: 'baseline-neutro',
-      soilDistanceMeters: null,
-      soilScore: 12,
-    };
-  }
-
+): { sample: PublicErosionSoilSampleInput | null; distanceMeters: number } => {
   let nearest: PublicErosionSoilSampleInput | null = null;
   let nearestDistance = Number.POSITIVE_INFINITY;
 
@@ -277,11 +365,200 @@ const nearestSoilContext = (
   });
 
   return {
-    soilType: nearest?.soilType ?? 'Sem amostra',
-    soilSource: 'amostra-local',
-    soilDistanceMeters: Number.isFinite(nearestDistance) ? round(nearestDistance, 0) : null,
-    soilScore: soilScoreFromSample(nearest),
+    sample: nearest,
+    distanceMeters: Number.isFinite(nearestDistance) ? round(nearestDistance, 0) : Number.POSITIVE_INFINITY,
   };
+};
+
+const buildLocalSoilContext = (
+  sample: PublicErosionSoilSampleInput,
+  distanceMeters: number,
+  overrideApplied: boolean,
+): SoilContext => {
+  const soilType = canonicalSoilType(sample.soilType);
+  return {
+    soilType,
+    soilSource: 'amostra-local',
+    soilDistanceMeters: round(distanceMeters, 0),
+    soilScore: soilScoreFromSample(sample),
+    clayGkg: null,
+    sandGkg: null,
+    siltGkg: null,
+    color: soilColorForType(soilType),
+    label: `${soilType} • amostra local`,
+    overrideApplied,
+  };
+};
+
+const buildBaselineSoilContext = (): SoilContext => ({
+  soilType: 'Sem amostra',
+  soilSource: 'baseline-neutro',
+  soilDistanceMeters: null,
+  soilScore: 12,
+  clayGkg: null,
+  sandGkg: null,
+  siltGkg: null,
+  color: '#94a3b8',
+  label: 'Baseline neutra',
+  overrideApplied: false,
+});
+
+const fetchSoilRaster = async (
+  property: SoilRasterProperty,
+  bounds: [number, number, number, number],
+  notes: string[],
+) => {
+  const key = soilRasterCacheKey(property, bounds);
+  const now = Date.now();
+  const cached = soilRasterCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.raster;
+  }
+
+  const url = new URL('https://maps.isric.org/mapserv');
+  url.searchParams.set('map', `/map/${property}.map`);
+  url.searchParams.set('SERVICE', 'WCS');
+  url.searchParams.set('VERSION', '2.0.1');
+  url.searchParams.set('REQUEST', 'GetCoverage');
+  url.searchParams.set('COVERAGEID', `${property}_0-5cm_mean`);
+  url.searchParams.set('FORMAT', 'GEOTIFF_INT16');
+  url.searchParams.append('SUBSET', `X(${bounds[0]},${bounds[2]})`);
+  url.searchParams.append('SUBSET', `Y(${bounds[1]},${bounds[3]})`);
+  url.searchParams.set('SUBSETTINGCRS', SOIL_WCS_CRS);
+  url.searchParams.set('OUTPUTCRS', SOIL_WCS_CRS);
+
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'smartline-erosao-risk' },
+  });
+
+  if (!response.ok) {
+    uniquePush(notes, `Falha ao consultar camada pedológica pública (${property}, ${response.status}).`);
+    soilRasterCache.set(key, { expiresAt: now + 10 * 60 * 1000, raster: null });
+    return null;
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const tiff = await fromArrayBuffer(arrayBuffer);
+  const image = await tiff.getImage();
+  const rasterData = await image.readRasters({ interleave: true });
+  const boundingBox = image.getBoundingBox();
+  const noDataRaw = image.getGDALNoData?.();
+  const noData =
+    typeof noDataRaw === 'number'
+      ? noDataRaw
+      : typeof noDataRaw === 'string' && Number.isFinite(Number(noDataRaw))
+        ? Number(noDataRaw)
+        : null;
+
+  const raster: SoilRaster = {
+    property,
+    bbox: [boundingBox[0], boundingBox[1], boundingBox[2], boundingBox[3]],
+    width: image.getWidth(),
+    height: image.getHeight(),
+    values: Array.from(rasterData as ArrayLike<number>, (value) => Number(value)),
+    noData,
+  };
+
+  soilRasterCache.set(key, { expiresAt: now + SOIL_RASTER_CACHE_TTL_MS, raster });
+  return raster;
+};
+
+const sampleSoilRasterValue = (raster: SoilRaster | null, point: [number, number]) => {
+  if (!raster || raster.values.length === 0) return null;
+
+  const [minLon, minLat, maxLon, maxLat] = raster.bbox;
+  if (point[0] < minLon || point[0] > maxLon || point[1] < minLat || point[1] > maxLat) {
+    return null;
+  }
+
+  const xRatio = (point[0] - minLon) / Math.max(maxLon - minLon, 1e-9);
+  const yRatio = (maxLat - point[1]) / Math.max(maxLat - minLat, 1e-9);
+  const x = clamp(Math.floor(xRatio * raster.width), 0, raster.width - 1);
+  const y = clamp(Math.floor(yRatio * raster.height), 0, raster.height - 1);
+  const value = raster.values[y * raster.width + x];
+
+  if (!Number.isFinite(value)) return null;
+  if (raster.noData !== null && value === raster.noData) return null;
+  return value;
+};
+
+const buildPublicSoilContext = (point: [number, number], rasters: SoilRasterPair | null): SoilContext | null => {
+  if (!rasters) return null;
+
+  const clayGkg = sampleSoilRasterValue(rasters.clay, point);
+  const sandGkg = sampleSoilRasterValue(rasters.sand, point);
+
+  if (!Number.isFinite(clayGkg) && !Number.isFinite(sandGkg)) {
+    return null;
+  }
+
+  const safeClay = clamp(Number.isFinite(clayGkg) ? clayGkg! : 250, 0, 1000);
+  const safeSand = clamp(Number.isFinite(sandGkg) ? sandGkg! : 350, 0, 1000);
+  const siltGkg = clamp(1000 - safeClay - safeSand, 0, 1000);
+  const soilType = soilTypeFromTexture(safeClay, safeSand, siltGkg);
+
+  return {
+    soilType,
+    soilSource: 'soilgrids-publico',
+    soilDistanceMeters: null,
+    soilScore: soilScoreFromTexture(soilType),
+    clayGkg: round(safeClay, 0),
+    sandGkg: round(safeSand, 0),
+    siltGkg: round(siltGkg, 0),
+    color: soilColorForType(soilType),
+    label: `${soilType} • SoilGrids 250m`,
+    overrideApplied: false,
+  };
+};
+
+const fetchSoilRastersByLine = async (samples: SamplePoint[], notes: string[]) => {
+  const grouped = new Map<number, SamplePoint[]>();
+  samples.forEach((sample) => {
+    const current = grouped.get(sample.lineIndex) ?? [];
+    current.push(sample);
+    grouped.set(sample.lineIndex, current);
+  });
+
+  const rasterIndex = new Map<number, SoilRasterPair>();
+
+  for (const [lineIndex, lineSamples] of grouped.entries()) {
+    const bounds = computeBounds(lineSamples.map((sample) => sample.coordinates));
+    if (!bounds) {
+      continue;
+    }
+    const expandedBounds = expandBounds(bounds);
+    const [clay, sand] = await Promise.all([
+      fetchSoilRaster('clay', expandedBounds, notes),
+      fetchSoilRaster('sand', expandedBounds, notes),
+    ]);
+    rasterIndex.set(lineIndex, { clay, sand });
+  }
+
+  return rasterIndex;
+};
+
+const resolveSoilContext = (
+  point: [number, number],
+  lineIndex: number,
+  localSamples: PublicErosionSoilSampleInput[],
+  soilRasterIndex: Map<number, SoilRasterPair>,
+): SoilContext => {
+  const nearestLocal = findNearestSoilSample(point, localSamples);
+  const publicContext = buildPublicSoilContext(point, soilRasterIndex.get(lineIndex) ?? null);
+
+  if (nearestLocal.sample && nearestLocal.distanceMeters <= SOIL_OVERRIDE_MAX_DISTANCE_METERS) {
+    return buildLocalSoilContext(nearestLocal.sample, nearestLocal.distanceMeters, publicContext !== null);
+  }
+
+  if (publicContext) {
+    return publicContext;
+  }
+
+  if (nearestLocal.sample) {
+    return buildLocalSoilContext(nearestLocal.sample, nearestLocal.distanceMeters, false);
+  }
+
+  return buildBaselineSoilContext();
 };
 
 const buildCorridorPolygon = (
@@ -427,10 +704,20 @@ export const computePublicErosionRisk = async ({
 
   const elevations = await fetchElevations(sampledPoints, notes);
   if (notes.some((note) => note.includes('topografia'))) degradedReasons.add('terrain');
-
-  if (soilSamples.length === 0) {
-    notes.push('Sem amostras de solo cadastradas; fator de solo operando em baseline neutra.');
+  const soilRasterIndex = await fetchSoilRastersByLine(sampledPoints, notes);
+  const hasPublicSoilCoverage = Array.from(soilRasterIndex.values()).some((rasters) => rasters.clay || rasters.sand);
+  if (hasPublicSoilCoverage) {
+    uniquePush(
+      notes,
+      `Camada pedológica pública SoilGrids 250m (0-5 cm) ativa; amostras locais sobrescrevem até ${SOIL_OVERRIDE_MAX_DISTANCE_METERS} m do eixo.`,
+    );
+  } else {
     degradedReasons.add('soil');
+    if (soilSamples.length > 0) {
+      uniquePush(notes, 'Camada pedológica pública indisponível; usando amostras locais quando houver proximidade suficiente.');
+    } else {
+      uniquePush(notes, 'Sem cobertura pedológica pública disponível e sem amostras locais; fator de solo operando em baseline neutra.');
+    }
   }
 
   const segments: SegmentRisk[] = [];
@@ -457,7 +744,7 @@ export const computePublicErosionRisk = async ({
       round((sample.coordinates[1] + next.coordinates[1]) / 2, 6),
     ];
 
-    const soilContext = nearestSoilContext(midpoint, soilSamples);
+    const soilContext = resolveSoilContext(midpoint, sample.lineIndex, soilSamples, soilRasterIndex);
     const rainScore = clamp((rain7dMm / 150) * 35 + (rain3dMm / 80) * 15, 0, 50);
     const slopeScore = clamp((slopePercent / 30) * 30, 0, 30);
     const score = round(clamp(rainScore + slopeScore + soilContext.soilScore, 0, 100), 1);
@@ -482,6 +769,12 @@ export const computePublicErosionRisk = async ({
       soilType: soilContext.soilType,
       soilSource: soilContext.soilSource,
       soilDistanceMeters: soilContext.soilDistanceMeters,
+      soilOverride: soilContext.overrideApplied,
+      soilColor: soilContext.color,
+      soilLabel: soilContext.label,
+      clayGkg: soilContext.clayGkg,
+      sandGkg: soilContext.sandGkg,
+      siltGkg: soilContext.siltGkg,
       score,
       severity,
       color,
@@ -508,6 +801,10 @@ export const computePublicErosionRisk = async ({
       soilType: segment.soilType,
       soilSource: segment.soilSource,
       soilDistanceMeters: segment.soilDistanceMeters,
+      soilOverride: segment.soilOverride,
+      clayGkg: segment.clayGkg,
+      sandGkg: segment.sandGkg,
+      siltGkg: segment.siltGkg,
       riskScore: segment.score,
       severity: segment.severity,
       color: segment.color,
@@ -557,8 +854,34 @@ export const computePublicErosionRisk = async ({
       slopePercent: segment.slopePercent,
       soilType: segment.soilType,
       soilSource: segment.soilSource,
+      soilOverride: segment.soilOverride,
+      clayGkg: segment.clayGkg,
+      sandGkg: segment.sandGkg,
+      siltGkg: segment.siltGkg,
       bufferMeters,
       label: `${segment.lineName ?? segment.lineCode ?? 'Linha'} • ${segment.severity}`,
+    },
+  }));
+
+  const soilPointFeatures: Feature<Point>[] = segments.map((segment) => ({
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: segment.midpoint,
+    },
+    properties: {
+      soilType: segment.soilType,
+      soilSource: segment.soilSource,
+      soilDistanceMeters: segment.soilDistanceMeters,
+      soilOverride: segment.soilOverride,
+      clayGkg: segment.clayGkg,
+      sandGkg: segment.sandGkg,
+      siltGkg: segment.siltGkg,
+      lineCode: segment.lineCode,
+      lineName: segment.lineName,
+      label: segment.soilLabel,
+      color: segment.soilColor,
+      size: segment.soilSource === 'amostra-local' ? 7 : 5,
     },
   }));
 
@@ -574,7 +897,13 @@ export const computePublicErosionRisk = async ({
     source: {
       precipitation: 'Open-Meteo Historical Forecast',
       terrain: 'OpenTopoData SRTM30m',
-      soil: soilSamples.length > 0 ? 'Amostras locais do modulo' : 'Baseline neutra sem amostra',
+      soil: hasPublicSoilCoverage
+        ? soilSamples.length > 0
+          ? 'SoilGrids 250m (0-5 cm) com override por amostras locais'
+          : 'SoilGrids 250m (0-5 cm)'
+        : soilSamples.length > 0
+          ? 'Amostras locais do modulo'
+          : 'Baseline neutra sem amostra',
     },
     degraded: degradedReasons.size > 0,
     notes,
@@ -586,7 +915,7 @@ export const computePublicErosionRisk = async ({
         .length,
       maxRain7dMm: round(Math.max(0, ...segments.map((segment) => segment.rain7dMm)), 1),
       maxSlopePercent: round(Math.max(0, ...segments.map((segment) => segment.slopePercent)), 1),
-      soilBackedSamples: segments.filter((segment) => segment.soilSource === 'amostra-local').length,
+      soilBackedSamples: segments.filter((segment) => segment.soilSource !== 'baseline-neutro').length,
     },
     bounds,
     corridors: {
@@ -600,6 +929,10 @@ export const computePublicErosionRisk = async ({
     hotspots: {
       type: 'FeatureCollection',
       features: hotspotFeatures,
+    },
+    soilPoints: {
+      type: 'FeatureCollection',
+      features: soilPointFeatures,
     },
   };
 };

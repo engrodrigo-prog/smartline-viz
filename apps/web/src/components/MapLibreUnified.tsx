@@ -680,10 +680,12 @@ export const MapLibreUnified = ({
     if (!mapInstance) return;
 
     const sourceId = "soil-samples";
-    const layerId = "soil-samples";
+    const markerLayerId = "soil-samples";
+    const labelLayerId = "soil-samples-label";
 
     if (!soilData || soilData.features.length === 0) {
-      removeLayerAndSource(mapInstance, layerId, sourceId);
+      safeRemoveLayer(mapInstance, labelLayerId);
+      removeLayerAndSource(mapInstance, markerLayerId, sourceId);
       return;
     }
 
@@ -693,27 +695,38 @@ export const MapLibreUnified = ({
       } else {
         mapInstance.addSource(sourceId, { type: "geojson", data: soilData });
         mapInstance.addLayer({
-          id: layerId,
+          id: markerLayerId,
+          type: "circle",
+          source: sourceId,
+          paint: {
+            "circle-radius": ["coalesce", ["get", "size"], 5],
+            "circle-color": ["coalesce", ["get", "color"], "#f472b6"],
+            "circle-stroke-width": 1.5,
+            "circle-stroke-color": "#0b1120",
+            "circle-opacity": 0.92,
+          },
+        });
+        mapInstance.addLayer({
+          id: labelLayerId,
           type: "symbol",
           source: sourceId,
           layout: {
-            "icon-image": "triangle-11",
-            "icon-size": 1.2,
-            "icon-allow-overlap": true,
-            "text-field": ["coalesce", ["get", "soilType"], "Solo"],
+            "text-field": ["coalesce", ["get", "label"], ["get", "soilType"], "Solo"],
             "text-size": 11,
-            "text-offset": [0, 1.2],
-            "text-allow-overlap": false
+            "text-offset": [0, 1.25],
+            "text-allow-overlap": false,
           },
           paint: {
-            "text-color": "#f472b6"
-          }
+            "text-color": ["coalesce", ["get", "color"], "#f472b6"],
+            "text-halo-color": "#0b1120",
+            "text-halo-width": 1,
+          },
         });
       }
     };
 
     return runWhenMapStyleReady(mapInstance, load);
-  }, [removeLayerAndSource, soilData]);
+  }, [removeLayerAndSource, safeRemoveLayer, soilData]);
 
   // Load infrastructure layer
   useEffect(() => {
