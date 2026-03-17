@@ -15,6 +15,11 @@ import {
   type FirmsRiskBody,
   fetchFirmsRecords,
 } from './_firms.js';
+import {
+  computePublicErosionRisk,
+  type PublicErosionRiskLineInput,
+  type PublicErosionSoilSampleInput,
+} from './_erosao.js';
 
 const app = new Hono();
 const FIRMS_OPERATIONAL_FALLBACK_BBOX: [number, number, number, number] = [-52, -24.8, -45, -20];
@@ -1025,6 +1030,62 @@ app.post('/firms/risk', async (c) => {
     },
   });
 });
+
+const PublicErosionRiskLineSchema = z.object({
+  id: z.string().optional(),
+  lineCode: z.string().nullable().optional(),
+  lineName: z.string().nullable().optional(),
+  companyName: z.string().nullable().optional(),
+  regionCode: z.string().nullable().optional(),
+  voltageKv: z.string().nullable().optional(),
+  coordinates: z.array(z.tuple([z.number(), z.number()])).min(2),
+});
+
+const PublicErosionSoilSampleSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
+  soilType: z.string().min(1),
+  depth: z.number().optional(),
+  cohesion: z.number().optional(),
+  permeability: z.number().optional(),
+  moisture: z.number().optional(),
+  notes: z.string().optional(),
+});
+
+app.post('/erosao/public-risk', async (c) => {
+  const parsedBody = await parseJsonBody(
+    c,
+    z.object({
+      lines: z.array(PublicErosionRiskLineSchema).min(1),
+      soilSamples: z.array(PublicErosionSoilSampleSchema).optional(),
+      bufferMeters: z.coerce.number().min(10).max(200).optional(),
+      sampleSpacingMeters: z.coerce.number().min(300).max(3000).optional(),
+    }),
+  );
+
+  if (!parsedBody.ok) return parsedBody.res;
+
+  try {
+    const result = await computePublicErosionRisk({
+      lines: parsedBody.data.lines as PublicErosionRiskLineInput[],
+      soilSamples: (parsedBody.data.soilSamples ?? []) as PublicErosionSoilSampleInput[],
+      bufferMeters: parsedBody.data.bufferMeters ?? 50,
+      sampleSpacingMeters: parsedBody.data.sampleSpacingMeters ?? 1200,
+    });
+
+    return c.json(result);
+  } catch (error) {
+    console.error('[api] /erosao/public-risk failed:', error);
+    return c.json(
+      {
+        error: 'erosao_public_risk_failed',
+        message: error instanceof Error ? error.message : 'Falha ao calcular o risco público de erosão.',
+      },
+      500,
+    );
+  }
+});
+
 app.get('/weather', (c) =>
   c.json({
     status: 'ok',

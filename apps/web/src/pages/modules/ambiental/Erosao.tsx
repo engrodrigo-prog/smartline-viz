@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useFilters } from "@/context/FiltersContext";
-import { Mountain } from "lucide-react";
+import { Mountain, CloudRain, Layers3, TriangleAlert, Loader2 } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import FiltersBar from "@/components/FiltersBar";
@@ -16,15 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import type { FeatureCollection } from "geojson";
 import { useDatasetData } from "@/context/DatasetContext";
 import type { Erosao as ErosaoItem } from "@/lib/mockData";
-
-const RS_BOUNDS: [[number, number], [number, number]] = [
-  [-57.65, -33.75],
-  [-49.5, -27.0],
-];
+import { useGeodataQuery } from "@/hooks/useGeodataQuery";
+import { explodeLineFeatures } from "@/lib/geodata";
+import { usePublicErosionRisk } from "@/hooks/usePublicErosionRisk";
 
 type SoilSample = {
   id: string;
@@ -68,6 +67,48 @@ const Erosao = () => {
   const [soilLayerPosition, setSoilLayerPosition] = useState<'top' | 'middle' | 'bottom'>('top');
   const [soilDialogOpen, setSoilDialogOpen] = useState(false);
   const erosoesDataset = useDatasetData((data) => data.erosoes);
+
+  const demoOperationalLine = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: [
+        {
+          type: "Feature" as const,
+          geometry: {
+            type: "LineString" as const,
+            coordinates: [
+              [-46.72, -23.92],
+              [-46.61, -23.88],
+              [-46.49, -23.83],
+              [-46.36, -23.79],
+              [-46.24, -23.74],
+            ],
+          },
+          properties: {
+            id: "demo-erosao-line",
+            lineCode: "LT-DEMO-001",
+            lineName: "Corredor Demo Baixada",
+            companyName: "CPFL Transmissão",
+            regionCode: "Baixada Santista",
+            voltageKv: "138",
+          },
+        },
+      ],
+    }),
+    [],
+  );
+
+  const uploadedLineFeatures = useGeodataQuery({
+    table: "linhas_transmissao",
+    filters: {
+      empresa: filters.empresa,
+      regiao: filters.regiao,
+      lineCode: filters.linha,
+      lineName: filters.linhaNome,
+      tensaoKv: filters.tensaoKv,
+    },
+    requireGeometry: true,
+  });
 
   const isSoilFormValid = useMemo(() => {
     const lat = Number(soilForm.latitude);
@@ -180,38 +221,33 @@ const Erosao = () => {
     return filteredData.filter(focusFilter.predicate);
   }, [filteredData, focusFilter]);
 
-  const points: FeatureCollection = useMemo(
+  const focusPoints: FeatureCollection = useMemo(
     () => ({
       type: "FeatureCollection",
-      features: filteredData
-        .filter((item) => {
-          const [lat, lon] = item.coords;
-          return lon >= RS_BOUNDS[0][0] && lon <= RS_BOUNDS[1][0] && lat >= RS_BOUNDS[0][1] && lat <= RS_BOUNDS[1][1];
-        })
-        .map((item) => {
-          const [lat, lon] = item.coords;
-          return {
-            type: "Feature" as const,
-            geometry: { type: "Point" as const, coordinates: [lon, lat] },
-            properties: {
-              id: item.id,
-              status: item.status,
-              criticidade: item.gravidadeErosao,
-              color:
-                item.gravidadeErosao === "Crítica" || item.gravidadeErosao === "Alta"
-                  ? "#ef4444"
-                  : item.gravidadeErosao === "Média"
-                    ? "#facc15"
-                    : "#22c55e",
-              isFocus: focusFilter ? focusFilter.predicate(item) : false,
-            },
-          };
-        }),
+      features: filteredData.map((item) => {
+        const [lat, lon] = item.coords;
+        return {
+          type: "Feature" as const,
+          geometry: { type: "Point" as const, coordinates: [lon, lat] },
+          properties: {
+            id: item.id,
+            status: item.status,
+            criticidade: item.gravidadeErosao,
+            color:
+              item.gravidadeErosao === "Crítica" || item.gravidadeErosao === "Alta"
+                ? "#ef4444"
+                : item.gravidadeErosao === "Média"
+                  ? "#facc15"
+                  : "#22c55e",
+            isFocus: focusFilter ? focusFilter.predicate(item) : false,
+          },
+        };
+      }),
     }),
     [filteredData, focusFilter],
   );
 
-  const bounds = useMemo(() => {
+  const erosionRecordBounds = useMemo(() => {
     const src = focusFilter ? focusedData : filteredData;
     if (src.length === 0) return null;
     const lngs = src.map((item) => item.coords[1]);
@@ -231,13 +267,7 @@ const Erosao = () => {
 
   const erosionGeoJson = useMemo(() => ({
     type: "FeatureCollection",
-    features: filteredData
-      // Filtro defensivo: mantém apenas pontos dentro do RS
-      .filter((e) => {
-        const [lat, lon] = e.coords;
-        return lon >= RS_BOUNDS[0][0] && lon <= RS_BOUNDS[1][0] && lat >= RS_BOUNDS[0][1] && lat <= RS_BOUNDS[1][1];
-      })
-      .map((e) => ({
+    features: filteredData.map((e) => ({
       type: "Feature",
       geometry: {
         type: "Point",
@@ -253,6 +283,87 @@ const Erosao = () => {
       },
     })),
   }), [filteredData]);
+
+  const operationalLineFeatures = useMemo(() => {
+    const uploaded = explodeLineFeatures(uploadedLineFeatures.data ?? []);
+    if (uploaded.length > 0) {
+      return uploaded.map((feature, index) => ({
+        ...feature,
+        properties: {
+          ...feature.properties,
+          id: String(feature.properties?.sourceId ?? `uploaded-line-${index}`),
+          lineCode:
+            typeof feature.properties?.lineCode === "string"
+              ? feature.properties.lineCode
+              : typeof feature.properties?.codigo === "string"
+                ? feature.properties.codigo
+                : undefined,
+          lineName:
+            typeof feature.properties?.title === "string"
+              ? feature.properties.title
+              : typeof feature.properties?.lineName === "string"
+                ? feature.properties.lineName
+                : undefined,
+          companyName:
+            typeof feature.properties?.company_name === "string"
+              ? feature.properties.company_name
+              : undefined,
+          regionCode:
+            typeof feature.properties?.region_code === "string"
+              ? feature.properties.region_code
+              : undefined,
+          voltageKv:
+            typeof feature.properties?.tensao_kv === "string"
+              ? feature.properties.tensao_kv
+              : typeof feature.properties?.voltageKv === "string"
+                ? feature.properties.voltageKv
+                : undefined,
+        },
+      }));
+    }
+
+    return demoOperationalLine.features;
+  }, [demoOperationalLine.features, uploadedLineFeatures.data]);
+
+  const publicRiskLinePayload = useMemo(
+    () =>
+      operationalLineFeatures.map((feature, index) => ({
+        id: String(feature.properties?.id ?? `line-${index}`),
+        lineCode:
+          typeof feature.properties?.lineCode === "string" ? feature.properties.lineCode : null,
+        lineName:
+          typeof feature.properties?.lineName === "string"
+            ? feature.properties.lineName
+            : typeof feature.properties?.title === "string"
+              ? feature.properties.title
+              : null,
+        companyName:
+          typeof feature.properties?.companyName === "string" ? feature.properties.companyName : null,
+        regionCode:
+          typeof feature.properties?.regionCode === "string" ? feature.properties.regionCode : null,
+        voltageKv:
+          typeof feature.properties?.voltageKv === "string" ? feature.properties.voltageKv : null,
+        coordinates: feature.geometry.coordinates as Array<[number, number]>,
+      })),
+    [operationalLineFeatures],
+  );
+
+  const publicRisk = usePublicErosionRisk({
+    lines: publicRiskLinePayload,
+    soilSamples: soilSamples.map((sample) => ({
+      latitude: sample.latitude,
+      longitude: sample.longitude,
+      soilType: sample.soilType,
+      depth: sample.depth,
+      cohesion: sample.cohesion,
+      permeability: sample.permeability,
+      moisture: sample.moisture,
+      notes: sample.notes,
+    })),
+    bufferMeters: 50,
+    sampleSpacingMeters: 1200,
+    enabled: publicRiskLinePayload.length > 0,
+  });
 
   const soilGeoJson = useMemo(() => ({
     type: "FeatureCollection",
@@ -297,27 +408,83 @@ const Erosao = () => {
     return [...base, "soil-samples"];
   }, [erosionLayerTop, showSoilLayer, soilLayerPosition, soilSamples]);
 
-  const rsDemoLine = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: [
-      {
+  const operationalLineGeoJson = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: operationalLineFeatures.map((feature) => ({
         type: "Feature" as const,
-        geometry: {
-          type: "LineString" as const,
-          coordinates: [
-            [-57.08, -29.75],
-            [-55.60, -29.50],
-            [-54.10, -29.65],
-            [-53.10, -30.00],
-            [-52.00, -30.10],
-            [-51.23, -30.03],
-            [-51.18, -29.16]
-          ]
+        geometry: feature.geometry,
+        properties: {
+          color: "#0284c7",
+          width: 2.6,
+          opacity: 0.82,
+          corridorWidth: 0,
+          corridorOpacity: 0,
         },
-        properties: { color: "#0284c7", width: 3, opacity: 0.9 }
-      }
-    ]
-  }), []);
+      })),
+    }),
+    [operationalLineFeatures],
+  );
+
+  const publicRiskCorridors = useMemo(
+    () => publicRisk.data?.corridors ?? { type: "FeatureCollection" as const, features: [] },
+    [publicRisk.data],
+  );
+
+  const publicRiskLineGeoJson = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: [
+        ...operationalLineGeoJson.features,
+        ...(publicRisk.data?.segments.features ?? []).map((feature) => ({
+          type: "Feature" as const,
+          geometry: feature.geometry,
+          properties: {
+            ...(feature.properties ?? {}),
+            color: typeof feature.properties?.color === "string" ? feature.properties.color : "#ea580c",
+            width: typeof feature.properties?.width === "number" ? feature.properties.width : 4.5,
+            opacity: 0.94,
+            corridorWidth: 0,
+            corridorOpacity: 0,
+          },
+        })),
+      ],
+    }),
+    [operationalLineGeoJson.features, publicRisk.data],
+  );
+
+  const publicRiskHotspotPoints = useMemo(
+    () =>
+      (publicRisk.data?.hotspots.features ?? []).map((feature) => ({
+        type: "Feature" as const,
+        geometry: feature.geometry,
+        properties: {
+          ...(feature.properties ?? {}),
+          color: typeof feature.properties?.color === "string" ? feature.properties.color : "#ea580c",
+          size: typeof feature.properties?.size === "number" ? feature.properties.size : 9,
+        },
+      })),
+    [publicRisk.data],
+  );
+
+  const mapCustomPoints = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: [...focusPoints.features, ...publicRiskHotspotPoints],
+    }),
+    [focusPoints.features, publicRiskHotspotPoints],
+  );
+
+  const mapFitBounds = useMemo(() => {
+    const publicBounds = publicRisk.data?.bounds;
+    if (publicBounds) {
+      return [
+        [publicBounds[0], publicBounds[1]],
+        [publicBounds[2], publicBounds[3]],
+      ] as [[number, number], [number, number]];
+    }
+    return erosionRecordBounds;
+  }, [erosionRecordBounds, publicRisk.data]);
 
   const columns = [
     { key: 'nome', label: 'Nome' },
@@ -369,18 +536,87 @@ const Erosao = () => {
         <ModuleDemoBanner />
         <div className="tech-card p-4 border border-primary/40 bg-background/60">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-            Fluxo SmartLine – Risco de Erosão (Starter Kit)
+            Fluxo SmartLine – Risco de Erosão por corredor
           </h2>
           <p className="text-xs text-muted-foreground mb-3">
-            Este módulo visual foi desenhado para consumir os resultados do fluxo de automação de risco de erosão SmartLine™:
+            O módulo agora cruza o traçado ingerido no sistema com chuva acumulada pública, topografia pública e fator de solo local para priorizar trechos em um corredor operacional de 50 m.
           </p>
           <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
-            <li>Ingestão de chuva observada (INMET + IMERG NRT) e prevista (GFS/ECMWF).</li>
-            <li>Processamento do DTM por linha/corredor (Fill/Breach, Slope, TWI, SPI, LS canônico).</li>
-            <li>Cálculo de A_RUSLE e composição de risco (0–100) para cada trecho.</li>
-            <li>Publicação de COGs para o SmartLine como fonte raster geoespacial.</li>
+            <li>Consulta de chuva acumulada pública via Open-Meteo para os pontos amostrados ao longo da linha.</li>
+            <li>Consulta de elevação pública via OpenTopoData SRTM30m e derivação de declividade entre amostras.</li>
+            <li>Geração de corredor analítico de 50 m ao redor do traçado para destacar trechos sensíveis no mapa.</li>
+            <li>Composição de score operacional (0–100) para priorização de inspeção, drenagem e contenção.</li>
           </ol>
         </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+          <div className="tech-card p-4">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+              <Layers3 className="w-4 h-4" />
+              Linhas avaliadas
+            </div>
+            <div className="mt-2 text-3xl font-bold text-foreground">
+              {publicRisk.data?.stats.linesEvaluated ?? publicRiskLinePayload.length}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {uploadedLineFeatures.data?.length ? "Linhas ingeridas no sistema" : "Usando corredor demo por falta de linha publicada"}
+            </p>
+          </div>
+          <div className="tech-card p-4">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+              <TriangleAlert className="w-4 h-4" />
+              Trechos alto risco
+            </div>
+            <div className="mt-2 text-3xl font-bold text-destructive">
+              {publicRisk.data?.stats.highRiskSegments ?? 0}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Segmentos com score alto ou crítico no buffer de 50 m</p>
+          </div>
+          <div className="tech-card p-4">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+              <CloudRain className="w-4 h-4" />
+              Chuva 7d máx
+            </div>
+            <div className="mt-2 text-3xl font-bold text-sky-500">
+              {publicRisk.data ? `${publicRisk.data.stats.maxRain7dMm.toFixed(1)} mm` : "--"}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Fonte: {publicRisk.data?.source.precipitation ?? "aguardando consulta"}
+            </p>
+          </div>
+          <div className="tech-card p-4">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+              <Mountain className="w-4 h-4" />
+              Declividade máx
+            </div>
+            <div className="mt-2 text-3xl font-bold text-amber-500">
+              {publicRisk.data ? `${publicRisk.data.stats.maxSlopePercent.toFixed(1)}%` : "--"}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Topografia pública: {publicRisk.data?.source.terrain ?? "aguardando consulta"}
+            </p>
+          </div>
+        </div>
+
+        {(publicRisk.isLoading || publicRisk.data?.notes.length || publicRisk.error) && (
+          <Alert className="border-border/60 bg-background/70">
+            {publicRisk.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <TriangleAlert className="h-4 w-4" />}
+            <AlertTitle>Análise pública do corredor</AlertTitle>
+            <AlertDescription className="space-y-2">
+              {publicRisk.isLoading ? (
+                <p>Consultando chuva acumulada e topografia pública ao longo do traçado selecionado.</p>
+              ) : publicRisk.error ? (
+                <p>Não foi possível calcular o risco público agora. O módulo segue com os registros locais de erosão.</p>
+              ) : (
+                <>
+                  {publicRisk.data?.notes.map((note) => (
+                    <p key={note}>{note}</p>
+                  ))}
+                </>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
         
         <FiltersBar>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -587,14 +823,15 @@ const Erosao = () => {
                 filterLinha={filters.linha}
                 showErosao={true}
                 showInfrastructure={true}
-                initialCenter={[-53.0, -30.0]}
+                initialCenter={[-46.33, -23.86]}
                 initialZoom={filters.linha ? 12 : 6}
                 erosionData={erosionGeoJson}
                 soilData={showSoilLayer ? soilGeoJson : null}
                 layerOrder={layerOrder}
-                customPoints={points}
-                customLines={rsDemoLine as any}
-                fitBounds={bounds || RS_BOUNDS}
+                customPoints={mapCustomPoints as any}
+                customLines={publicRiskLineGeoJson as any}
+                customPolygons={publicRiskCorridors as any}
+                fitBounds={mapFitBounds ?? undefined}
                 height="600px"
                 initialBasemapId="imagery"
                 fallbackBasemapId="imagery"
