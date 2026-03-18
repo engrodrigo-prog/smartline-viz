@@ -85,6 +85,7 @@ export type PublicErosionRiskResponse = {
   generatedAt: string;
   bufferMeters: number;
   sampleSpacingMeters: number;
+  soilMode: 'actionable' | 'visual';
   source: {
     precipitation: string;
     terrain: string;
@@ -685,12 +686,15 @@ export const computePublicErosionRisk = async ({
   soilSamples = [],
   bufferMeters = 50,
   sampleSpacingMeters = 1_200,
+  soilMode = 'actionable',
 }: {
   lines: PublicErosionRiskLineInput[];
   soilSamples?: PublicErosionSoilSampleInput[];
   bufferMeters?: number;
   sampleSpacingMeters?: number;
+  soilMode?: 'actionable' | 'visual';
 }): Promise<PublicErosionRiskResponse> => {
+  const normalizedSoilMode = soilMode === 'visual' ? 'visual' : 'actionable';
   const normalizedLines = lines.filter((line) => Array.isArray(line.coordinates) && line.coordinates.length >= 2);
   const notes: string[] = [];
   const degradedReasons = new Set<string>();
@@ -709,8 +713,13 @@ export const computePublicErosionRisk = async ({
   if (hasPublicSoilCoverage) {
     uniquePush(
       notes,
-      `Camada pedológica pública SoilGrids 250m (0-5 cm) ativa; amostras locais sobrescrevem até ${SOIL_OVERRIDE_MAX_DISTANCE_METERS} m do eixo.`,
+      normalizedSoilMode === 'actionable'
+        ? `Camada pedológica pública SoilGrids 250m (0-5 cm) ativa; amostras locais sobrescrevem até ${SOIL_OVERRIDE_MAX_DISTANCE_METERS} m do eixo.`
+        : `Camada pedológica pública SoilGrids 250m (0-5 cm) ativa em modo contextual; amostras locais sobrescrevem a visualização até ${SOIL_OVERRIDE_MAX_DISTANCE_METERS} m do eixo.`,
     );
+    if (normalizedSoilMode === 'visual') {
+      uniquePush(notes, 'A pedologia pública está em modo contextual e não altera o score operacional.');
+    }
   } else {
     degradedReasons.add('soil');
     if (soilSamples.length > 0) {
@@ -747,7 +756,8 @@ export const computePublicErosionRisk = async ({
     const soilContext = resolveSoilContext(midpoint, sample.lineIndex, soilSamples, soilRasterIndex);
     const rainScore = clamp((rain7dMm / 150) * 35 + (rain3dMm / 80) * 15, 0, 50);
     const slopeScore = clamp((slopePercent / 30) * 30, 0, 30);
-    const score = round(clamp(rainScore + slopeScore + soilContext.soilScore, 0, 100), 1);
+    const soilScore = normalizedSoilMode === 'actionable' ? soilContext.soilScore : 12;
+    const score = round(clamp(rainScore + slopeScore + soilScore, 0, 100), 1);
     const severity = severityForScore(score);
     const color = colorForSeverity(severity);
 
@@ -894,13 +904,18 @@ export const computePublicErosionRisk = async ({
     generatedAt: new Date().toISOString(),
     bufferMeters,
     sampleSpacingMeters: clamp(sampleSpacingMeters, 300, 3_000),
+    soilMode: normalizedSoilMode,
     source: {
       precipitation: 'Open-Meteo Historical Forecast',
       terrain: 'OpenTopoData SRTM30m',
       soil: hasPublicSoilCoverage
         ? soilSamples.length > 0
-          ? 'SoilGrids 250m (0-5 cm) com override por amostras locais'
-          : 'SoilGrids 250m (0-5 cm)'
+          ? normalizedSoilMode === 'actionable'
+            ? 'SoilGrids 250m (0-5 cm) com override por amostras locais'
+            : 'SoilGrids 250m (0-5 cm) com override visual por amostras locais'
+          : normalizedSoilMode === 'actionable'
+            ? 'SoilGrids 250m (0-5 cm)'
+            : 'SoilGrids 250m (0-5 cm) em modo contextual'
         : soilSamples.length > 0
           ? 'Amostras locais do modulo'
           : 'Baseline neutra sem amostra',

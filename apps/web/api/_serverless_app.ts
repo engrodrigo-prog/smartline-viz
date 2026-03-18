@@ -1058,6 +1058,7 @@ app.post('/erosao/public-risk', async (c) => {
     z.object({
       lines: z.array(PublicErosionRiskLineSchema).min(1),
       soilSamples: z.array(PublicErosionSoilSampleSchema).optional(),
+      soilMode: z.enum(['actionable', 'visual']).optional(),
       bufferMeters: z.coerce.number().min(10).max(200).optional(),
       sampleSpacingMeters: z.coerce.number().min(300).max(3000).optional(),
     }),
@@ -1069,6 +1070,7 @@ app.post('/erosao/public-risk', async (c) => {
     const result = await computePublicErosionRisk({
       lines: parsedBody.data.lines as PublicErosionRiskLineInput[],
       soilSamples: (parsedBody.data.soilSamples ?? []) as PublicErosionSoilSampleInput[],
+      soilMode: parsedBody.data.soilMode ?? 'actionable',
       bufferMeters: parsedBody.data.bufferMeters ?? 50,
       sampleSpacingMeters: parsedBody.data.sampleSpacingMeters ?? 1200,
     });

@@ -16,6 +16,17 @@ import { MapLoadingIndicator } from "@/components/map/MapLoadingIndicator";
 import type { FeatureCollection, Geometry, Polygon, LineString } from "geojson";
 import type { Local3DLayer } from "@/features/map/UnifiedMapView/local3d";
 
+type ExternalRasterLayer = {
+  id: string;
+  tiles: string[];
+  opacity?: number;
+  tileSize?: number;
+  minzoom?: number;
+  maxzoom?: number;
+  attribution?: string;
+  beforeId?: string;
+};
+
 interface MapLibreUnifiedProps {
   filterRegiao?: string;
   filterEmpresa?: string;
@@ -58,6 +69,7 @@ interface MapLibreUnifiedProps {
       corridorOpacity?: number;
     }
   >;
+  customRasterLayers?: ExternalRasterLayer[];
   local3DLayers?: Local3DLayer[];
   height?: string;
   initialBasemapId?: BasemapId;
@@ -101,6 +113,7 @@ export const MapLibreUnified = ({
   fitBounds,
   customPolygons,
   customLines,
+  customRasterLayers,
   local3DLayers = [],
   height,
   initialBasemapId,
@@ -111,6 +124,7 @@ export const MapLibreUnified = ({
   const fallbackAppliedRef = useRef(false);
   const styleReadyRef = useRef(false);
   const fitBoundsRef = useRef<maplibregl.LngLatBoundsLike | null>(fitBounds ?? null);
+  const rasterOverlayIdsRef = useRef<string[]>([]);
 
   const mapboxToken: string | undefined = undefined;
   const mapboxAvailable = false;
@@ -404,6 +418,75 @@ export const MapLibreUnified = ({
     },
     [safeRemoveLayer, safeRemoveSource],
   );
+
+  useEffect(() => {
+    const mapInstance = mapRef.current;
+    if (!mapInstance) return;
+
+    const overlays = customRasterLayers ?? [];
+    const previousOverlayIds = rasterOverlayIdsRef.current;
+
+    const removeOverlay = (overlayId: string) => {
+      const sourceId = `external-raster-${overlayId}-source`;
+      const layerId = `external-raster-${overlayId}-layer`;
+      safeRemoveLayer(mapInstance, layerId);
+      safeRemoveSource(mapInstance, sourceId);
+    };
+
+    previousOverlayIds
+      .filter((overlayId) => !overlays.some((overlay) => overlay.id === overlayId))
+      .forEach(removeOverlay);
+
+    if (overlays.length === 0) {
+      rasterOverlayIdsRef.current = [];
+      return;
+    }
+
+    const addLayers = () => {
+      overlays.forEach((overlay) => {
+        const sourceId = `external-raster-${overlay.id}-source`;
+        const layerId = `external-raster-${overlay.id}-layer`;
+        safeRemoveLayer(mapInstance, layerId);
+        safeRemoveSource(mapInstance, sourceId);
+
+        mapInstance.addSource(sourceId, {
+          type: "raster",
+          tiles: overlay.tiles,
+          tileSize: overlay.tileSize ?? 256,
+          attribution: overlay.attribution,
+        });
+
+        const fallbackBeforeId = [
+          "infrastructure-layer",
+          "erosao-points",
+          "custom-polygons-fill",
+          "custom-lines",
+          "custom-points",
+          "soil-samples",
+        ].find((candidate) => hasLayer(mapInstance, candidate));
+
+        mapInstance.addLayer(
+          {
+            id: layerId,
+            type: "raster",
+            source: sourceId,
+            minzoom: overlay.minzoom,
+            maxzoom: overlay.maxzoom,
+            paint: {
+              "raster-opacity": overlay.opacity ?? 0.28,
+            },
+          },
+          overlay.beforeId && hasLayer(mapInstance, overlay.beforeId)
+            ? overlay.beforeId
+            : fallbackBeforeId,
+        );
+      });
+
+      rasterOverlayIdsRef.current = overlays.map((overlay) => overlay.id);
+    };
+
+    return runWhenMapStyleReady(mapInstance, addLayers);
+  }, [customRasterLayers, hasLayer, safeRemoveLayer, safeRemoveSource]);
 
   // Custom points layer for case analytics overlays
   useEffect(() => {

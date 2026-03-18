@@ -26,6 +26,7 @@ export type PublicErosionRiskResponse = {
   generatedAt: string;
   bufferMeters: number;
   sampleSpacingMeters: number;
+  soilMode: "actionable" | "visual";
   source: {
     precipitation: string;
     terrain: string;
@@ -52,6 +53,7 @@ export type PublicErosionRiskResponse = {
 interface UsePublicErosionRiskOptions {
   lines: PublicErosionRiskLinePayload[];
   soilSamples?: PublicErosionSoilSamplePayload[];
+  soilMode?: "actionable" | "visual";
   bufferMeters?: number;
   sampleSpacingMeters?: number;
   enabled?: boolean;
@@ -60,12 +62,13 @@ interface UsePublicErosionRiskOptions {
 export const usePublicErosionRisk = ({
   lines,
   soilSamples = [],
+  soilMode = "actionable",
   bufferMeters = 50,
   sampleSpacingMeters = 1200,
   enabled = true,
 }: UsePublicErosionRiskOptions) =>
   useQuery<PublicErosionRiskResponse>({
-    queryKey: ["erosao-public-risk", lines, soilSamples, bufferMeters, sampleSpacingMeters],
+    queryKey: ["erosao-public-risk", lines, soilSamples, soilMode, bufferMeters, sampleSpacingMeters],
     enabled: enabled && lines.length > 0,
     staleTime: 30 * 60 * 1000,
     retry: false,
@@ -73,6 +76,7 @@ export const usePublicErosionRisk = ({
       postJSON<PublicErosionRiskResponse>("/erosao/public-risk", {
         lines,
         soilSamples,
+        soilMode,
         bufferMeters,
         sampleSpacingMeters,
       }),

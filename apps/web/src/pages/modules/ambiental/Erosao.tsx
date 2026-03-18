@@ -43,6 +43,9 @@ type FocusFilter = {
   predicate: (item: ErosaoItem) => boolean;
 };
 
+const SOILGRIDS_CLAY_0_5CM_WMS =
+  "https://maps.isric.org/mapserv?map=/map/clay.map&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=clay_0-5cm_mean&STYLES=default&FORMAT=image/png&TRANSPARENT=true&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256";
+
 const Erosao = () => {
   const { filters } = useFilters();
   const [selectedErosao, setSelectedErosao] = useState<any>(null);
@@ -63,8 +66,10 @@ const Erosao = () => {
     notes: ''
   });
   const [showSoilLayer, setShowSoilLayer] = useState(true);
+  const [showSoilBackdrop, setShowSoilBackdrop] = useState(true);
   const [erosionLayerTop, setErosionLayerTop] = useState(true);
   const [soilLayerPosition, setSoilLayerPosition] = useState<'top' | 'middle' | 'bottom'>('top');
+  const [soilMode, setSoilMode] = useState<"actionable" | "visual">("actionable");
   const [soilDialogOpen, setSoilDialogOpen] = useState(false);
   const erosoesDataset = useDatasetData((data) => data.erosoes);
 
@@ -360,6 +365,7 @@ const Erosao = () => {
       moisture: sample.moisture,
       notes: sample.notes,
     })),
+    soilMode,
     bufferMeters: 50,
     sampleSpacingMeters: 1200,
     enabled: publicRiskLinePayload.length > 0,
@@ -503,6 +509,21 @@ const Erosao = () => {
     return erosionRecordBounds;
   }, [erosionRecordBounds, publicRisk.data]);
 
+  const soilBackdropLayers = useMemo(
+    () =>
+      showSoilBackdrop
+        ? [
+            {
+              id: "soilgrids-clay-0-5cm",
+              tiles: [SOILGRIDS_CLAY_0_5CM_WMS],
+              opacity: 0.24,
+              attribution: "SoilGrids / ISRIC",
+            },
+          ]
+        : [],
+    [showSoilBackdrop],
+  );
+
   const columns = [
     { key: 'nome', label: 'Nome' },
     { 
@@ -556,7 +577,7 @@ const Erosao = () => {
             Fluxo SmartLine – Risco de Erosão por corredor
           </h2>
           <p className="text-xs text-muted-foreground mb-3">
-            O módulo agora cruza o traçado ingerido no sistema com chuva acumulada pública, topografia pública e camada pedológica pública SoilGrids, com override por amostra local quando houver evidência de campo.
+            O módulo agora cruza o traçado ingerido no sistema com chuva acumulada pública, topografia pública e camada pedológica pública SoilGrids. O usuário define se a pedologia entra no score ou se permanece só como contexto visual.
           </p>
           <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
             <li>Consulta de chuva acumulada pública via Open-Meteo para os pontos amostrados ao longo da linha.</li>
@@ -628,6 +649,9 @@ const Erosao = () => {
               ) : (
                 <>
                   <p className="font-medium text-foreground">Fonte de solo: {publicRisk.data?.source.soil ?? "aguardando consulta"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Modo pedológico: {publicRisk.data?.soilMode === "visual" ? "contextual" : "acionável"}
+                  </p>
                   {publicRisk.data?.notes.map((note) => (
                     <p key={note}>{note}</p>
                   ))}
@@ -687,6 +711,23 @@ const Erosao = () => {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={() => setSoilDialogOpen(true)}>Amostras Locais de Solo</Button>
             <Button size="sm" variant="outline" onClick={handleGenerateDemoSoil}>Gerar amostras demo</Button>
+            <div className="ml-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Pedologia pública:</span>
+              <Button
+                size="sm"
+                variant={soilMode === "actionable" ? "default" : "outline"}
+                onClick={() => setSoilMode("actionable")}
+              >
+                Acionável
+              </Button>
+              <Button
+                size="sm"
+                variant={soilMode === "visual" ? "default" : "outline"}
+                onClick={() => setSoilMode("visual")}
+              >
+                Só visual
+              </Button>
+            </div>
             <div className="text-xs text-muted-foreground ml-2">
               <label className="inline-flex items-center gap-2">
                 <Switch checked={showSoilLayer} onCheckedChange={setShowSoilLayer} />
@@ -701,7 +742,7 @@ const Erosao = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Erosões e Camada Pedológica</h3>
-                <p className="text-xs text-muted-foreground mt-1">A camada no mapa combina SoilGrids 250 m ao longo do corredor e sobrescreve o solo público quando houver amostra local próxima.</p>
+                <p className="text-xs text-muted-foreground mt-1">A camada no mapa combina o overlay contínuo SoilGrids com amostragem ao longo do corredor e sobrescreve o solo público quando houver amostra local próxima.</p>
               </div>
               <div className="flex items-center gap-2">
                 <Button size="sm" onClick={() => setSoilDialogOpen(true)}>Amostras Locais de Solo</Button>
@@ -713,7 +754,7 @@ const Erosao = () => {
           <div className="space-y-4 border border-border rounded-lg bg-card/60 p-4">
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Camadas do mapa</h3>
-              <p className="text-xs text-muted-foreground mt-1">Controle a sobreposição entre infraestrutura, pontos de erosão e a camada pedológica pública com override local.</p>
+              <p className="text-xs text-muted-foreground mt-1">Controle a sobreposição entre infraestrutura, pontos de erosão, a camada pedológica contínua do SoilGrids e o uso operacional desse dado.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -734,6 +775,31 @@ const Erosao = () => {
             <div className="flex items-center gap-2">
               <Switch id="soil-layer-toggle" checked={showSoilLayer} onCheckedChange={setShowSoilLayer} />
               <Label htmlFor="soil-layer-toggle" className="text-sm">Exibir camada pedológica pública e amostras locais</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch id="soil-backdrop-toggle" checked={showSoilBackdrop} onCheckedChange={setShowSoilBackdrop} />
+              <Label htmlFor="soil-backdrop-toggle" className="text-sm">Exibir overlay contínuo SoilGrids (argila 0-5 cm)</Label>
+            </div>
+            <div className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Uso operacional da pedologia
+              </span>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={soilMode === "actionable" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSoilMode("actionable")}
+                >
+                  Acionável no score
+                </Button>
+                <Button
+                  variant={soilMode === "visual" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSoilMode("visual")}
+                >
+                  Somente contexto visual
+                </Button>
+              </div>
             </div>
             {showSoilLayer && soilGeoJson.features.length > 0 && (
               <div className="space-y-2">
@@ -850,6 +916,7 @@ const Erosao = () => {
                 customPoints={mapCustomPoints as any}
                 customLines={publicRiskLineGeoJson as any}
                 customPolygons={publicRiskCorridors as any}
+                customRasterLayers={soilBackdropLayers}
                 fitBounds={mapFitBounds ?? undefined}
                 height="600px"
                 initialBasemapId="imagery"
