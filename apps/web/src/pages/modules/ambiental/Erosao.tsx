@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useFilters } from "@/context/FiltersContext";
-import { Mountain, CloudRain, Layers3, TriangleAlert, Loader2 } from "lucide-react";
+import { Mountain, CloudRain, Layers3, TriangleAlert, Loader2, Eye, EyeOff, SlidersHorizontal, Map, List, PanelTopOpen, PanelTopClose, FlaskConical, X } from "lucide-react";
 import ModuleLayout from "@/components/ModuleLayout";
 import ModuleDemoBanner from "@/components/ModuleDemoBanner";
 import FiltersBar from "@/components/FiltersBar";
@@ -24,6 +24,7 @@ import type { Erosao as ErosaoItem } from "@/lib/mockData";
 import { useGeodataQuery } from "@/hooks/useGeodataQuery";
 import { explodeLineFeatures } from "@/lib/geodata";
 import { usePublicErosionRisk } from "@/hooks/usePublicErosionRisk";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 
 type SoilSample = {
   id: string;
@@ -47,7 +48,7 @@ const SOILGRIDS_CLAY_0_5CM_WMS =
   "https://maps.isric.org/mapserv?map=/map/clay.map&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=clay_0-5cm_mean&STYLES=default&FORMAT=image/png&TRANSPARENT=true&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256";
 
 const Erosao = () => {
-  const { filters } = useFilters();
+  const { filters, setFilters, clearField, resetFilters } = useFilters();
   const [selectedErosao, setSelectedErosao] = useState<any>(null);
   const [tipoFilter, setTipoFilter] = useState<string>('');
   const [gravidadeFilter, setGravidadeFilter] = useState<string>('');
@@ -71,6 +72,11 @@ const Erosao = () => {
   const [soilLayerPosition, setSoilLayerPosition] = useState<'top' | 'middle' | 'bottom'>('top');
   const [soilMode, setSoilMode] = useState<"actionable" | "visual">("actionable");
   const [soilDialogOpen, setSoilDialogOpen] = useState(false);
+  const [showWorkflowPanel, setShowWorkflowPanel] = useState(false);
+  const [showFiltersPanel, setShowFiltersPanel] = useState(true);
+  const [showKpisPanel, setShowKpisPanel] = useState(true);
+  const [showAnalysisPanel, setShowAnalysisPanel] = useState(true);
+  const [showMapControlsPanel, setShowMapControlsPanel] = useState(false);
   const erosoesDataset = useDatasetData((data) => data.erosoes);
 
   const demoOperationalLine = useMemo(
@@ -567,77 +573,198 @@ const Erosao = () => {
       render: (value: string) => new Date(value).toLocaleDateString('pt-BR')
     },
   ];
+
+  const activeGlobalFilterTokens = useMemo(() => {
+    const tokens: Array<{ key: string; label: string; onClear: () => void }> = [];
+    if (filters.empresa) tokens.push({ key: "empresa", label: `Empresa: ${filters.empresa}`, onClear: () => clearField("empresa") });
+    if (filters.regiao) tokens.push({ key: "regiao", label: `Região: ${filters.regiao}`, onClear: () => clearField("regiao") });
+    if (filters.linha) tokens.push({ key: "linha", label: `Linha: ${filters.linha}`, onClear: () => clearField("linha") });
+    if (filters.linhaNome) tokens.push({ key: "linhaNome", label: `Nome: ${filters.linhaNome}`, onClear: () => clearField("linhaNome") });
+    if (filters.tensaoKv) tokens.push({ key: "tensaoKv", label: `Tensão: ${filters.tensaoKv}`, onClear: () => clearField("tensaoKv") });
+    if (filters.search) tokens.push({ key: "search", label: `Busca: ${filters.search}`, onClear: () => clearField("search") });
+    return tokens;
+  }, [clearField, filters.empresa, filters.linha, filters.linhaNome, filters.regiao, filters.search, filters.tensaoKv]);
+
+  const activeLocalFilterTokens = useMemo(() => {
+    const tokens: Array<{ key: string; label: string; onClear: () => void }> = [];
+    if (tipoFilter) tokens.push({ key: "tipo", label: `Tipo: ${tipoFilter}`, onClear: () => setTipoFilter("") });
+    if (gravidadeFilter) tokens.push({ key: "gravidade", label: `Gravidade: ${gravidadeFilter}`, onClear: () => setGravidadeFilter("") });
+    if (statusFilter) tokens.push({ key: "status", label: `Status: ${statusFilter}`, onClear: () => setStatusFilter("") });
+    return tokens;
+  }, [gravidadeFilter, statusFilter, tipoFilter]);
+
+  const activeFilterCount = activeGlobalFilterTokens.length + activeLocalFilterTokens.length;
+
+  const resetModuleFilters = () => {
+    resetFilters();
+    setTipoFilter("");
+    setGravidadeFilter("");
+    setStatusFilter("");
+    setFocusFilter(null);
+  };
   
   return (
     <ModuleLayout title="Erosão" icon={Mountain}>
       <div className="p-6 space-y-6">
         <ModuleDemoBanner />
-        <div className="tech-card p-4 border border-primary/40 bg-background/60">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-            Fluxo SmartLine – Risco de Erosão por corredor
-          </h2>
-          <p className="text-xs text-muted-foreground mb-3">
-            O módulo agora cruza o traçado ingerido no sistema com chuva acumulada pública, topografia pública e camada pedológica pública SoilGrids. O usuário define se a pedologia entra no score ou se permanece só como contexto visual.
-          </p>
-          <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
-            <li>Consulta de chuva acumulada pública via Open-Meteo para os pontos amostrados ao longo da linha.</li>
-            <li>Consulta de elevação pública via OpenTopoData SRTM30m e derivação de declividade entre amostras.</li>
-            <li>Consulta de solo público SoilGrids 250 m (0-5 cm) e substituição por amostra local quando ela estiver próxima do trecho.</li>
-            <li>Geração de corredor analítico de 50 m ao redor do traçado para destacar trechos sensíveis no mapa.</li>
-            <li>Composição de score operacional (0–100) para priorização de inspeção, drenagem e contenção.</li>
-          </ol>
+        <div className="sticky top-2 z-10 rounded-xl border border-border/70 bg-background/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant={activeTab === "lista" ? "default" : "outline"} onClick={() => setActiveTab("lista")}>
+                <List className="mr-2 h-4 w-4" />
+                Lista
+              </Button>
+              <Button size="sm" variant={activeTab === "mapa" ? "default" : "outline"} onClick={() => setActiveTab("mapa")}>
+                <Map className="mr-2 h-4 w-4" />
+                Mapa
+              </Button>
+              <Button size="sm" variant={showFiltersPanel ? "default" : "outline"} onClick={() => setShowFiltersPanel((value) => !value)}>
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                {showFiltersPanel ? "Ocultar filtros" : "Mostrar filtros"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowKpisPanel((value) => !value)}>
+                {showKpisPanel ? <PanelTopClose className="mr-2 h-4 w-4" /> : <PanelTopOpen className="mr-2 h-4 w-4" />}
+                {showKpisPanel ? "Ocultar resumo" : "Mostrar resumo"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowAnalysisPanel((value) => !value)}>
+                {showAnalysisPanel ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                {showAnalysisPanel ? "Ocultar diagnóstico" : "Mostrar diagnóstico"}
+              </Button>
+              {activeTab === "mapa" && (
+                <Button size="sm" variant="outline" onClick={() => setShowMapControlsPanel((value) => !value)}>
+                  {showMapControlsPanel ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                  {showMapControlsPanel ? "Ocultar controles do mapa" : "Mostrar controles do mapa"}
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">{activeFilterCount} filtros ativos</Badge>
+              {focusFilter && <Badge variant="outline">Foco: {focusFilter.label}</Badge>}
+              <Button size="sm" variant="outline" onClick={() => setSoilDialogOpen(true)}>
+                <FlaskConical className="mr-2 h-4 w-4" />
+                Amostras de solo
+              </Button>
+              <Button size="sm" variant="outline" onClick={resetModuleFilters}>
+                Limpar filtros
+              </Button>
+            </div>
+          </div>
+          {(activeGlobalFilterTokens.length > 0 || activeLocalFilterTokens.length > 0 || focusFilter) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {activeGlobalFilterTokens.map((token) => (
+                <button
+                  key={token.key}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
+                  onClick={token.onClear}
+                >
+                  {token.label}
+                  <X className="h-3 w-3" />
+                </button>
+              ))}
+              {activeLocalFilterTokens.map((token) => (
+                <button
+                  key={token.key}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
+                  onClick={token.onClear}
+                >
+                  {token.label}
+                  <X className="h-3 w-3" />
+                </button>
+              ))}
+              {focusFilter && (
+                <button
+                  className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs text-primary hover:bg-primary/10"
+                  onClick={clearFocus}
+                >
+                  Foco: {focusFilter.label}
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-          <div className="tech-card p-4">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-              <Layers3 className="w-4 h-4" />
-              Linhas avaliadas
+        <Collapsible open={showWorkflowPanel} onOpenChange={setShowWorkflowPanel}>
+          <div className="tech-card border border-primary/40 bg-background/60 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                  Fluxo SmartLine – Risco de Erosão por corredor
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  O módulo cruza traçado, chuva, relevo e pedologia pública. Agora esse bloco é opcional para não tomar altura da tela quando você já conhece o fluxo.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setShowWorkflowPanel((value) => !value)}>
+                {showWorkflowPanel ? "Ocultar fluxo" : "Mostrar fluxo"}
+              </Button>
             </div>
-            <div className="mt-2 text-3xl font-bold text-foreground">
-              {publicRisk.data?.stats.linesEvaluated ?? publicRiskLinePayload.length}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {uploadedLineFeatures.data?.length ? "Linhas ingeridas no sistema" : "Usando corredor demo por falta de linha publicada"}
-            </p>
+            <CollapsibleContent className="pt-4">
+              <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
+                <li>Consulta de chuva acumulada pública via Open-Meteo para os pontos amostrados ao longo da linha.</li>
+                <li>Consulta de elevação pública via OpenTopoData SRTM30m e derivação de declividade entre amostras.</li>
+                <li>Consulta de solo público SoilGrids 250 m (0-5 cm) e substituição por amostra local quando ela estiver próxima do trecho.</li>
+                <li>Geração de corredor analítico de 50 m ao redor do traçado para destacar trechos sensíveis no mapa.</li>
+                <li>Composição de score operacional (0–100) para priorização de inspeção, drenagem e contenção.</li>
+              </ol>
+            </CollapsibleContent>
           </div>
-          <div className="tech-card p-4">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-              <TriangleAlert className="w-4 h-4" />
-              Trechos alto risco
-            </div>
-            <div className="mt-2 text-3xl font-bold text-destructive">
-              {publicRisk.data?.stats.highRiskSegments ?? 0}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">Segmentos com score alto ou crítico no buffer de 50 m</p>
-          </div>
-          <div className="tech-card p-4">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-              <CloudRain className="w-4 h-4" />
-              Chuva 7d máx
-            </div>
-            <div className="mt-2 text-3xl font-bold text-sky-500">
-              {publicRisk.data ? `${publicRisk.data.stats.maxRain7dMm.toFixed(1)} mm` : "--"}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Fonte: {publicRisk.data?.source.precipitation ?? "aguardando consulta"}
-            </p>
-          </div>
-          <div className="tech-card p-4">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-              <Mountain className="w-4 h-4" />
-              Declividade máx
-            </div>
-            <div className="mt-2 text-3xl font-bold text-amber-500">
-              {publicRisk.data ? `${publicRisk.data.stats.maxSlopePercent.toFixed(1)}%` : "--"}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Topografia pública: {publicRisk.data?.source.terrain ?? "aguardando consulta"}
-            </p>
-          </div>
-        </div>
+        </Collapsible>
 
-        {(publicRisk.isLoading || publicRisk.data?.notes.length || publicRisk.error) && (
+        <Collapsible open={showKpisPanel} onOpenChange={setShowKpisPanel}>
+          <CollapsibleContent className="space-y-0">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="tech-card p-4">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                  <Layers3 className="w-4 h-4" />
+                  Linhas avaliadas
+                </div>
+                <div className="mt-2 text-3xl font-bold text-foreground">
+                  {publicRisk.data?.stats.linesEvaluated ?? publicRiskLinePayload.length}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {uploadedLineFeatures.data?.length ? "Linhas ingeridas no sistema" : "Usando corredor demo por falta de linha publicada"}
+                </p>
+              </div>
+              <div className="tech-card p-4">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                  <TriangleAlert className="w-4 h-4" />
+                  Trechos alto risco
+                </div>
+                <div className="mt-2 text-3xl font-bold text-destructive">
+                  {publicRisk.data?.stats.highRiskSegments ?? 0}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Segmentos com score alto ou crítico no buffer de 50 m</p>
+              </div>
+              <div className="tech-card p-4">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                  <CloudRain className="w-4 h-4" />
+                  Chuva 7d máx
+                </div>
+                <div className="mt-2 text-3xl font-bold text-sky-500">
+                  {publicRisk.data ? `${publicRisk.data.stats.maxRain7dMm.toFixed(1)} mm` : "--"}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Fonte: {publicRisk.data?.source.precipitation ?? "aguardando consulta"}
+                </p>
+              </div>
+              <div className="tech-card p-4">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                  <Mountain className="w-4 h-4" />
+                  Declividade máx
+                </div>
+                <div className="mt-2 text-3xl font-bold text-amber-500">
+                  {publicRisk.data ? `${publicRisk.data.stats.maxSlopePercent.toFixed(1)}%` : "--"}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Topografia pública: {publicRisk.data?.source.terrain ?? "aguardando consulta"}
+                </p>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {showAnalysisPanel && (publicRisk.isLoading || publicRisk.data?.notes.length || publicRisk.error) && (
           <Alert className="border-border/60 bg-background/70">
             {publicRisk.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <TriangleAlert className="h-4 w-4" />}
             <AlertTitle>Análise pública do corredor</AlertTitle>
@@ -661,7 +788,8 @@ const Erosao = () => {
           </Alert>
         )}
         
-        <FiltersBar>
+        {showFiltersPanel && (
+        <FiltersBar floating={false}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Tipo de Erosão</label>
@@ -736,104 +864,8 @@ const Erosao = () => {
             </div>
           </div>
         </FiltersBar>
+        )}
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 space-y-4 border border-border rounded-lg bg-card/60 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Erosões e Camada Pedológica</h3>
-                <p className="text-xs text-muted-foreground mt-1">A camada no mapa combina o overlay contínuo SoilGrids com amostragem ao longo do corredor e sobrescreve o solo público quando houver amostra local próxima.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={() => setSoilDialogOpen(true)}>Amostras Locais de Solo</Button>
-                <Button size="sm" variant="outline" onClick={handleGenerateDemoSoil}>Gerar amostras demo</Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4 border border-border rounded-lg bg-card/60 p-4">
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Camadas do mapa</h3>
-              <p className="text-xs text-muted-foreground mt-1">Controle a sobreposição entre infraestrutura, pontos de erosão, a camada pedológica contínua do SoilGrids e o uso operacional desse dado.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={erosionLayerTop ? "default" : "outline"}
-                size="sm"
-                onClick={() => setErosionLayerTop(true)}
-              >
-                Erosão sobre Infraestrutura
-              </Button>
-              <Button
-                variant={!erosionLayerTop ? "default" : "outline"}
-                size="sm"
-                onClick={() => setErosionLayerTop(false)}
-              >
-                Infraestrutura sobre Erosão
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch id="soil-layer-toggle" checked={showSoilLayer} onCheckedChange={setShowSoilLayer} />
-              <Label htmlFor="soil-layer-toggle" className="text-sm">Exibir camada pedológica pública e amostras locais</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch id="soil-backdrop-toggle" checked={showSoilBackdrop} onCheckedChange={setShowSoilBackdrop} />
-              <Label htmlFor="soil-backdrop-toggle" className="text-sm">Exibir overlay contínuo SoilGrids (argila 0-5 cm)</Label>
-            </div>
-            <div className="space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Uso operacional da pedologia
-              </span>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={soilMode === "actionable" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSoilMode("actionable")}
-                >
-                  Acionável no score
-                </Button>
-                <Button
-                  variant={soilMode === "visual" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSoilMode("visual")}
-                >
-                  Somente contexto visual
-                </Button>
-              </div>
-            </div>
-            {showSoilLayer && soilGeoJson.features.length > 0 && (
-              <div className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Ordem da camada de solo
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={soilLayerPosition === "top" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSoilLayerPosition("top")}
-                  >
-                    Sobre todas
-                  </Button>
-                  <Button
-                    variant={soilLayerPosition === "middle" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSoilLayerPosition("middle")}
-                  >
-                    Entre camadas
-                  </Button>
-                  <Button
-                    variant={soilLayerPosition === "bottom" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSoilLayerPosition("bottom")}
-                  >
-                    Abaixo de todas
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {[{
             id: "total",
@@ -900,6 +932,101 @@ const Erosao = () => {
           </TabsContent>
           
           <TabsContent value="mapa" className="mt-4">
+            {showMapControlsPanel && (
+              <div className="mb-4 rounded-lg border border-border bg-card/60 p-4">
+                <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Controles do mapa</h3>
+                    <p className="text-xs text-muted-foreground mt-1">Esse painel ficou opcional para o mapa ocupar mais tela quando você estiver só navegando.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => setSoilDialogOpen(true)}>Amostras Locais de Solo</Button>
+                    <Button size="sm" variant="outline" onClick={handleGenerateDemoSoil}>Gerar amostras demo</Button>
+                  </div>
+                </div>
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant={erosionLayerTop ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setErosionLayerTop(true)}
+                      >
+                        Erosão sobre infraestrutura
+                      </Button>
+                      <Button
+                        variant={!erosionLayerTop ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setErosionLayerTop(false)}
+                      >
+                        Infraestrutura sobre erosão
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch id="soil-layer-toggle" checked={showSoilLayer} onCheckedChange={setShowSoilLayer} />
+                      <Label htmlFor="soil-layer-toggle" className="text-sm">Exibir camada pedológica e amostras locais</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch id="soil-backdrop-toggle" checked={showSoilBackdrop} onCheckedChange={setShowSoilBackdrop} />
+                      <Label htmlFor="soil-backdrop-toggle" className="text-sm">Exibir overlay contínuo SoilGrids</Label>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Uso operacional da pedologia
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant={soilMode === "actionable" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSoilMode("actionable")}
+                        >
+                          Acionável no score
+                        </Button>
+                        <Button
+                          variant={soilMode === "visual" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSoilMode("visual")}
+                        >
+                          Somente contexto visual
+                        </Button>
+                      </div>
+                    </div>
+                    {showSoilLayer && soilGeoJson.features.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Ordem da camada de solo
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant={soilLayerPosition === "top" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSoilLayerPosition("top")}
+                          >
+                            Sobre todas
+                          </Button>
+                          <Button
+                            variant={soilLayerPosition === "middle" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSoilLayerPosition("middle")}
+                          >
+                            Entre camadas
+                          </Button>
+                          <Button
+                            variant={soilLayerPosition === "bottom" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSoilLayerPosition("bottom")}
+                          >
+                            Abaixo de todas
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="relative rounded-lg overflow-hidden border border-border bg-card/30 p-0 map-smooth">
               {/* @ts-expect-error MapLibreUnified possui tipagem restrita para dados customizados */}
               <MapLibreUnified
@@ -918,7 +1045,7 @@ const Erosao = () => {
                 customPolygons={publicRiskCorridors as any}
                 customRasterLayers={soilBackdropLayers}
                 fitBounds={mapFitBounds ?? undefined}
-                height="600px"
+                height="clamp(460px, 72vh, 820px)"
                 initialBasemapId="imagery"
                 fallbackBasemapId="imagery"
               />
