@@ -699,6 +699,7 @@ export const enUS = {
       unifiedUpload: "Unified Upload",
       history: "History",
       mediaUpload: "Media Upload",
+      ingestao: "LiPowerline Import",
       floodedAreas: "Flooded Areas",
       erosion: "Erosion",
       wildfires: "Wildfires",

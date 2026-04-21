@@ -703,6 +703,7 @@ export const ptBR = {
       unifiedUpload: "Upload Unificado",
       history: "Histórico",
       mediaUpload: "Upload de Mídia",
+      ingestao: "Ingestão LiPowerline",
       vegDashboard: "Dashboard",
       vegAnomalias: "Anomalias",
       vegInspecoes: "Inspeções",

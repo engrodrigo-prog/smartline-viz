@@ -45,6 +45,7 @@ import {
   ClipboardCheck,
   AlertTriangle,
   ShieldAlert,
+  FileDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoSmartline from "@/assets/logo-smartline.png";
@@ -85,6 +86,7 @@ const menuGroups: MenuGroup[] = [
       { id: "unifiedUpload", titleKey: "sidebar.items.unifiedUpload", path: "/upload", icon: Upload },
       { id: "history", titleKey: "sidebar.items.history", path: "/upload/historico", icon: History },
       { id: "mediaUpload", titleKey: "sidebar.items.mediaUpload", path: "/upload/midia", icon: Camera },
+      { id: "ingestao", titleKey: "sidebar.items.ingestao", path: "/ingestao", icon: FileDown },
     ],
   },
   {

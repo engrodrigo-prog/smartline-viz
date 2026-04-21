@@ -6,6 +6,14 @@ import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { buildImportPayload, parseGeoPackage } from './_geopackage.js';
 import {
+  parseLiPowerlineBuffer,
+  type IngestaoReportType,
+} from './_ingestao_parser.js';
+import {
+  loadTenantThresholds,
+  classifyRows,
+} from './_ingestao_classifier.js';
+import {
   buildDateRange,
   buildFirmsRiskCollection,
   buildOperationalAssets,
@@ -3611,6 +3619,309 @@ app.post('/admin/send-approval-email', async (c) => {
     console.error('[email] falha ao enviar e-mail de aprovação', err);
     return c.json({ error: err?.message ?? 'Falha ao enviar e-mail' }, 500);
   }
+});
+
+// =============================================================================
+// INGESTÃO — LiPowerline data import pipeline
+// =============================================================================
+
+const INGESTAO_SCHEMA_ENTITIES = [
+  'ingestao_survey',
+  'ingestao_reading',
+  'ingestao_classification',
+  'risk_threshold_config',
+];
+
+// POST /ingestao/upload — parse + classify + persist a LiPowerline report file
+app.post('/ingestao/upload', async (c) => {
+  const auth = requireRlsSupabase(c);
+  if (!auth.ok) return auth.res;
+  const { supabase } = auth;
+
+  const contentType = c.req.header('Content-Type') ?? '';
+  if (!contentType.includes('multipart/form-data')) {
+    return jsonError(c, 400, 'invalid_content_type', 'Envie o arquivo como multipart/form-data.');
+  }
+
+  let formData: FormData;
+  try {
+    formData = await c.req.formData();
+  } catch {
+    return jsonError(c, 400, 'invalid_form', 'Não foi possível ler o formulário multipart.');
+  }
+
+  const fileEntry = formData.get('file');
+  if (!fileEntry || typeof fileEntry === 'string') {
+    return jsonError(c, 400, 'missing_file', 'Campo "file" é obrigatório.');
+  }
+
+  const file = fileEntry as File;
+  const filename = file.name ?? 'upload.csv';
+
+  // Security: file size limit (50 MB) — prevents DoS via memory exhaustion
+  const MAX_CSV_BYTES = 50 * 1024 * 1024;
+  if (file.size > MAX_CSV_BYTES) {
+    return jsonError(c, 413, 'file_too_large', 'Arquivo excede o limite de 50 MB.');
+  }
+
+  // Security: extension + MIME validation — only CSV accepted
+  const ext = filename.split('.').pop()?.toLowerCase();
+  if (ext !== 'csv' && ext !== 'txt') {
+    return jsonError(c, 415, 'invalid_file_type', 'Apenas arquivos CSV são aceitos (.csv).');
+  }
+  const allowedMime = ['text/csv', 'text/plain', 'application/octet-stream', 'application/vnd.ms-excel', ''];
+  if (!allowedMime.includes(file.type ?? '')) {
+    return jsonError(c, 415, 'invalid_file_type', `Tipo MIME não permitido: ${file.type}`);
+  }
+
+  const lineName = String(formData.get('line_name') ?? '').trim();
+  const surveyDateRaw = String(formData.get('survey_date') ?? '').trim();
+  const reportTypeRaw = (formData.get('report_type') as IngestaoReportType | null) ?? undefined;
+
+  if (!lineName) {
+    return jsonError(c, 400, 'missing_line_name', 'Campo "line_name" é obrigatório.');
+  }
+
+  // Validate survey_date format (ISO 8601 date)
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  const surveyDate = surveyDateRaw && ISO_DATE.test(surveyDateRaw) ? surveyDateRaw : null;
+
+  // Resolve tenant_id from authenticated user's profile
+  const { data: appUser, error: appUserError } = await supabase
+    .from('app_user')
+    .select('tenant_id')
+    .single();
+  if (appUserError || !appUser?.tenant_id) {
+    return jsonError(c, 403, 'tenant_not_found', 'Usuário não associado a um tenant.');
+  }
+  const tenantId = appUser.tenant_id as string;
+
+  const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+  // 1. Parse
+  const parseResult = parseLiPowerlineBuffer(fileBuffer, {
+    filename,
+    report_type: reportTypeRaw,
+    default_line_name: lineName,
+  });
+
+  if (!parseResult.ok) {
+    return jsonError(c, 422, 'parse_failed', parseResult.message);
+  }
+
+  const { report_type, rows, errors: parseErrors } = parseResult;
+
+  if (rows.length === 0) {
+    return jsonError(c, 422, 'no_valid_rows', 'Nenhuma linha válida encontrada após o parse.', { errors: parseErrors });
+  }
+
+  // Security: row count cap — prevents memory exhaustion on large but valid files
+  const MAX_ROWS = 10_000;
+  if (rows.length > MAX_ROWS) {
+    return jsonError(c, 422, 'too_many_rows', `Arquivo excede ${MAX_ROWS} linhas. Divida em arquivos menores.`);
+  }
+
+  // 2. Load tenant thresholds
+  const thresholds = await loadTenantThresholds(supabase);
+
+  // 3. Classify
+  const classified = classifyRows(rows, report_type, thresholds);
+
+  // 4. Create survey record (tenant_id has DB DEFAULT but explicit is safer for RLS INSERT check)
+  const { data: surveyData, error: surveyError } = await supabase
+    .from('ingestao_survey')
+    .insert({
+      tenant_id: tenantId,
+      line_name: lineName,
+      report_type,
+      survey_date: surveyDate,
+      source_filename: filename,
+      status: 'processing',
+      total_rows: rows.length,
+    })
+    .select('id')
+    .single();
+
+  if (surveyError || !surveyData) {
+    if (isMissingSchemaEntityError(surveyError, INGESTAO_SCHEMA_ENTITIES)) {
+      return jsonError(c, 503, 'schema_not_initialized',
+        'Tabelas de ingestão não encontradas. Aplique a migration 20260420120000_create_ingestao_lidarline.sql.');
+    }
+    return jsonError(c, 500, 'survey_insert_failed', surveyError?.message ?? 'Erro ao criar survey.');
+  }
+
+  const surveyId = surveyData.id as string;
+
+  // 5. Insert readings — generate stable client-side UUIDs so classification mapping
+  //    is guaranteed regardless of DB insert ordering.
+  const readingPayloads = rows.map((r) => ({
+    id: crypto.randomUUID(),
+    survey_id: surveyId,
+    tenant_id: tenantId,
+    span_id: r.span_id,
+    structure_from: r.structure_from,
+    structure_to: r.structure_to,
+    line_name: r.line_name || lineName,
+    risk_model: r.risk_model,
+    clearance_distance: r.clearance_distance,
+    horizontal_distance: r.horizontal_distance,
+    vertical_distance: r.vertical_distance,
+    crossing_count: r.crossing_count,
+    lidarline_type: r.lidarline_type,
+    lidarline_safety_level: r.lidarline_safety_level,
+  }));
+
+  // Build row_index → reading_id map before the insert — safe because we control the UUIDs
+  const rowIndexToReadingId = new Map<number, string>(
+    rows.map((r, idx) => [r.row_index, readingPayloads[idx].id]),
+  );
+
+  const { error: readingError } = await supabase
+    .from('ingestao_reading')
+    .insert(readingPayloads);
+
+  if (readingError) {
+    await supabase.from('ingestao_survey').update({ status: 'failed' }).eq('id', surveyId);
+    return jsonError(c, 500, 'reading_insert_failed', readingError.message ?? 'Erro ao inserir leituras.');
+  }
+
+  // 6. Insert classifications — look up reading_id via stable row_index map
+  const classificationPayloads = classified.map((cl) => {
+    const readingId = rowIndexToReadingId.get(cl.reading.row_index);
+    if (!readingId) return null;
+    return {
+      reading_id: readingId,
+      tenant_id: tenantId,
+      severity: cl.severity,
+      severity_label: cl.severity_label,
+      threshold_config_id: cl.threshold_config_id,
+      threshold_snapshot: cl.threshold_snapshot,
+    };
+  }).filter(Boolean);
+
+  if (classificationPayloads.length > 0) {
+    await supabase.from('ingestao_classification').insert(classificationPayloads);
+  }
+
+  // 7. Compute N-level counters and update survey to complete
+  const nCounts = { N1: 0, N2: 0, N3: 0, N4: 0 };
+  for (const cl of classified) {
+    nCounts[cl.severity] = (nCounts[cl.severity] ?? 0) + 1;
+  }
+
+  await supabase.from('ingestao_survey').update({
+    status: 'complete',
+    n1_count: nCounts.N1,
+    n2_count: nCounts.N2,
+    n3_count: nCounts.N3,
+    n4_count: nCounts.N4,
+    error_count: parseErrors.length,
+  }).eq('id', surveyId);
+
+  return c.json({
+    survey_id: surveyId,
+    report_type,
+    summary: {
+      total: rows.length,
+      classified: classified.length,
+      N1: nCounts.N1,
+      N2: nCounts.N2,
+      N3: nCounts.N3,
+      N4: nCounts.N4,
+    },
+    errors: parseErrors,
+  }, 201);
+});
+
+// GET /ingestao/surveys — list surveys for tenant (paginated)
+app.get('/ingestao/surveys', async (c) => {
+  const auth = requireRlsSupabase(c);
+  if (!auth.ok) return auth.res;
+  const { supabase } = auth;
+
+  const queryParsed = parseQuery(c, z.object({
+    limit: z.string().optional().transform((v) => Math.min(parseInt(v ?? '50', 10), 200)),
+    offset: z.string().optional().transform((v) => parseInt(v ?? '0', 10)),
+    line_name: z.string().optional(),
+    report_type: z.string().optional(),
+  }));
+  if (!queryParsed.ok) return queryParsed.res;
+  const { limit, offset, line_name, report_type } = queryParsed.data;
+
+  let query = supabase
+    .from('ingestao_survey')
+    .select('id,line_name,report_type,survey_date,source_filename,status,total_rows,n1_count,n2_count,n3_count,n4_count,error_count,created_at,created_by', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (line_name) query = query.ilike('line_name', `%${line_name}%`);
+  if (report_type) query = query.eq('report_type', report_type);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    if (isMissingSchemaEntityError(error, INGESTAO_SCHEMA_ENTITIES)) {
+      return c.json({ items: [], total: 0, degraded: true, hint: 'Aplique a migration de ingestão.' });
+    }
+    return jsonError(c, 500, 'db_error', error.message);
+  }
+
+  return c.json({ items: data ?? [], total: count ?? 0 });
+});
+
+// GET /ingestao/surveys/:id — survey detail with classified readings
+app.get('/ingestao/surveys/:id', async (c) => {
+  const auth = requireRlsSupabase(c);
+  if (!auth.ok) return auth.res;
+  const { supabase } = auth;
+
+  const id = c.req.param('id');
+
+  const [surveyRes, readingsRes] = await Promise.all([
+    supabase
+      .from('ingestao_survey')
+      .select('*')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('ingestao_reading')
+      .select('*, ingestao_classification(severity, severity_label, threshold_snapshot)')
+      .eq('survey_id', id)
+      .order('span_id'),
+  ]);
+
+  if (surveyRes.error) {
+    const s = statusForSupabaseAuthError(surveyRes.error);
+    if (s) return jsonError(c, s, 'unauthorized', 'Sem permissão.');
+    return jsonError(c, 404, 'survey_not_found', 'Survey não encontrado.');
+  }
+
+  return c.json({
+    survey: surveyRes.data,
+    readings: readingsRes.data ?? [],
+  });
+});
+
+// GET /ingestao/thresholds — list tenant's risk thresholds
+app.get('/ingestao/thresholds', async (c) => {
+  const auth = requireRlsSupabase(c);
+  if (!auth.ok) return auth.res;
+  const { supabase } = auth;
+
+  const { data, error } = await supabase
+    .from('risk_threshold_config')
+    .select('*')
+    .order('risk_model')
+    .order('severity');
+
+  if (error) {
+    if (isMissingSchemaEntityError(error, INGESTAO_SCHEMA_ENTITIES)) {
+      return c.json({ items: [], degraded: true });
+    }
+    return jsonError(c, 500, 'db_error', error.message);
+  }
+
+  return c.json({ items: data ?? [] });
 });
 
 export default app;

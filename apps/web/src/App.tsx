@@ -66,6 +66,8 @@ import AgendaPage from "./modules/vegetacao/pages/AgendaPage";
 import RiscoPage from "./modules/vegetacao/pages/RiscoPage";
 import RelatoriosPage from "./modules/vegetacao/pages/RelatoriosPage";
 import DocumentosPage from "./modules/vegetacao/pages/DocumentosPage";
+import { IngestaoPage } from "./modules/ingestao/pages/IngestaoPage";
+import { SurveyDetailPage } from "./modules/ingestao/pages/SurveyDetailPage";
 
 const queryClient = new QueryClient();
 
@@ -103,6 +105,10 @@ const App = () => (
           <Route path="/upload/tracados" element={<ProtectedRoute><UploadTracados /></ProtectedRoute>} />
           <Route path="/upload/kml" element={<ProtectedRoute><UploadKml /></ProtectedRoute>} />
           <Route path="/upload/midia" element={<ProtectedRoute><UploadMidiaPage /></ProtectedRoute>} />
+
+          {/* Ingestão LiPowerline */}
+          <Route path="/ingestao" element={<ProtectedRoute><IngestaoPage /></ProtectedRoute>} />
+          <Route path="/ingestao/:id" element={<ProtectedRoute><SurveyDetailPage /></ProtectedRoute>} />
 
           {/* Vegetação (Poda & Roçada) */}
           <Route path="/vegetacao" element={<ProtectedRoute><VegetacaoDashboardPage /></ProtectedRoute>} />
