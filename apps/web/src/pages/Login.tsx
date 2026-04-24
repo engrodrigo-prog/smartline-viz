@@ -113,9 +113,12 @@ const Login = () => {
       }
     } catch (error: any) {
       const message = readApiErrorMessage(error);
+      const normalizedMessage = message.toLowerCase();
       const friendly =
-        message.toLowerCase().includes("failed to fetch") ||
-        message.toLowerCase().includes("name_not_resolved")
+        normalizedMessage.includes("failed to fetch") ||
+        normalizedMessage.includes("fetch failed") ||
+        normalizedMessage.includes("name_not_resolved") ||
+        normalizedMessage.includes("auth_provider_unreachable")
           ? t("login.errors.cannotConnectAuth")
           : null;
       toast({

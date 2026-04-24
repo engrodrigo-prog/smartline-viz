@@ -1146,16 +1146,29 @@ app.post('/auth/login', async (c) => {
     const rawStatus = Number(error.status ?? 0);
     const message = String(error.message ?? 'Falha ao autenticar.');
     const invalidCredentials = message.toLowerCase().includes('invalid login credentials');
+    const authProviderUnreachable =
+      message.toLowerCase().includes('fetch failed') ||
+      message.toLowerCase().includes('failed to fetch') ||
+      message.toLowerCase().includes('name_not_resolved') ||
+      message.toLowerCase().includes('enotfound');
     const status = invalidCredentials
       ? 401
+      : authProviderUnreachable
+        ? 503
       : Number.isFinite(rawStatus) && rawStatus >= 400 && rawStatus < 600
         ? rawStatus
         : 502;
 
     return c.json(
       {
-        error: invalidCredentials ? 'invalid_credentials' : 'auth_failed',
-        message,
+        error: invalidCredentials
+          ? 'invalid_credentials'
+          : authProviderUnreachable
+            ? 'auth_provider_unreachable'
+            : 'auth_failed',
+        message: authProviderUnreachable
+          ? 'Não foi possível conectar ao provedor de autenticação. Verifique se o projeto Supabase está ativo e configurado.'
+          : message,
       },
       status,
     );
